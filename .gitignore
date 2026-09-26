@@ -1,0 +1,16 @@
+.venv/
+.verify-venv/
+pytest-of-root/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.py[cod]
+dist/
+build/
+*.egg-info/
+
+# Keep normalized JSON in Git; raw downloaded pages are local snapshots.
+data/**/source.html
+data/logs/
+.env

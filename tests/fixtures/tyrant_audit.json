@@ -1,0 +1,387 @@
+{
+  "provenance": "FF Logs zYLAW7KTBk8P4XxG fight 9 source 18, selected authentic events; potion buffs absent from supplied older download",
+  "fight": {
+    "id": 9,
+    "name": "The Tyrant",
+    "startTime": 16949728,
+    "endTime": 17601606,
+    "encounterID": 103,
+    "kill": true
+  },
+  "master_data": {
+    "actors": [
+      {
+        "id": 18,
+        "gameID": 1000018,
+        "name": "Elei Dawn",
+        "type": "Player",
+        "subType": "Machinist",
+        "petOwner": null,
+        "server": "Ravana"
+      }
+    ],
+    "abilities": [
+      {
+        "gameID": 34603667,
+        "name": "Grade 4 Gemdraught of Dexterity [HQ]",
+        "type": "1"
+      },
+      {
+        "gameID": 8,
+        "name": "Shot",
+        "type": "128"
+      },
+      {
+        "gameID": 2878,
+        "name": "Wildfire",
+        "type": "128"
+      },
+      {
+        "gameID": 1000861,
+        "name": "Wildfire",
+        "type": "1"
+      },
+      {
+        "gameID": 17209,
+        "name": "Hypercharge",
+        "type": "1"
+      },
+      {
+        "gameID": 36978,
+        "name": "Blazing Shot",
+        "type": "128"
+      }
+    ]
+  },
+  "cast_events": [
+    {
+      "timestamp": 16953696,
+      "type": "cast",
+      "packetID": 60,
+      "sourceID": 18,
+      "targetID": 18,
+      "abilityGameID": 34603667,
+      "fight": 9
+    },
+    {
+      "timestamp": 16963819,
+      "type": "cast",
+      "packetID": 167,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 2878,
+      "fight": 9
+    },
+    {
+      "timestamp": 16965689,
+      "type": "cast",
+      "packetID": 185,
+      "sourceID": 18,
+      "targetID": 18,
+      "abilityGameID": 17209,
+      "fight": 9
+    },
+    {
+      "timestamp": 16967556,
+      "type": "cast",
+      "packetID": 202,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9
+    },
+    {
+      "timestamp": 16969021,
+      "type": "cast",
+      "packetID": 217,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9
+    },
+    {
+      "timestamp": 16970488,
+      "type": "cast",
+      "packetID": 234,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9
+    },
+    {
+      "timestamp": 16971954,
+      "type": "cast",
+      "packetID": 247,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9
+    },
+    {
+      "timestamp": 16973465,
+      "type": "cast",
+      "packetID": 257,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9
+    },
+    {
+      "timestamp": 17241441,
+      "type": "cast",
+      "packetID": 2459,
+      "sourceID": 18,
+      "targetID": 18,
+      "abilityGameID": 34603667,
+      "fight": 9
+    },
+    {
+      "timestamp": 17546033,
+      "type": "cast",
+      "packetID": 4824,
+      "sourceID": 18,
+      "targetID": 18,
+      "abilityGameID": 34603667,
+      "fight": 9
+    }
+  ],
+  "damage_events": [
+    {
+      "timestamp": 16950663,
+      "type": "damage",
+      "packetID": 21,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 8,
+      "fight": 9,
+      "hitType": 2,
+      "amount": 9232,
+      "unmitigatedAmount": 9232,
+      "multiplier": 1
+    },
+    {
+      "timestamp": 16953341,
+      "type": "damage",
+      "packetID": 50,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 8,
+      "fight": 9,
+      "hitType": 2,
+      "amount": 12167,
+      "unmitigatedAmount": 12167,
+      "directHit": true,
+      "multiplier": 1
+    },
+    {
+      "timestamp": 16956020,
+      "type": "damage",
+      "packetID": 76,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 8,
+      "fight": 9,
+      "buffs": "1000049.",
+      "hitType": 2,
+      "amount": 12912,
+      "unmitigatedAmount": 12912,
+      "directHit": true,
+      "multiplier": 1.05
+    },
+    {
+      "timestamp": 16958691,
+      "type": "damage",
+      "packetID": 101,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 8,
+      "fight": 9,
+      "buffs": "1000049.1000786.",
+      "hitType": 2,
+      "amount": 9822,
+      "unmitigatedAmount": 9822,
+      "multiplier": 1.05
+    },
+    {
+      "timestamp": 16961367,
+      "type": "damage",
+      "packetID": 128,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 8,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 1,
+      "amount": 6424,
+      "unmitigatedAmount": 6424,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16964041,
+      "type": "damage",
+      "packetID": 160,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 8,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 1,
+      "amount": 6932,
+      "unmitigatedAmount": 6932,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16967556,
+      "type": "calculateddamage",
+      "packetID": 202,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 2,
+      "amount": 48567,
+      "unmitigatedAmount": 48567,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16968400,
+      "type": "damage",
+      "packetID": 202,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 2,
+      "amount": 48567,
+      "unmitigatedAmount": 48567,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16969021,
+      "type": "calculateddamage",
+      "packetID": 217,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 2,
+      "amount": 48834,
+      "unmitigatedAmount": 48834,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16969864,
+      "type": "damage",
+      "packetID": 217,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 2,
+      "amount": 48834,
+      "unmitigatedAmount": 48834,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16970488,
+      "type": "calculateddamage",
+      "packetID": 234,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 1,
+      "amount": 30407,
+      "unmitigatedAmount": 30407,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16971333,
+      "type": "damage",
+      "packetID": 234,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 1,
+      "amount": 30407,
+      "unmitigatedAmount": 30407,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16971954,
+      "type": "calculateddamage",
+      "packetID": 247,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 1,
+      "amount": 28854,
+      "unmitigatedAmount": 28854,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16972798,
+      "type": "damage",
+      "packetID": 247,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 1,
+      "amount": 28854,
+      "unmitigatedAmount": 28854,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16973465,
+      "type": "calculateddamage",
+      "packetID": 257,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 1,
+      "amount": 28030,
+      "unmitigatedAmount": 28030,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16974312,
+      "type": "damage",
+      "packetID": 257,
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 36978,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 1,
+      "amount": 28030,
+      "unmitigatedAmount": 28030,
+      "multiplier": 1.11
+    },
+    {
+      "timestamp": 16974401,
+      "type": "damage",
+      "sourceID": 18,
+      "targetID": 60,
+      "abilityGameID": 1000861,
+      "fight": 9,
+      "buffs": "1000049.1001878.1000786.",
+      "hitType": 1,
+      "amount": 168217,
+      "unmitigatedAmount": 168217,
+      "tick": true
+    }
+  ]
+}

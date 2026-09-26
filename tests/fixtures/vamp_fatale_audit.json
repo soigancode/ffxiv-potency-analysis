@@ -1,0 +1,563 @@
+{
+  "provenance": "FF Logs DFm9brj421X6T73k fight 1 source 2, selected authentic event records; nonselected events deliberately omitted",
+  "fight": {
+    "id": 1,
+    "name": "Vamp Fatale",
+    "startTime": 52852,
+    "endTime": 559425,
+    "encounterID": 101,
+    "kill": true
+  },
+  "master_data": {
+    "actors": [
+      {
+        "id": 2,
+        "gameID": 1000002,
+        "name": "Poruru Barnaby",
+        "type": "Player",
+        "subType": "Machinist",
+        "petOwner": null,
+        "server": "Anima"
+      },
+      {
+        "id": 14,
+        "gameID": 10490,
+        "name": "Automaton Queen",
+        "type": "Pet",
+        "subType": "Pet",
+        "petOwner": 2,
+        "server": null
+      }
+    ],
+    "abilities": [
+      {
+        "gameID": 1000049,
+        "name": "Medicated",
+        "type": "1"
+      },
+      {
+        "gameID": 16500,
+        "name": "Air Anchor",
+        "type": "128"
+      },
+      {
+        "gameID": 25788,
+        "name": "Chain Saw",
+        "type": "128"
+      },
+      {
+        "gameID": 36981,
+        "name": "Excavator",
+        "type": "128"
+      },
+      {
+        "gameID": 16501,
+        "name": "Automaton Queen",
+        "type": "1"
+      },
+      {
+        "gameID": 16504,
+        "name": "Arm Punch",
+        "type": "128"
+      },
+      {
+        "gameID": 16503,
+        "name": "Pile Bunker",
+        "type": "128"
+      },
+      {
+        "gameID": 25787,
+        "name": "Crowned Collider",
+        "type": "128"
+      },
+      {
+        "gameID": 7412,
+        "name": "Heated Slug Shot",
+        "type": "128"
+      }
+    ]
+  },
+  "cast_events": [
+    {
+      "timestamp": 55616,
+      "type": "cast",
+      "packetID": 13316,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 16500,
+      "fight": 1
+    },
+    {
+      "timestamp": 58152,
+      "type": "cast",
+      "packetID": 13340,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 25788,
+      "fight": 1
+    },
+    {
+      "timestamp": 60661,
+      "type": "cast",
+      "packetID": 13363,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 36981,
+      "fight": 1
+    },
+    {
+      "timestamp": 61809,
+      "type": "cast",
+      "packetID": 13374,
+      "sourceID": 2,
+      "targetID": 2,
+      "abilityGameID": 16501,
+      "fight": 1
+    },
+    {
+      "timestamp": 120756,
+      "type": "cast",
+      "packetID": 13880,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 7412,
+      "fight": 1
+    },
+    {
+      "timestamp": 358292,
+      "type": "cast",
+      "packetID": 15837,
+      "sourceID": 2,
+      "targetID": -1,
+      "abilityGameID": 25788,
+      "fight": 1
+    },
+    {
+      "timestamp": 478771,
+      "type": "cast",
+      "packetID": 16968,
+      "sourceID": 2,
+      "targetID": -1,
+      "abilityGameID": 25788,
+      "fight": 1
+    }
+  ],
+  "damage_events": [
+    {
+      "timestamp": 55616,
+      "type": "calculateddamage",
+      "packetID": 13316,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 16500,
+      "fight": 1,
+      "buffs": "1000049.",
+      "hitType": 1,
+      "amount": 71571,
+      "unmitigatedAmount": 71571,
+      "multiplier": 1.05
+    },
+    {
+      "timestamp": 56768,
+      "type": "damage",
+      "packetID": 13316,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 16500,
+      "fight": 1,
+      "buffs": "1000049.",
+      "hitType": 1,
+      "amount": 71571,
+      "unmitigatedAmount": 71571,
+      "multiplier": 1.05
+    },
+    {
+      "timestamp": 58152,
+      "type": "calculateddamage",
+      "packetID": 13340,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 25788,
+      "fight": 1,
+      "buffs": "1000049.1000851.1000851.",
+      "hitType": 2,
+      "amount": 155262,
+      "unmitigatedAmount": 155262,
+      "directHit": true,
+      "multiplier": 1.05
+    },
+    {
+      "timestamp": 59179,
+      "type": "damage",
+      "packetID": 13340,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 25788,
+      "fight": 1,
+      "buffs": "1000049.1000851.1000851.",
+      "hitType": 2,
+      "amount": 155262,
+      "unmitigatedAmount": 155262,
+      "directHit": true,
+      "multiplier": 1.05
+    },
+    {
+      "timestamp": 60661,
+      "type": "calculateddamage",
+      "packetID": 13363,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 36981,
+      "fight": 1,
+      "buffs": "1000049.",
+      "hitType": 1,
+      "amount": 69425,
+      "unmitigatedAmount": 69425,
+      "multiplier": 1.05
+    },
+    {
+      "timestamp": 61714,
+      "type": "damage",
+      "packetID": 13363,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 36981,
+      "fight": 1,
+      "buffs": "1000049.",
+      "hitType": 1,
+      "amount": 69425,
+      "unmitigatedAmount": 69425,
+      "multiplier": 1.05
+    },
+    {
+      "timestamp": 67375,
+      "type": "calculateddamage",
+      "packetID": 13437,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16504,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 2,
+      "amount": 22584,
+      "unmitigatedAmount": 22584,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 68133,
+      "type": "damage",
+      "packetID": 13437,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16504,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 2,
+      "amount": 22584,
+      "unmitigatedAmount": 22584,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 68937,
+      "type": "calculateddamage",
+      "packetID": 13459,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16504,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 1,
+      "amount": 18669,
+      "unmitigatedAmount": 18669,
+      "directHit": true,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 69698,
+      "type": "damage",
+      "packetID": 13459,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16504,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 1,
+      "amount": 18669,
+      "unmitigatedAmount": 18669,
+      "directHit": true,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 70503,
+      "type": "calculateddamage",
+      "packetID": 13476,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16504,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 2,
+      "amount": 22757,
+      "unmitigatedAmount": 22757,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 71304,
+      "type": "damage",
+      "packetID": 13476,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16504,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 2,
+      "amount": 22757,
+      "unmitigatedAmount": 22757,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 72059,
+      "type": "calculateddamage",
+      "packetID": 13493,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16504,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 2,
+      "amount": 22987,
+      "unmitigatedAmount": 22987,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 72811,
+      "type": "damage",
+      "packetID": 13493,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16504,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 2,
+      "amount": 22987,
+      "unmitigatedAmount": 22987,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 73613,
+      "type": "calculateddamage",
+      "packetID": 13510,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16504,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 1,
+      "amount": 13913,
+      "unmitigatedAmount": 13913,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 74369,
+      "type": "damage",
+      "packetID": 13510,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16504,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 1,
+      "amount": 13913,
+      "unmitigatedAmount": 13913,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 75172,
+      "type": "calculateddamage",
+      "packetID": 13524,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16503,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 1,
+      "amount": 39740,
+      "unmitigatedAmount": 39740,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 76468,
+      "type": "damage",
+      "packetID": 13524,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 16503,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 1,
+      "amount": 39740,
+      "unmitigatedAmount": 39740,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 77221,
+      "type": "calculateddamage",
+      "packetID": 13541,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 25787,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 1,
+      "amount": 56493,
+      "unmitigatedAmount": 56493,
+      "directHit": true,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 79182,
+      "type": "damage",
+      "packetID": 13541,
+      "sourceID": 14,
+      "sourceInstance": 1,
+      "targetID": 11,
+      "abilityGameID": 25787,
+      "fight": 1,
+      "buffs": "1000049.1001297.1000786.1001221.",
+      "hitType": 1,
+      "amount": 56493,
+      "unmitigatedAmount": 56493,
+      "directHit": true,
+      "multiplier": 1.1
+    },
+    {
+      "timestamp": 120756,
+      "type": "calculateddamage",
+      "packetID": 13880,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 7412,
+      "fight": 1,
+      "hitType": 1,
+      "amount": 30957,
+      "unmitigatedAmount": 30957,
+      "bonusPercent": 56,
+      "multiplier": 1,
+      "unpaired": true
+    },
+    {
+      "timestamp": 358292,
+      "type": "calculateddamage",
+      "packetID": 15837,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 25788,
+      "fight": 1,
+      "hitType": 1,
+      "amount": 47473,
+      "unmitigatedAmount": 47473,
+      "multiplier": 1
+    },
+    {
+      "timestamp": 358292,
+      "type": "calculateddamage",
+      "packetID": 15837,
+      "sourceID": 2,
+      "targetID": 27,
+      "targetInstance": 1,
+      "abilityGameID": 25788,
+      "fight": 1,
+      "hitType": 1,
+      "amount": 63731,
+      "unmitigatedAmount": 63731,
+      "multiplier": 1
+    },
+    {
+      "timestamp": 359317,
+      "type": "damage",
+      "packetID": 15837,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 25788,
+      "fight": 1,
+      "hitType": 1,
+      "amount": 47473,
+      "unmitigatedAmount": 47473,
+      "multiplier": 1
+    },
+    {
+      "timestamp": 359458,
+      "type": "damage",
+      "packetID": 15837,
+      "sourceID": 2,
+      "targetID": 27,
+      "targetInstance": 1,
+      "abilityGameID": 25788,
+      "fight": 1,
+      "hitType": 1,
+      "amount": 63731,
+      "unmitigatedAmount": 63731,
+      "multiplier": 1
+    },
+    {
+      "timestamp": 478771,
+      "type": "calculateddamage",
+      "packetID": 16968,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 25788,
+      "fight": 1,
+      "hitType": 1,
+      "amount": 63273,
+      "unmitigatedAmount": 63273,
+      "multiplier": 1
+    },
+    {
+      "timestamp": 478771,
+      "type": "damage",
+      "sourceID": 2,
+      "targetID": 29,
+      "targetInstance": 3,
+      "abilityGameID": 25788,
+      "fight": 1,
+      "hitType": 10,
+      "amount": 0
+    },
+    {
+      "timestamp": 479795,
+      "type": "damage",
+      "packetID": 16968,
+      "sourceID": 2,
+      "targetID": 11,
+      "abilityGameID": 25788,
+      "fight": 1,
+      "hitType": 1,
+      "amount": 63273,
+      "unmitigatedAmount": 63273,
+      "multiplier": 1
+    }
+  ],
+  "buff_events": [
+    {
+      "timestamp": 82836,
+      "type": "removebuff",
+      "sourceID": 2,
+      "targetID": 2,
+      "abilityGameID": 1000049,
+      "fight": 1
+    }
+  ]
+}
