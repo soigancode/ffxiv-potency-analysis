@@ -19,7 +19,7 @@ from ffxiv_potency.fflogs import analyze_saved_fight
 def test_real_lindwurm_final_queen_lands_bunker_but_not_collider(
     tmp_path: Path, machinist_actions: Path, load_audit, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    load_audit("lindwurm_104_queen_audit.json")
+    load_audit("lindwurm_audit.json", "lindwurm")
     result = analyze_saved_fight(tmp_path, machinist_actions)
 
     (queen,) = result.pet_deployments
@@ -30,15 +30,41 @@ def test_real_lindwurm_final_queen_lands_bunker_but_not_collider(
     assert result.unmatched == ()
     cli._print_analysis(result)
     assert (
-        "6m29s Automaton Queen: 50 Battery Gauge, 837 total potency (missing Crowned Collider)"
+        "06m29s Automaton Queen: 50 Battery Gauge, 837 total potency (missing Crowned Collider)"
         in capsys.readouterr().out
     )
+
+
+def test_queen_overdrive_marks_its_deployment(
+    tmp_path: Path, machinist_actions: Path, load_audit, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = load_audit("lindwurm_audit.json", "lindwurm")
+    source["master_data"]["abilities"].append({"gameID": 9001, "name": "Queen Overdrive"})
+    source["cast_events"].append(
+        {
+            "timestamp": 28875791,
+            "type": "cast",
+            "packetID": 9999,
+            "sourceID": 1107,
+            "targetID": 100,
+            "abilityGameID": 9001,
+        }
+    )
+    (tmp_path / "master-data.json").write_text(json.dumps(source["master_data"]), encoding="utf-8")
+    (tmp_path / "cast-events.json").write_text(json.dumps(source["cast_events"]), encoding="utf-8")
+
+    result = analyze_saved_fight(tmp_path, machinist_actions)
+    (queen,) = result.pet_deployments
+    assert queen.overdrive_seconds == pytest.approx(391.551)
+    assert queen.potency_min == pytest.approx(836.6)
+    cli._print_analysis(result)
+    assert "(Queen Overdrive at 06m32s)" in capsys.readouterr().out
 
 
 def test_real_lindwurm_ii_queen_lands_both_finishers(
     tmp_path: Path, machinist_actions: Path, load_audit
 ) -> None:
-    load_audit("lindwurm_105_queen_audit.json")
+    load_audit("lindwurm_audit.json", "lindwurm_ii_potted")
     result = analyze_saved_fight(tmp_path, machinist_actions)
 
     (queen,) = result.pet_deployments
@@ -55,7 +81,7 @@ def test_real_lindwurm_ii_queen_lands_both_finishers(
 def test_real_lindwurm_ii_queen_caps_battery_and_uses_roller_dash(
     tmp_path: Path, machinist_actions: Path, load_audit
 ) -> None:
-    load_audit("lindwurm_105_dash_queen_audit.json")
+    load_audit("lindwurm_audit.json", "lindwurm_ii_max_battery")
     result = analyze_saved_fight(tmp_path, machinist_actions)
 
     (queen,) = result.pet_deployments
@@ -74,7 +100,7 @@ def test_queen_without_either_finisher_reports_both(
 ) -> None:
     # A controlled variant of the real interrupted deployment: Bunker also
     # fails to land, as could happen if the fight ended a little earlier.
-    source = load_audit("lindwurm_104_queen_audit.json")
+    source = load_audit("lindwurm_audit.json", "lindwurm")
     bunker_id = next(
         item["gameID"]
         for item in source["master_data"]["abilities"]

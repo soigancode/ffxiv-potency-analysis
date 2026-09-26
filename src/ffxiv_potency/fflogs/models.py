@@ -31,6 +31,16 @@ class PetDeploymentSummary:
     potency_min: float = 0.0
     potency_max: float = 0.0
     missing_finishers: tuple[str, ...] = ()
+    overdrive_seconds: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class WildfireSummary:
+    applied_seconds: float
+    detonated_seconds: float | None
+    landed_weaponskills: int
+    potency: float
+    detonated_early: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +114,7 @@ class AnalysisResult:
     direct_gear_baseline: float = 0.0
     direct_critical_gear_baseline: float = 0.0
     ghosted_times: tuple[tuple[str, tuple[float, ...]], ...] = ()
+    wildfires: tuple[WildfireSummary, ...] = ()
 
     @property
     def pps_min(self) -> float:

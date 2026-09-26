@@ -20,6 +20,7 @@ from .models import (
     PetDeploymentSummary,
     PotionSummary,
     PotionWindow,
+    WildfireSummary,
 )
 
 _WEAPON_DELAY_MATCH_TOLERANCE = 0.04
@@ -368,11 +369,7 @@ def _load_raid_effects(actions_path: Path) -> list[dict[str, Any]]:
     effects = document.get("effects")
     required = {(row["action"], row["rate"]) for row in bundled_document["effects"]}
     if isinstance(effects, list) and candidate.is_file():
-        present = {
-            (row.get("action"), row.get("rate"))
-            for row in effects
-            if isinstance(row, dict)
-        }
+        present = {(row.get("action"), row.get("rate")) for row in effects if isinstance(row, dict)}
         if present == required - {("Devilment", "critical"), ("Devilment", "direct")}:
             # Existing 7.55 snapshots predate Devilment support. Use the
             # complete bundled data until they are refreshed.
@@ -875,9 +872,81 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         float(end),
         source_id,
     )
+    wildfire_applications = {
+        event["packetID"]: event["timestamp"]
+        for event in buffs
+        if event.get("type") == "applybuff"
+        and _event_name(event, ability_names) == "Wildfire"
+        and event.get("sourceID") == source_id
+        and event.get("targetID") == source_id
+        and isinstance(event.get("packetID"), int)
+        and isinstance(event.get("timestamp"), (int, float))
+    }
+
+    def wildfire_application(cast: dict[str, Any]) -> float:
+        return wildfire_applications.get(cast.get("packetID"), cast["timestamp"])
+
+    wildfire_records: dict[int, WildfireSummary] = {}
+    potted_wildfire_events: set[int] = set()
+
+    def wildfire_snapshotted_potion(cast: dict[str, Any], explosion: dict[str, Any]) -> bool:
+        timestamp = wildfire_application(cast)
+        if not isinstance(timestamp, (int, float)):
+            return False
+        seconds = (timestamp - start) / 1000
+        if _has_buff(cast, combat_profile.potion_buff_id) or any(
+            window.start_seconds is not None
+            and window.end_seconds is not None
+            and window.start_seconds <= seconds < window.end_seconds
+            for window in potion_windows
+        ):
+            return True
+        # Pre-pull potion casts can be absent from a selected fight. Damage
+        # retains the application snapshot; accept its marker only when a
+        # recorded potion did not start between application and detonation.
+        explosion_seconds = (explosion.get("timestamp", timestamp) - start) / 1000
+        return _has_buff(explosion, combat_profile.potion_buff_id) and not any(
+            window.start_seconds is not None and seconds < window.start_seconds <= explosion_seconds
+            for window in potion_windows
+        )
+
+    def landed_weapon_triggers(started: float, finished: float) -> int:
+        # Wildfire gains stacks when weaponskills *land*, which can be later
+        # than their casts (including casts at the exact application time).
+        return len(
+            {
+                cast.get("packetID")
+                for cast in sorted_casts
+                if cast.get("packetID") is not None
+                and any(
+                    started < hit.get("timestamp", 0) <= finished
+                    for hit in landed_by_packet.get(
+                        (cast.get("packetID"), cast.get("abilityGameID")), []
+                    )
+                )
+                and "weaponskill"
+                in str(actions.get(_event_name(cast, ability_names), {}).get("type", "")).lower()
+            }
+        )
+
     pet_deployments = _reconstruct_pet_deployments(
         sorted_casts, actions, ability_names, landed_by_packet, pet_profiles, float(start)
     )
+    queen_overdrives: dict[PetDeploymentSummary, float] = {}
+    for cast in sorted_casts:
+        if (
+            _event_name(cast, ability_names) != "Queen Overdrive"
+            or cast.get("sourceID") != source_id
+        ):
+            continue
+        deployment = _deployment_for_event(
+            "Automaton Queen", cast.get("timestamp"), pet_deployments, float(start)
+        )
+        timestamp = cast.get("timestamp")
+        if deployment is not None and isinstance(timestamp, (int, float)):
+            seconds = (timestamp - start) / 1000
+            if deployment.timestamp_seconds <= seconds <= deployment.timestamp_seconds + 12:
+                queen_overdrives[deployment] = seconds
     guaranteed_packets = _guaranteed_outcome_packets(sorted_casts, actions, ability_names)
     channel_casts: dict[str, list[tuple[int, dict[str, Any]]]] = defaultdict(list)
     for cast_index, cast in enumerate(sorted_casts):
@@ -954,23 +1023,36 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 and cast.get("timestamp", 0) <= event_time
             ]
             if trigger_casts:
-                started = trigger_casts[-1].get("timestamp", 0)
+                trigger_cast = trigger_casts[-1]
+                started = (
+                    wildfire_application(trigger_cast)
+                    if name == "Wildfire"
+                    else trigger_cast.get("timestamp", 0)
+                )
                 maximum_triggers = triggered.get("maximum_triggers")
                 potency_per_trigger = triggered.get("potency_per_trigger")
-                qualifying = {
-                    cast.get("packetID")
-                    for cast in sorted_casts
-                    if started < cast.get("timestamp", 0) <= event_time
-                    and cast.get("packetID") is not None
-                    and (cast.get("packetID"), cast.get("abilityGameID")) in landed_packets
-                    and isinstance(
-                        actions.get(_event_name(cast, ability_names), {}).get("type"), str
-                    )
-                    and "weaponskill" in actions[_event_name(cast, ability_names)]["type"].lower()
-                }
                 if isinstance(maximum_triggers, int) and isinstance(potency_per_trigger, int):
-                    value = float(min(len(qualifying), maximum_triggers) * potency_per_trigger)
+                    trigger_count = min(
+                        landed_weapon_triggers(started, event_time), maximum_triggers
+                    )
+                    value = float(trigger_count * potency_per_trigger)
                     values = value, value
+                    if name == "Wildfire":
+                        snapshotted = wildfire_snapshotted_potion(trigger_cast, event)
+                        if snapshotted:
+                            potted_wildfire_events.add(id(event))
+                        wildfire_records[id(trigger_cast)] = WildfireSummary(
+                            (started - start) / 1000,
+                            (event_time - start) / 1000,
+                            trigger_count,
+                            value * (combat_profile.player_potion_multiplier if snapshotted else 1),
+                            any(
+                                _event_name(cast, ability_names) == "Detonator"
+                                and started <= cast.get("timestamp", -1) <= event_time
+                                and cast.get("sourceID") == trigger_cast.get("sourceID")
+                                for cast in sorted_casts
+                            ),
+                        )
         if values is None:
             key = (event.get("packetID"), event.get("abilityGameID"))
             values = _direct_potency(
@@ -987,7 +1069,13 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             unmatched[name] += 1
             continue
 
-        if _has_buff(event, combat_profile.potion_buff_id):
+        wildfire_snapshot = name == "Wildfire" and event.get("tick") and isinstance(triggered, dict)
+        potted = (
+            id(event) in potted_wildfire_events
+            if wildfire_snapshot
+            else _has_buff(event, combat_profile.potion_buff_id)
+        )
+        if potted:
             potion_multiplier = (
                 combat_profile.pet_potion_multipliers.get(
                     source_actor, combat_profile.player_potion_multiplier
@@ -1135,8 +1223,30 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 )
                 if deployment.actor == "Automaton Queen"
                 else (),
+                overdrive_seconds=queen_overdrives.get(deployment),
             )
             for deployment in pet_deployments
+        ),
+        wildfires=tuple(
+            wildfire_records.get(
+                id(cast),
+                WildfireSummary(
+                    (wildfire_application(cast) - start) / 1000,
+                    None,
+                    min(
+                        landed_weapon_triggers(
+                            wildfire_application(cast),
+                            min(end, wildfire_application(cast) + 10000),
+                        ),
+                        6,
+                    ),
+                    0,
+                ),
+            )
+            for cast in sorted_casts
+            if job.casefold() == "machinist"
+            and _event_name(cast, ability_names) == "Wildfire"
+            and isinstance(cast.get("timestamp"), (int, float))
         ),
         hit_outcomes=_summarize_hit_outcomes(landed),
         potion=PotionSummary(

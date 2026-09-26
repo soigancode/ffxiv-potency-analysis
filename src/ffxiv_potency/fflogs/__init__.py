@@ -11,6 +11,7 @@ from .models import (
     PetDeploymentSummary,
     PotionSummary,
     PotionWindow,
+    WildfireSummary,
 )
 from .rankings import top_ranked_sources
 from .reference import ReportReference, parse_report_url
@@ -28,6 +29,7 @@ __all__ = [
     "PotionSummary",
     "PotionWindow",
     "ReportReference",
+    "WildfireSummary",
     "analyze_saved_fight",
     "download_report_events",
     "parse_report_url",

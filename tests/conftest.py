@@ -45,8 +45,10 @@ def machinist_actions(tmp_path: Path, machinist_action_json: str) -> Path:
 def load_audit(tmp_path: Path) -> Callable[[str], dict[str, Any]]:
     """Write a curated event fixture in the downloader's file format."""
 
-    def load(name: str) -> dict[str, Any]:
+    def load(name: str, case: str | None = None) -> dict[str, Any]:
         source = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+        if case is not None:
+            source = source["cases"][case]
         for key, filename in _LOG_FILES.items():
             if filename in _REQUIRED_FILES or key in source:
                 (tmp_path / filename).write_text(json.dumps(source[key]), encoding="utf-8")

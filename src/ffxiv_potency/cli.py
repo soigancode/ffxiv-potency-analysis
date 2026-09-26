@@ -115,7 +115,7 @@ def _format_potency(minimum: float, maximum: float) -> str:
 def _format_duration(seconds: float) -> str:
     total_seconds = round(seconds)
     minutes, remaining = divmod(total_seconds, 60)
-    return f"{minutes}m{remaining:02d}s"
+    return f"{minutes:02d}m{remaining:02d}s"
 
 
 def _format_timestamp(seconds: float) -> str:
@@ -217,6 +217,20 @@ def _print_analysis(result: AnalysisResult) -> None:
                 f"{auto_attack.potency_per_hit:.2f} potency/hit, "
                 f"{auto_attack.total_potency:,.0f} total potency"
             )
+    if result.wildfires:
+        print("\nWildfire:")
+        for wildfire in result.wildfires:
+            started = _format_timestamp(wildfire.applied_seconds)
+            ended = (
+                _format_timestamp(wildfire.detonated_seconds)
+                if wildfire.detonated_seconds is not None
+                else "no detonation"
+            )
+            print(
+                f"  {started}–{ended}: {wildfire.landed_weaponskills}/6 landed weaponskills, "
+                f"{wildfire.potency:,.0f} potency"
+                f"{' (detonated early)' if wildfire.detonated_early else ''}"
+            )
     if result.pet_deployments:
         print("\nPet deployments:")
         for deployment in result.pet_deployments:
@@ -225,10 +239,16 @@ def _print_analysis(result: AnalysisResult) -> None:
                 if deployment.missing_finishers
                 else ""
             )
+            overdrive = (
+                f" (Queen Overdrive at {_format_timestamp(deployment.overdrive_seconds)})"
+                if deployment.overdrive_seconds is not None
+                else ""
+            )
             print(
                 f"  {_format_timestamp(deployment.timestamp_seconds)} {deployment.actor}: "
                 f"{deployment.gauge_spent} {deployment.gauge}, "
-                f"{_format_potency(deployment.potency_min, deployment.potency_max)} total potency{missing}"
+                f"{_format_potency(deployment.potency_min, deployment.potency_max)} total potency"
+                f"{missing}{overdrive}"
             )
     if result.unmatched:
         print("\nUnmatched landed damage:")

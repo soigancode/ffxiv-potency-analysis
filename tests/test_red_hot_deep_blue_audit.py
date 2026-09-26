@@ -47,6 +47,31 @@ def test_audited_two_boss_fight_and_missing_prepull_cast(
     assert result.unmatched == ()
 
 
+def test_real_flamethrower_counts_zero_hit_cast_and_landed_ticks(
+    tmp_path: Path, machinist_actions: Path, extract_fight
+) -> None:
+    extract_fight("red_hot_deep_blue_full.zip", "R86rXnMqjHTDJz3A/fight-4/source-11/")
+    result = analyze_saved_fight(tmp_path, machinist_actions)
+    flamethrower = next(action for action in result.actions if action.name == "Flamethrower")
+    assert (flamethrower.uses, flamethrower.hits) == (2, 14)
+    assert flamethrower.potency_min == flamethrower.potency_max == 14 * 120
+    assert ("Flamethrower", 1) in result.ghosted
+    assert ("Flamethrower", (172.534,)) in result.ghosted_times
+
+    master = json.loads((tmp_path / "master-data.json").read_text(encoding="utf-8"))
+    names = {item["gameID"]: item["name"] for item in master["abilities"]}
+    casts = json.loads((tmp_path / "cast-events.json").read_text(encoding="utf-8"))
+    damage = json.loads((tmp_path / "damage-events.json").read_text(encoding="utf-8"))
+    flamethrower_casts = [e for e in casts if names.get(e.get("abilityGameID")) == "Flamethrower"]
+    landed_ticks = [
+        e
+        for e in damage
+        if e.get("type") == "damage" and names.get(e.get("abilityGameID")) == "Flamethrower"
+    ]
+    assert len(flamethrower_casts) == 2
+    assert all(e["timestamp"] > flamethrower_casts[1]["timestamp"] for e in landed_ticks)
+
+
 def test_dance_partner_devilment_adjusts_luck_only(
     tmp_path: Path, machinist_actions: Path, extract_fight
 ) -> None:

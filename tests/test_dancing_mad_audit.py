@@ -1,7 +1,8 @@
 """Full FF Logs regression for the multi-phase Dancing Mad ultimate fight.
 
 Source: GaAKTpkz4dLq6Qrb, fight 14, player 14. Damage from a snapshot can
-retain Medicated after the potion ends; it must not create another use.
+retain Medicated after the potion ends; it must not create another use. Three
+Detonators and one Queen Overdrive occur in this fight.
 """
 
 import json
@@ -39,6 +40,24 @@ def test_dancing_mad_potion_windows_and_phase_regression(
     assert result.direct_critical_gear_baseline == pytest.approx(0.277 * 0.288)
     assert result.luck_score > result.adjusted_luck_score
 
+    assert result.source_name == "Katsu Yggvera"
+    assert len(result.wildfires) == 10
+    assert result.wildfires[0].applied_seconds == pytest.approx(4.784)
+    assert result.wildfires[0].detonated_seconds == pytest.approx(14.770)
+    early = [use for use in result.wildfires if use.detonated_early]
+    assert [round(use.applied_seconds, 3) for use in early] == [365.927, 849.438, 1096.372]
+    # Full Metal Field is cast as Wildfire applies at 365.927s and lands at
+    # 366.951s; its landed hit contributes the sixth stack.
+    assert [use.landed_weaponskills for use in early] == [6, 4, 1]
+    assert sum(use.potency for use in result.wildfires) == pytest.approx(
+        next(action.potency_min for action in result.actions if action.name == "Wildfire")
+    )
+
+    overdriven = [queen for queen in result.pet_deployments if queen.overdrive_seconds is not None]
+    assert len(overdriven) == 1
+    assert overdriven[0].timestamp_seconds == pytest.approx(1095.079)
+    assert overdriven[0].overdrive_seconds == pytest.approx(1103.054)
+
     # Chain Stratagem is an enemy debuff carried by the affected damage events.
     # Removing its marker raises the reported luck: the observed crits remain,
     # but their increased chance is no longer attributed to the raid effect.
@@ -59,3 +78,5 @@ def test_dancing_mad_potion_windows_and_phase_regression(
     assert "  Uses: 5" in output
     assert "average interval" not in output
     assert "longest interval" not in output
+    assert output.count("(detonated early)") == 3
+    assert "(Queen Overdrive at 18m23s)" in output

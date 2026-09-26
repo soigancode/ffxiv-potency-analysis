@@ -50,7 +50,7 @@ Copy an FF Logs link with `fight` and `source` in it, and quote the whole URL:
 ffxiv-potency analyse "https://www.fflogs.com/reports/zYLAW7KTBk8P4XxG?fight=9&source=18"
 ```
 
-The report shows the player and fight, nDPS and rDPS, landed and matched hit counts, total potency, and PPS. Next come ghosted casts (when present), potion uses and windows, observed hit outcomes and luck scores, action uses and hits, auto-attacks, pet deployments (when present), and unmatched damage (when present). You can also pass a previously downloaded `data/logs/<report>/fight-<id>/source-<id>` folder.
+The report shows the player and fight, nDPS and rDPS, landed and matched hit counts, total potency, and PPS. Next come ghosted casts (when present), potion uses and windows, observed hit outcomes and luck scores, action uses and hits, auto-attacks, Wildfire windows (including early detonations for MCH), pet deployments (including Queen Overdrive when used), and unmatched damage (when present). You can also pass a previously downloaded `data/logs/<report>/fight-<id>/source-<id>` folder.
 
 To download a fight without analysing it, use `ffxiv-potency fflogs "<report URL with fight and source>"`.
 

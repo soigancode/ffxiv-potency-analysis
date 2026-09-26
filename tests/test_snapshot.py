@@ -6,6 +6,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from ffxiv_potency.jobguide import inspect_job_actions
 from ffxiv_potency.jobguide.snapshot import update_job_guide
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -42,6 +43,21 @@ def test_update_downloads_and_exports_versioned_snapshot(tmp_path: Path) -> None
         "sha256": hashlib.sha256(source_bytes).hexdigest(),
     }
     assert len(document["actions"]) == 40
+
+
+def test_complete_machinist_snapshot_has_expected_coverage() -> None:
+    html = (FIXTURES / "machinist_full_7_5.html").read_text(encoding="utf-8")
+
+    report = inspect_job_actions(html)
+
+    assert report.source_action_count == 39
+    assert len(report.actions) == 40
+    assert len(report.issues) == 0
+    actions = {action.name: action for action in report.actions}
+    assert len(actions) == len(report.actions)
+    assert actions["Split Shot"].potency is not None
+    assert actions["Split Shot"].potency.base == 140
+    assert actions["Reassemble"].potency is None
 
 
 @pytest.mark.parametrize("patch", ["", "latest", "7", "../7.5", "7.5/other", "7.5"])

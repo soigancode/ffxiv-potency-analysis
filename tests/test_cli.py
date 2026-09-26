@@ -13,6 +13,7 @@ from ffxiv_potency.fflogs import (
     PetDeploymentSummary,
     PotionSummary,
     PotionWindow,
+    WildfireSummary,
 )
 from ffxiv_potency.jobguide import SnapshotResult
 
@@ -131,6 +132,7 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
         direct_gear_baseline=0.288,
         direct_critical_gear_baseline=0.277 * 0.288,
         ghosted_times=(("Chain Saw", (222.2, 12)),),
+        wildfires=(WildfireSummary(14.091, 24.673, 5, 1_288.78),),
     )
 
     def fake_analyze(saved_directory: Path, actions_path: Path) -> AnalysisResult:
@@ -143,17 +145,19 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert cli.main(["analyse", str(directory), "--actions", str(actions)]) == 0
     output = capsys.readouterr().out
     assert output.startswith("\nPlayer:") and output.endswith("\n\n")
-    assert "Fight: Test Boss (1), 0m10s\nnDPS: 12,345.6\nrDPS: 12,330.4" in output
+    assert "Fight: Test Boss (1), 00m10s\nnDPS: 12,345.6\nrDPS: 12,330.4" in output
     assert "Player: Test Player" in output
     assert "Landed potency: 350-400" in output
     assert "Potency per second: 35.00-40.00" in output
     assert "estimated 2.672s -> 2.64s weapon delay" in output
     assert "Potency gained: 7" in output
-    assert "Window 1: -0m02s–0m28s" in output
+    assert "Window 1: -00m02s–00m28s" in output
     assert "inferred" not in output
-    assert "3m42s Queen" in output
+    assert "03m42s Queen" in output
+    assert "00m14s–00m25s: 5/6 landed weaponskills, 1,289 potency" in output
+    assert output.index("Wildfire:") < output.index("Pet deployments:")
     assert "Shot: 1" in output
-    assert "  0m12s Chain Saw\n  3m42s Chain Saw" in output
+    assert "  00m12s Chain Saw\n  03m42s Chain Saw" in output
     assert output.index("Ghosted damaging casts:") < output.index("Potions:")
     expected_outcomes = """Observed hit outcomes:
   Normal Hit: 1
@@ -172,6 +176,11 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert expected_outcomes in output
     assert "Drill: 1 use, 1 hit, 600 total potency" in output
     assert "per use" not in output and "per hit" not in output
+
+
+def test_time_format_handles_short_and_long_fights() -> None:
+    assert cli._format_duration(181) == "03m01s"
+    assert cli._format_duration(761) == "12m41s"
 
 
 def test_cli_analyze_downloads_missing_fflogs_url(monkeypatch, tmp_path: Path, capsys) -> None:
@@ -320,7 +329,7 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     assert output.startswith("\nFight:") and output.endswith("\n\n")
     assert "Saved fight data:" not in output
     assert "Fight: Boss (10)" in output
-    assert "1m40s" in output
+    assert "01m40s" in output
     assert "nDPS" in output and "15,000.0" in output
     assert "rDPS" in output and "15,100.0" in output
     assert "Player" in output and "Luck" in output and "51.54%" in output
