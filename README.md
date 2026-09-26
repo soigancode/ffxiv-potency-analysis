@@ -70,47 +70,47 @@ The app downloads missing fights and prints duration, rDPS, nDPS, potency, PPS, 
 
 **Potency** adds the potency of hits that landed. It includes the configured effect of your potion, pet actions, and auto-attacks. An action that was cast but dealt no damage appears under ghosted casts instead of adding potency. **PPS** is total potency divided by fight duration in seconds.
 
-**Luck** measures how favorable the actual critical hits and direct hits were, weighted by each hit's potency. Critical hits contribute more than direct hits because their damage multiplier is higher. For an eligible hit \(i\), let \(P_i\) be its potency (including the potion effect when present), \(C\) the critical damage multiplier calculated from the configured Crit stat, and \(M_i\) its observed hit multiplier:
+**Luck** measures how favorable the actual critical hits and direct hits were, weighted by each hit's potency. Critical hits contribute more than direct hits because their damage multiplier is higher. For an eligible hit $i$, let $P_i$ be its potency (including the potion effect when present), $C$ the critical damage multiplier calculated from the configured Crit stat, and $M_i$ its observed hit multiplier:
 
-| Outcome | \(M_i\) |
+| Outcome | $M_i$ |
 | --- | ---: |
-| Normal | \(1\) |
-| Direct Hit | \(1.25\) |
-| Critical Hit | \(C\) |
-| Direct Critical Hit | \(1.25C\) |
+| Normal | $1$ |
+| Direct Hit | $1.25$ |
+| Critical Hit | $C$ |
+| Direct Critical Hit | $1.25C$ |
 
 The displayed percentage is:
 
-\[
+```math
 \mathrm{Luck} = 100\% \times \frac{\sum_i P_i(M_i-1)}{\sum_i P_i(1.25C-1)}.
-\]
+```
 
 Zero means no eligible hit was a Crit or DH; 100% means every eligible hit was both. Guaranteed Crit/DH outcomes and configured non-random damage are excluded from **both sums**. Pet hits and auto-attacks with known potency count too. Luck is an observed score, not a probability or an FF Logs ranking metric.
 
-**Luck baseline** is the score expected from the configured, unbuffed gear rates. With Crit chance \(p_C\) and DH chance \(p_D\):
+**Luck baseline** is the score expected from the configured, unbuffed gear rates. With Crit chance $p_C$ and DH chance $p_D$:
 
-\[
+```math
 \mathrm{Baseline} = 100\% \times
 \frac{(1+p_C(C-1))(1+0.25p_D)-1}{1.25C-1}.
-\]
+```
 
 Compare Luck to this baseline to see whether outcomes were favorable for those gear stats. The `analyse` view also shows the gear baseline and observed rate for each hit outcome.
 
-**Adjusted Luck** (`aLuck` in comparisons) accounts for tracked raid effects that raise Crit or DH chance. For each eligible hit, the app calculates the **expected extra hit bonus** from the Crit and DH buffs active on that hit. With buffed chances \(p'_C\) and \(p'_D\), that extra bonus is:
+**Adjusted Luck** (`aLuck` in comparisons) accounts for tracked raid effects that raise Crit or DH chance. For each eligible hit, the app calculates the **expected extra hit bonus** from the Crit and DH buffs active on that hit. With buffed chances $p'_C$ and $p'_D$, that extra bonus is:
 
-\[
+```math
 A_i = (1+p'_C(C-1))(1+0.25p'_D)
       - (1+p_C(C-1))(1+0.25p_D).
-\]
+```
 
 Then it subtracts those expected bonuses from the observed score:
 
-\[
+```math
 \mathrm{Adjusted\ Luck} = 100\% \times
 \operatorname{clamp}_{[0,1]}\!\left(
 \frac{\sum_i P_i\bigl((M_i-1)-A_i\bigr)}
      {\sum_i P_i(1.25C-1)}\right).
-\]
+```
 
 Tracked effects are Battle Litany, Battle Voice, Army's Paeon, the Wanderer's Minuet, and Chain Stratagem on the target. Adjusted Luck estimates how much of the score remains after accounting for their *expected* benefit; it does not remove actual Crits or DHs, and it does not change potency or PPS. The ordinary Luck score remains useful for comparing the outcomes that contributed to a ranking.
 
@@ -123,17 +123,17 @@ Tracked effects are Battle Litany, Battle Voice, Army's Paeon, the Wanderer's Mi
 
 For MCH auto-attacks, the app converts each Shot to action-comparable potency using:
 
-\[
+```math
 \text{Shot potency}=80\times
 \frac{\left\lfloor F\times\text{weapon delay}/3\right\rfloor}{F}
 \times\frac{\text{Skill Speed factor}}{1.2}.
-\]
+```
 
-Here, \(F\) is the weapon factor:
+Here, $F$ is the weapon factor:
 
-\[
+```math
 F=\left\lfloor\frac{\text{level main stat}\times\text{job attribute modifier}}{1000}\right\rfloor+\text{weapon damage}.
-\]
+```
 
 The app estimates weapon delay from consecutive Shots and matches it to a known value; it reports an error if none is close. `80` is the assumed Shot base potency, and dividing by `1.2` accounts for an action trait that does not apply to auto-attacks. At the configured level 100 stats and 2.64 s delay, this gives about **58.65 potency per Shot** before potion effects. The resulting potency is consistent with observed damage per potency in the checked logs, so Shots can be compared with job actions in the same summary. It remains an approximation rather than an official listed Shot potency.
 
