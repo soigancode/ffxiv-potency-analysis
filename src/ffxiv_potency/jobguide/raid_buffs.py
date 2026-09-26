@@ -13,6 +13,7 @@ from .snapshot import LATEST_KNOWN_PATCH
 EFFECT_JOBS = {
     "dragoon": ("Battle Litany",),
     "bard": ("Battle Voice", "Army's Paeon", "The Wanderer's Minuet"),
+    "dancer": ("Devilment",),
     "scholar": ("Chain Stratagem",),
 }
 GUIDE_URL = "https://eu.finalfantasyxiv.com/jobguide/{job}/"
@@ -41,22 +42,31 @@ def parse_raid_effects(html: str, job: str) -> list[dict[str, object]]:
         if content is None:
             raise ValueError(f"missing job-guide description for {action!r}")
         description = content.get_text(" ", strip=True)
-        matches = list(RATE_PATTERN.finditer(description))
-        if len(matches) != 1:
-            raise ValueError(f"expected one crit/DH rate for {action!r}, found {len(matches)}")
-        match = matches[0]
-        kind = "critical" if "critical" in match.group(0).casefold() else "direct"
+        if action == "Devilment":
+            rates = set(re.findall(r"(critical|direct) hit rate", description, re.IGNORECASE))
+            bonuses = re.findall(r"\bby (\d+)%", description, re.IGNORECASE)
+            if {rate.casefold() for rate in rates} != {"critical", "direct"} or len(bonuses) != 1:
+                raise ValueError(f"expected both crit and DH rates for {action!r}")
+            parsed = [(rate, int(bonuses[0]) / 100) for rate in ("critical", "direct")]
+        else:
+            matches = list(RATE_PATTERN.finditer(description))
+            if len(matches) != 1:
+                raise ValueError(f"expected one crit/DH rate for {action!r}, found {len(matches)}")
+            match = matches[0]
+            kind = "critical" if "critical" in match.group(0).casefold() else "direct"
+            parsed = [(kind, int(match.group(3)) / 100)]
         target = "enemy" if action == "Chain Stratagem" else "player"
-        result.append(
-            {
-                "action": action,
-                "status": action,
-                "job": job,
-                "target": target,
-                "rate": kind,
-                "bonus": int(match.group(3)) / 100,
-            }
-        )
+        for kind, bonus in parsed:
+            result.append(
+                {
+                    "action": action,
+                    "status": action,
+                    "job": job,
+                    "target": target,
+                    "rate": kind,
+                    "bonus": bonus,
+                }
+            )
     return result
 
 

@@ -193,7 +193,10 @@ def _print_analysis(result: AnalysisResult) -> None:
         print(f"  Unknown outcome: {outcomes.unknown}")
     print(f"  Luck baseline: {result.luck_baseline:.2%}")
     print(f"  Luck score: {_format_rate_comparison(result.luck_score, result.luck_baseline)}")
-    print(f"  Adjusted luck score: {result.adjusted_luck_score:.2%}")
+    print(
+        "  Adjusted luck score: "
+        f"{_format_rate_comparison(result.adjusted_luck_score, result.luck_baseline)}"
+    )
     print("\nActions:")
     for action in result.actions:
         potency = _format_potency(action.potency_min, action.potency_max)

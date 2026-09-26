@@ -112,7 +112,7 @@ Then it subtracts those expected bonuses from the observed score:
      {\sum_i P_i(1.25C-1)}\right)\right).
 ```
 
-Tracked effects are Battle Litany, Battle Voice, Army's Paeon, the Wanderer's Minuet, and Chain Stratagem on the target. Adjusted Luck estimates how much of the score remains after accounting for their *expected* benefit; it does not remove actual Crits or DHs, and it does not change potency or PPS. The ordinary Luck score remains useful for comparing the outcomes that contributed to a ranking.
+Tracked effects are Battle Litany, Battle Voice, Army's Paeon, the Wanderer's Minuet, Devilment on the Dance Partner, and Chain Stratagem on the target. Adjusted Luck estimates how much of the score remains after accounting for their *expected* benefit; it does not remove actual Crits or DHs, and it does not change potency or PPS. The ordinary Luck score remains useful for comparing the outcomes that contributed to a ranking.
 
 ## Disclaimers
 

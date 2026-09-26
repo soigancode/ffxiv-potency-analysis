@@ -357,20 +357,33 @@ def _has_buff(event: dict[str, Any], buff_id: int) -> bool:
 def _load_raid_effects(actions_path: Path) -> list[dict[str, Any]]:
     """Use the refreshed guide snapshot for the action patch when available."""
     bundled = files("ffxiv_potency").joinpath("data/raid_effects.json")
+    bundled_document = json.loads(bundled.read_text(encoding="utf-8"))
     patch = _load_json(actions_path, dict).get("patch")
     candidate = actions_path.parent.parent.parent / "raid_buffs" / str(patch) / "effects.json"
-    document = (
-        _load_json(candidate, dict)
-        if candidate.is_file()
-        else json.loads(bundled.read_text(encoding="utf-8"))
-    )
+    document = _load_json(candidate, dict) if candidate.is_file() else bundled_document
     if patch is not None and document.get("patch") != patch:
         raise AnalysisError(
             f"raid-effect data for patch {patch!r} is missing; run 'ffxiv-potency jobguide buffs'"
         )
     effects = document.get("effects")
-    if not isinstance(effects, list) or len(effects) != 5:
-        raise AnalysisError("raid-effect snapshot must contain all five configured crit/DH effects")
+    required = {(row["action"], row["rate"]) for row in bundled_document["effects"]}
+    if isinstance(effects, list) and candidate.is_file():
+        present = {
+            (row.get("action"), row.get("rate"))
+            for row in effects
+            if isinstance(row, dict)
+        }
+        if present == required - {("Devilment", "critical"), ("Devilment", "direct")}:
+            # Existing 7.55 snapshots predate Devilment support. Use the
+            # complete bundled data until they are refreshed.
+            effects = bundled_document["effects"]
+    if (
+        not isinstance(effects, list)
+        or len(effects) != len(required)
+        or any(not isinstance(row, dict) for row in effects)
+        or {(row.get("action"), row.get("rate")) for row in effects} != required
+    ):
+        raise AnalysisError("raid-effect snapshot must contain all configured crit/DH effects")
     return effects
 
 

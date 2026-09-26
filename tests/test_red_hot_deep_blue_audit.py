@@ -6,6 +6,7 @@ during the recorded potion (player attack factor 615 -> 659). Air Anchor is
 potted before pull, with its cast missing from the selected fight.
 """
 
+import json
 from pathlib import Path
 
 import pytest
@@ -44,3 +45,22 @@ def test_audited_two_boss_fight_and_missing_prepull_cast(
         ("Heated Slug Shot", (106.465,)),
     )
     assert result.unmatched == ()
+
+
+def test_dance_partner_devilment_adjusts_luck_only(
+    tmp_path: Path, machinist_actions: Path, extract_fight
+) -> None:
+    extract_fight("red_hot_deep_blue_full.zip", "R86rXnMqjHTDJz3A/fight-4/source-11/")
+    original = analyze_saved_fight(tmp_path, machinist_actions)
+    events_path = tmp_path / "damage-events.json"
+    events = json.loads(events_path.read_text(encoding="utf-8"))
+    affected = [event for event in events if "1001825." in event.get("buffs", "")]
+    assert affected
+    for event in events:
+        if "buffs" in event:
+            event["buffs"] = event["buffs"].replace("1001825.", "")
+    events_path.write_text(json.dumps(events), encoding="utf-8")
+    without_devilment = analyze_saved_fight(tmp_path, machinist_actions)
+
+    assert original.luck_score == without_devilment.luck_score
+    assert original.adjusted_luck_score < without_devilment.adjusted_luck_score

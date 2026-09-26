@@ -168,7 +168,7 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
   Direct Critical Hit rate: 40.00% (+32.02%)
   Luck baseline: 24.98%
   Luck score: 42.31% (+17.33%)
-  Adjusted luck score: 40.12%"""
+  Adjusted luck score: 40.12% (+15.14%)"""
     assert expected_outcomes in output
     assert "Drill: 1 use, 1 hit, 600 total potency" in output
     assert "per use" not in output and "per hit" not in output
