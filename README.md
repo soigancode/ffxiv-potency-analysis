@@ -1,4 +1,4 @@
-# FFXIV Potency
+# FFXIV Potency Analysis
 
 Compare players of the **same job in the same fight** by the potency of attacks that actually dealt damage. Base damage rolls, critical hits, and direct hits do not change an attack's potency, so this makes it easier to see who performed the stronger rotation without damage RNG deciding the result. The app reads FF Logs reports and shows potency, potency per second (PPS), and hit luck alongside FF Logs rDPS and nDPS.
 
