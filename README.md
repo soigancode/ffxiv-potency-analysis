@@ -136,7 +136,7 @@ F=\left\lfloor\frac{\text{level main stat}\times
 +\text{weapon damage}.
 ```
 
-Dividing by `1.2` accounts for the configured action damage trait, which does not apply to Shots. With the configured MCH stats and 2.64 s weapon delay, the result is about **58.65 action-comparable potency per Shot** before potion effects. This approximation agrees with the damage-per-potency comparison in checked logs; it is not an official Shot potency.
+Dividing by `1.2` accounts for the action-damage trait read from the job guide, which does not apply to Shots. With the configured MCH stats and 2.64 s weapon delay, the result is about **58.65 action-comparable potency per Shot** before potion effects. This approximation agrees with the damage-per-potency comparison in checked logs; it is not an official Shot potency.
 
 #### Luck and adjusted Luck
 
@@ -210,7 +210,7 @@ For **Apex Arrow**, candidate potency is $140+7(g-20)$ for Soul Voice Gauge $g$ 
 ## Limitations
 
 - Combat profiles assume level 100 configured stats, weapon damage, and delay. A different gear set or synced content can change potion gains, auto-attack estimates, and luck baselines. Review `data/<job>/7.55/combat_profile.json` if your stats differ.
-- Action damage traits are currently configured in combat profiles. The job-guide importer does not yet extract traits that increase damage without listing potency for each action, including traits used by BRD and MCH.
+- BRD and MCH action-damage traits are read from the job-guide snapshot. The current level 100 multiplier is used to express auto-attacks in action-comparable potency; listed action potencies are not multiplied again. Other trait effects are recorded but are not yet interpreted automatically.
 - BRD gauge and Pitch Perfect stacks sometimes remain ambiguous. The report marks those estimates; it does not claim to recover hidden resources exactly.
 - Auto-attack conversion and MCH pet scaling are approximations. This tool does not reproduce FF Logs rDPS or nDPS from potency.
 
@@ -218,7 +218,7 @@ For **Apex Arrow**, candidate potency is $140+7(g-20)$ for Soul Voice Gauge $g$ 
 
 - Support selecting FF Logs partitions for rankings and reports.
 - Add more jobs and support additional gear and level-sync profiles.
-- Import damage affecting traits from the job guide and use their multipliers in analysis.
+- Interpret other damage-affecting traits from the job guide where their effects are needed.
 - Improve variable-potency estimates if FF Logs exposes the underlying resources.
 - Provide an HTML report generated from exported analysis data.
 - Select a fight and player from a report without copying a source-specific link.

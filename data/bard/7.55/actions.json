@@ -1,11 +1,11 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "job": "bard",
   "patch": "7.55",
   "source": {
     "url": "https://eu.finalfantasyxiv.com/jobguide/bard/",
-    "retrieved_at": "2026-09-26T23:09:38.484858Z",
-    "sha256": "08bc3e0ec6da1879fa00d2f915075610bc306e45952c04ac6d0b16a48b5b5ce2"
+    "retrieved_at": "2026-09-28T20:52:31.337609Z",
+    "sha256": "07d5d1a9cfe942c2ed0a67f11e47b9126f16f4f3e3357925864c2627813b7a78"
   },
   "actions": [
     {
@@ -503,6 +503,176 @@
         "2 Coda: 800",
         "3 Coda: 1,100",
         "Can only be executed while under the effect of Radiant Encore Ready."
+      ]
+    }
+  ],
+  "traits": [
+    {
+      "name": "Heavier Shot",
+      "level": 2,
+      "description": []
+    },
+    {
+      "name": "Increased Action Damage",
+      "level": 20,
+      "description": [
+        "Increases base action damage by 10%."
+      ],
+      "action_damage_multiplier": 1.1
+    },
+    {
+      "name": "Enhanced Quick Nock",
+      "level": 25,
+      "description": [
+        "Adds to Quick Nock a 20% chance to grant Hawk's Eye.",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Increased Action Damage II",
+      "level": 40,
+      "description": [
+        "Increases base action damage by 20%."
+      ],
+      "action_damage_multiplier": 1.2
+    },
+    {
+      "name": "Bite Mastery",
+      "level": 64,
+      "description": [
+        "Upgrades Venomous Bite and Windbite to Caustic Bite and Stormbite respectively."
+      ]
+    },
+    {
+      "name": "Enhanced Empyreal Arrow",
+      "level": 68,
+      "description": [
+        "Guarantees the trigger of the additional effects for current Mage's Ballad, Army's Paeon, and the Wanderer's Minuet when Empyreal Arrow hits a target."
+      ]
+    },
+    {
+      "name": "Straight Shot Mastery",
+      "level": 70,
+      "description": [
+        "Upgrades Straight Shot to Refulgent Arrow."
+      ]
+    },
+    {
+      "name": "Wide Volley Mastery",
+      "level": 72,
+      "description": [
+        "Upgrades Wide Volley to Shadowbite."
+      ]
+    },
+    {
+      "name": "Bite Mastery II",
+      "level": 76,
+      "description": [
+        "Adds to Stormbite, Caustic Bite, and Iron Jaws a 35% chance to grant Hawk's Eye.",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Heavy Shot Mastery",
+      "level": 76,
+      "description": [
+        "Upgrades Heavy Shot to Burst Shot."
+      ]
+    },
+    {
+      "name": "Enhanced Army's Paeon",
+      "level": 78,
+      "description": [
+        "While under the effect of Army's Paeon with at least one stack of Repertoire, singing Mage's Ballad or the Wanderer's Minuet will grant Army's Muse, reducing weaponskill cast time and recast time, spell cast time and recast time, and auto-attack delay.",
+        "Duration: 10s",
+        "Allowing the effect of Army's Paeon and accumulated stacks of Repertoire to expire without singing Mage's Ballad or the Wanderer's Minuet will grant Army's Ethos.",
+        "Duration: 30s",
+        "While under the effect of Army's Ethos, singing Mage's Ballad or the Wanderer's Minuet will grant Army's Muse. Both Army's Ethos and Army's Muse require stacks of Repertoire, the number of which will determine the potency of the latter.",
+        "1 Repertoire:  1%",
+        "2 Repertoire:  2%",
+        "3 Repertoire:  4%",
+        "4 Repertoire:  12%"
+      ]
+    },
+    {
+      "name": "Soul Voice",
+      "level": 80,
+      "description": [
+        "Increases Soul Voice Gauge by 5 each time Repertoire is granted."
+      ]
+    },
+    {
+      "name": "Quick Nock Mastery",
+      "level": 82,
+      "description": [
+        "Upgrades Quick Nock to Ladonsbite."
+      ]
+    },
+    {
+      "name": "Enhanced Bloodletter",
+      "level": 84,
+      "description": [
+        "Allows a third charge of Bloodletter and Rain of Death."
+      ]
+    },
+    {
+      "name": "Enhanced Apex Arrow",
+      "level": 86,
+      "description": [
+        "Grants Blast Arrow Ready upon executing Apex Arrow after the Soul Voice Gauge has reached 80 or higher.",
+        "Duration: 10s",
+        "Apex Arrow becomes Blast Arrow while under this effect."
+      ]
+    },
+    {
+      "name": "Enhanced Troubadour",
+      "level": 88,
+      "description": [
+        "Reduces Troubadour recast time to 90 seconds."
+      ]
+    },
+    {
+      "name": "Minstrel's Coda",
+      "level": 90,
+      "description": [
+        "Grants Mage's Coda, Army's Coda, or Wanderer's Coda upon singing Mage's Ballad, Army's Paeon, or the Wanderer's Minuet respectively."
+      ]
+    },
+    {
+      "name": "Bloodletter Mastery",
+      "level": 92,
+      "description": [
+        "Upgrades Bloodletter to Heartbreak Shot."
+      ]
+    },
+    {
+      "name": "Ranged Mastery",
+      "level": 94,
+      "description": [
+        "Increases the potency of Empyreal Arrow to 260, Sidewinder to 400, Refulgent Arrow to 280, Burst Shot to 220, and Apex Arrow to 140 up to 700."
+      ]
+    },
+    {
+      "name": "Enhanced Barrage",
+      "level": 96,
+      "description": [
+        "Grants Resonant Arrow Ready upon executing Barrage.",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Enhanced Troubadour II",
+      "level": 98,
+      "description": [
+        "Improves Troubadour's damage reduction effect to 15%."
+      ]
+    },
+    {
+      "name": "Enhanced Radiant Finale",
+      "level": 100,
+      "description": [
+        "Grants Radiant Encore Ready upon executing Radiant Finale.",
+        "Duration: 30s"
       ]
     }
   ]

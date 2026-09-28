@@ -5,6 +5,26 @@ from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
+class Trait:
+    """A PvE trait, with an interpreted multiplier when its effect is supported."""
+
+    name: str
+    level: int
+    description: tuple[str, ...]
+    action_damage_multiplier: float | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "name": self.name,
+            "level": self.level,
+            "description": list(self.description),
+        }
+        if self.action_damage_multiplier is not None:
+            result["action_damage_multiplier"] = self.action_damage_multiplier
+        return result
+
+
+@dataclass(frozen=True, slots=True)
 class ComboPotency:
     """Potency applied when an action completes a valid combo."""
 

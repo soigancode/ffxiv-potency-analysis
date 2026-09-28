@@ -153,6 +153,9 @@ def test_downloads_metadata_and_paginated_events(
         {"timestamp": 500, "amount": 900},
     ]
     assert json.loads(result.cast_events.read_text()) == [{"timestamp": 50, "type": "cast"}]
+    assert result.buff_events is not None
+    assert result.targetability_events is not None
+    assert result.encounter_overkill_events is not None
     assert json.loads(result.buff_events.read_text())[0]["type"] == "removebuff"
     assert json.loads(result.targetability_events.read_text())[0]["targetable"] == 0
     assert json.loads(result.encounter_overkill_events.read_text())[0]["sourceID"] == 9

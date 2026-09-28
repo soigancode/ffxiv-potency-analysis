@@ -24,7 +24,8 @@ def test_bard_adds_and_clipped_hit(
     assert (by_name["Rain of Death"].uses, by_name["Rain of Death"].hits) == (9, 28)
     apex = next(row for row in result.potency_estimates if row.action == "Apex Arrow")
     assert (len(apex.apex_uses), apex.estimated_hits) == (8, 11)
-    assert sum(use.potency for use in apex.apex_uses) == pytest.approx(
+    assert all(use.potency is not None for use in apex.apex_uses)
+    assert sum(use.potency for use in apex.apex_uses if use.potency is not None) == pytest.approx(
         by_name["Apex Arrow"].potency_min
     )
     assert dict(result.bard_song_durations)["Army's Paeon"] == pytest.approx(36.97225)

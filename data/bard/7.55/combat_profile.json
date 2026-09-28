@@ -22,8 +22,7 @@
   },
   "auto_attack": {
     "base_potency": 80,
-    "weapon_damage": 158,
-    "action_trait_multiplier": 1.2
+    "weapon_damage": 158
   },
   "potion": {
     "buff_id": 1000049,

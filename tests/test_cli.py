@@ -148,6 +148,37 @@ def test_cli_updates_raid_buffs_without_patch(monkeypatch, tmp_path: Path, capsy
     assert str(expected) in capsys.readouterr().out
 
 
+def test_cli_jobguide_without_item_updates_all_jobs_and_buffs(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    updated: list[str] = []
+
+    def fake_update_job_guide(**kwargs) -> SnapshotResult:
+        job = kwargs["job"]
+        assert kwargs["patch"] == "7.55"
+        assert kwargs["output_root"] == tmp_path
+        updated.append(job)
+        return SnapshotResult(
+            source=tmp_path / job / "source.html",
+            actions=tmp_path / job / "actions.json",
+            action_count=1,
+        )
+
+    def fake_update_raid_effects(output_root: Path) -> Path:
+        assert output_root == tmp_path
+        updated.append("buffs")
+        return tmp_path / "raid_effects/7.55.json"
+
+    monkeypatch.setattr(cli, "update_job_guide", fake_update_job_guide)
+    monkeypatch.setattr(cli, "update_raid_effects", fake_update_raid_effects)
+
+    assert cli.main(["jobguide", "--output", str(tmp_path)]) == 0
+    assert updated == ["machinist", "bard", "buffs"]
+    output = capsys.readouterr().out
+    assert output.count("Wrote 1 actions:") == 2
+    assert "Saved raid effects:" in output
+
+
 def test_cli_accepts_copied_fflogs_url(monkeypatch, tmp_path: Path, capsys) -> None:
     url = "https://www.fflogs.com/reports/abc123?fight=9&type=damage-done&source=18"
     directory = tmp_path / "abc123" / "fight-9" / "source-18"

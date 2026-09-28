@@ -15,10 +15,15 @@ from .models import (
     Potency,
     PotencyModifier,
     StackPotency,
+    Trait,
     TriggeredPotency,
 )
 
 _LEVEL_PATTERN = re.compile(r"\bLv\.\s*(\d+)\b", re.IGNORECASE)
+_ACTION_DAMAGE_TRAIT_PATTERN = re.compile(
+    r"^Increases base action damage(?: and autoturret damage)? by (\d+)%\.$",
+    re.IGNORECASE,
+)
 _DAMAGE_POTENCY_PATTERN = re.compile(
     r"^(?:Delivers|Deals|Rushes)\b.*?\bpotency of\s+(\d+)\b", re.IGNORECASE
 )
@@ -104,6 +109,34 @@ def _lines(cell: Tag) -> tuple[str, ...]:
 
 def _first_match(pattern: re.Pattern[str], lines: tuple[str, ...]) -> re.Match[str] | None:
     return next((match for line in lines if (match := pattern.match(line))), None)
+
+
+def parse_job_traits(html: str) -> list[Trait]:
+    """Capture PvE traits and interpret supported base-action damage bonuses."""
+    soup = BeautifulSoup(html, "html.parser")
+    rows = soup.select('tr[id^="trait_action__"]')
+    if not rows:
+        raise JobGuideParseError("No PvE trait rows found")
+    traits: list[Trait] = []
+    for row in rows:
+        name_cell = row.select_one("td.skill strong")
+        level_cell = row.select_one("td.jobclass")
+        if name_cell is None or level_cell is None:
+            raise JobGuideParseError(f"Incomplete trait row {row.get('id')!r}")
+        name = name_cell.get_text(" ", strip=True)
+        match = _LEVEL_PATTERN.search(level_cell.get_text(" ", strip=True))
+        if match is None:
+            raise JobGuideParseError(f"Could not determine level for trait {name!r}")
+        content = row.select_one("td.content")
+        description = _lines(content) if content is not None else ()
+        multiplier = None
+        if name.startswith("Increased Action Damage") and description:
+            effect = _first_match(_ACTION_DAMAGE_TRAIT_PATTERN, description)
+            if effect is None:
+                raise JobGuideParseError(f"Unsupported action damage trait wording for {name!r}")
+            multiplier = 1 + int(effect.group(1)) / 100
+        traits.append(Trait(name, int(match.group(1)), description, multiplier))
+    return traits
 
 
 def _direct_potency(

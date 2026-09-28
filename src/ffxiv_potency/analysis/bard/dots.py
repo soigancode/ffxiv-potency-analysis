@@ -101,7 +101,8 @@ def summarize_bard_dots(
             or event.get("tick") or event.get("hitType") == 10
             or event.get("amount") == 0):
             continue
-        name = ability_names.get(event.get("abilityGameID"))
+        ability_id = event.get("abilityGameID")
+        name = ability_names.get(ability_id) if isinstance(ability_id, int) else None
         if name not in DIRECT_NAMES:
             continue
         base = actions[name]["potency"]["base"]
@@ -124,5 +125,4 @@ def summarize_bard_dots(
         BardDotActionSummary(name, int(row[0]), int(row[1]), row[2], row[3])
         for name, row in sorted(potency.items())
     )
-
 

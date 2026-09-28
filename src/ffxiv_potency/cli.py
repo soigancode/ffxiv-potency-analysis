@@ -94,8 +94,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ffxiv-potency")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    jobguide = commands.add_parser("jobguide", help="work with official job-guide data")
-    jobguide.add_argument("item", help="job name or abbreviation (MCH/BRD), or 'buffs'")
+    jobguide = commands.add_parser("jobguide", help="update all job guides and buffs, or one item")
+    jobguide.add_argument("item", nargs="?", help="job name or abbreviation (MCH/BRD), or 'buffs'")
     jobguide.add_argument("--output", type=Path, default=Path("data"), help="output root")
 
     clear = commands.add_parser("clear", help="remove downloaded data")
@@ -738,6 +738,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"Saved fight data: {download.directory}")
             print(f"Damage events: {download.damage_event_count}")
             print(f"Cast events: {download.cast_event_count}")
+            return 0
+
+        if args.item is None:
+            for job in dict.fromkeys(SUPPORTED_JOBS.values()):
+                result = update_job_guide(
+                    job=job, patch=LATEST_KNOWN_PATCH, output_root=args.output,
+                )
+                print(f"Saved source: {result.source}")
+                print(f"Wrote {result.action_count} actions: {result.actions}")
+            output = update_raid_effects(args.output)
+            print(f"Saved raid effects: {output}")
             return 0
 
         if args.item.casefold() == "buffs":

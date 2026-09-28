@@ -75,7 +75,9 @@ def _bard_song_durations(
         ended = min(fight_end, started + 45000)
         if index + 1 < len(song_casts):
             ended = min(ended, float(song_casts[index + 1]["timestamp"]))
-        removal = min((time for time in removals.get(cast.get("abilityGameID"), ())
+        ability_id = cast.get("abilityGameID")
+        removal_times = removals.get(ability_id, ()) if isinstance(ability_id, int) else ()
+        removal = min((time for time in removal_times
                        if time >= started), default=ended)
         ended = min(ended, removal)
         durations[_event_name(cast, names)].append(max(0, ended - started) / 1000)

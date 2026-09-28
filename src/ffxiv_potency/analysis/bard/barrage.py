@@ -18,8 +18,9 @@ def _barrage_shadowbite_packets(
     applied: float | None = None
     expires: float | None = None
     for event in sorted(buffs, key=lambda row: row.get("timestamp", 0)):
+        ability_id = event.get("abilityGameID")
         if (event.get("sourceID") != source_id or event.get("targetID") != source_id
-                or names.get(event.get("abilityGameID")) != "Barrage"):
+                or not isinstance(ability_id, int) or names.get(ability_id) != "Barrage"):
             continue
         timestamp = event.get("timestamp")
         if not isinstance(timestamp, (int, float)):

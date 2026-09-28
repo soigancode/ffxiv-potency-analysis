@@ -10,7 +10,7 @@ import httpx
 from ..patches import LATEST_KNOWN_PATCH
 from .export import export_actions
 from .fetch import fetch_job_guide
-from .parse import parse_job_actions
+from .parse import parse_job_actions, parse_job_traits
 
 JOBGUIDE_URL_TEMPLATE = "https://eu.finalfantasyxiv.com/jobguide/{job}/"
 MACHINIST_URL = JOBGUIDE_URL_TEMPLATE.format(job="machinist")
@@ -59,9 +59,11 @@ def update_job_guide(
     source_bytes = source_path.read_bytes()
     html = source_bytes.decode("utf-8")
     actions = parse_job_actions(html)
+    traits = parse_job_traits(html)
     export_actions(
         actions,
         actions_path,
+        traits=traits,
         job=normalized_job,
         patch=patch,
         source_url=url,

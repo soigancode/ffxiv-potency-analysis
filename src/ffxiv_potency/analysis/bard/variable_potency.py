@@ -89,21 +89,22 @@ def _bard_damage_estimates(
             )
             for event in raw_damage
         )
-        blast_after = action == "Apex Arrow" and cast is not None and any(
+        cast_timestamp = cast.get("timestamp") if cast is not None else None
+        blast_after = action == "Apex Arrow" and cast is not None and isinstance(cast_timestamp, (int, float)) and any(
             _event_name(other, names) == "Blast Arrow"
             and other.get("sourceID") == cast.get("sourceID")
             and isinstance(other.get("timestamp"), (int, float))
-            and isinstance(cast.get("timestamp"), (int, float))
-            and 0 < other["timestamp"] - cast["timestamp"] <= 10000
+            and 0 < other["timestamp"] - cast_timestamp <= 10000
             for other in casts
         )
         measured = []
+        baselines: dict[int, float] = {}
         for hit in hits:
-            timestamp = float(hit.get("timestamp", 0))
+            hit_timestamp = float(hit.get("timestamp", 0))
             target = hit.get("targetID")
             same = sorted(
                 references.get(target, []),
-                key=lambda row: abs(row[0] - timestamp),
+                key=lambda row: abs(row[0] - hit_timestamp),
             )
             if len(same) >= 3:
                 baseline = median(value for _, value in same[:30])
@@ -111,11 +112,12 @@ def _bard_damage_estimates(
             else:
                 nearby = sorted(all_references, key=lambda row: (
                     row[0] != target,
-                    abs(row[1] - timestamp),
+                    abs(row[1] - hit_timestamp),
                 ))[:20]
                 baseline = median(value for _, _, value in nearby)
                 weak = True
             measured.append((hit, normalized(hit) / baseline, weak))
+            baselines[id(hit)] = baseline
         apex_candidates = (
             [float(140 + 7 * (gauge - 20))
              for gauge in range(80 if blast_after else 20, 101, 5)]
@@ -149,6 +151,7 @@ def _bard_damage_estimates(
                     packet=packet,
                 ))
         for hit, effective, weak in measured:
+            factors = (1.0,)
             if action in {"Pitch Perfect", "Radiant Encore"}:
                 if len(measured) > 1:
                     other_hit, other_value, _ = next(
@@ -227,8 +230,8 @@ def _bard_damage_estimates(
                     OutsideExpectedHit(
                         normalized_damage=normalized(hit),
                         potency=chosen,
-                        lower_damage=baseline * chosen * (1 - tolerance),
-                        upper_damage=baseline * chosen * (1 + tolerance),
+                        lower_damage=baselines[id(hit)] * chosen * (1 - tolerance),
+                        upper_damage=baselines[id(hit)] * chosen * (1 + tolerance),
                     )
                 )
     return estimates, tuple(

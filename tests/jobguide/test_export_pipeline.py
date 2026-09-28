@@ -27,12 +27,15 @@ def test_saved_full_guide_is_exported_as_json(tmp_path: Path) -> None:
     )
 
     document = json.loads(destination.read_text(encoding="utf-8"))
-    assert document["schema_version"] == 1
+    assert document["schema_version"] == 2
     assert document["job"] == "machinist"
     assert document["patch"] == "7.5"
     assert document["source"]["url"] == SOURCE_URL
     assert document["source"]["retrieved_at"] == "2026-09-23T12:00:00Z"
     assert len(document["actions"]) == 40
+    assert next(trait for trait in document["traits"] if trait["name"] == "Increased Action Damage II")[
+        "action_damage_multiplier"
+    ] == 1.2
 
     actions = {action["name"]: action for action in document["actions"]}
     assert actions["Heated Slug Shot"]["potency"]["combo"] == {

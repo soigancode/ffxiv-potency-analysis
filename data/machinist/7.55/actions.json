@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "job": "machinist",
   "patch": "7.55",
   "source": {
     "url": "https://eu.finalfantasyxiv.com/jobguide/machinist/",
-    "retrieved_at": "2026-09-27T12:00:06.523987Z"
+    "retrieved_at": "2026-09-28T20:52:30.373091Z",
+    "sha256": "7ec2dd51e5286fe567b18f045819766740556057fb4982757cf04a8c14e3bfc3"
   },
   "actions": [
     {
@@ -729,6 +730,159 @@
       ],
       "source_actor": "Rook Autoturret",
       "derived_from": "Rook Autoturret"
+    }
+  ],
+  "traits": [
+    {
+      "name": "Increased Action Damage",
+      "level": 20,
+      "description": []
+    },
+    {
+      "name": "Increased Action Damage II",
+      "level": 40,
+      "description": [
+        "Increases base action damage and autoturret damage by 20%."
+      ],
+      "action_damage_multiplier": 1.2
+    },
+    {
+      "name": "Split Shot Mastery",
+      "level": 54,
+      "description": [
+        "Upgrades Split Shot to Heated Split Shot."
+      ]
+    },
+    {
+      "name": "Slug Shot Mastery",
+      "level": 60,
+      "description": [
+        "Upgrades Slug Shot to Heated Slug Shot."
+      ]
+    },
+    {
+      "name": "Clean Shot Mastery",
+      "level": 64,
+      "description": [
+        "Upgrades Clean Shot to Heated Clean Shot."
+      ]
+    },
+    {
+      "name": "Heat Blast Mastery",
+      "level": 68,
+      "description": [
+        "Upgrades Heat Blast to Blazing Shot."
+      ]
+    },
+    {
+      "name": "Charged Action Mastery",
+      "level": 74,
+      "description": [
+        "Allows a third charge of Gauss Round and Ricochet."
+      ]
+    },
+    {
+      "name": "Hot Shot Mastery",
+      "level": 76,
+      "description": [
+        "Upgrades Hot Shot to Air Anchor."
+      ]
+    },
+    {
+      "name": "Enhanced Wildfire",
+      "level": 78,
+      "description": [
+        "Improves Wildfire's potency increase for landing weaponskills to 240."
+      ]
+    },
+    {
+      "name": "Promotion",
+      "level": 80,
+      "description": [
+        "Upgrades Rook Autoturret and Rook Overdrive to Automaton Queen and Queen Overdrive respectively."
+      ]
+    },
+    {
+      "name": "Spread Shot Mastery",
+      "level": 82,
+      "description": [
+        "Upgrades Spread Shot to Scattergun."
+      ]
+    },
+    {
+      "name": "Enhanced Reassemble",
+      "level": 84,
+      "description": [
+        "Allows the accumulation of charges for consecutive uses of Reassemble.",
+        "Maximum Charges: 2"
+      ]
+    },
+    {
+      "name": "Marksman's Mastery",
+      "level": 84,
+      "description": [
+        "Increases the potency of Heated Split Shot to 200, Heated Slug Shot to 120, and Heated Clean Shot to 120."
+      ]
+    },
+    {
+      "name": "Queen's Gambit",
+      "level": 86,
+      "description": [
+        "After executing Pile Bunker, the Automaton Queen will also execute Crowned Collider."
+      ]
+    },
+    {
+      "name": "Enhanced Tactician",
+      "level": 88,
+      "description": [
+        "Reduces Tactician recast time to 90 seconds."
+      ]
+    },
+    {
+      "name": "Double-barrel Mastery",
+      "level": 92,
+      "description": [
+        "Upgrades Gauss Round to Double Check and Ricochet to Checkmate."
+      ]
+    },
+    {
+      "name": "Enhanced Multiweapon",
+      "level": 94,
+      "description": [
+        "Allows the accumulation of charges for consecutive uses of Drill and Bioblaster.",
+        "Maximum Charges: 2"
+      ]
+    },
+    {
+      "name": "Marksman's Mastery II",
+      "level": 94,
+      "description": [
+        "Increases the potency of Auto Crossbow to 180, Heated Split Shot to 220, Drill to 660, Heated Slug Shot to 140, Heated Clean Shot to 160, Blazing Shot to 240, Air Anchor to 660, and Chain Saw to 660."
+      ]
+    },
+    {
+      "name": "Enhanced Multiweapon II",
+      "level": 96,
+      "description": [
+        "Grants Excavator Ready upon executing Chain Saw.",
+        "Duration: 30s",
+        "Chain Saw changes to Excavator while under the effect of Excavator Ready."
+      ]
+    },
+    {
+      "name": "Enhanced Tactician II",
+      "level": 98,
+      "description": [
+        "Improves Tactician's damage reduction effect to 15%."
+      ]
+    },
+    {
+      "name": "Enhanced Barrel Stabilizer",
+      "level": 100,
+      "description": [
+        "Grants Full Metal Machinist upon executing Barrel Stabilizer.",
+        "Duration: 30s"
+      ]
     }
   ]
 }

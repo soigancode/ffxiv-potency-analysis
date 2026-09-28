@@ -50,7 +50,13 @@ class WildfireTracker:
         }
 
     def application(self, cast: dict[str, Any]) -> float:
-        return self.applications.get(cast.get("packetID"), cast["timestamp"])
+        packet_id = cast.get("packetID")
+        timestamp = cast.get("timestamp")
+        if not isinstance(timestamp, (int, float)):
+            raise TypeError("Wildfire cast has no valid timestamp")
+        if isinstance(packet_id, int):
+            return float(self.applications.get(packet_id, timestamp))
+        return float(timestamp)
 
     def landed_triggers(self, started: float, finished: float) -> int:
         # Casts at application time still count when their damage lands afterwards.

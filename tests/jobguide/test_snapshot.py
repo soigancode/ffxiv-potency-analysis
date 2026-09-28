@@ -6,7 +6,12 @@ from pathlib import Path
 import httpx
 import pytest
 
-from ffxiv_potency.jobguide import JobGuideParseError, inspect_job_actions, parse_job_actions
+from ffxiv_potency.jobguide import (
+    JobGuideParseError,
+    inspect_job_actions,
+    parse_job_actions,
+    parse_job_traits,
+)
 from ffxiv_potency.jobguide.snapshot import BARD_URL, update_job_guide
 
 FIXTURES = Path(__file__).parents[1] / "fixtures/jobguide"
@@ -19,6 +24,7 @@ def test_full_guide_matches_committed_action_snapshot(job: str) -> None:
         (Path(__file__).parents[2] / "data" / job / "7.55" / "actions.json").read_text()
     )
     assert [action.to_dict() for action in parse_job_actions(html)] == committed["actions"]
+    assert [trait.to_dict() for trait in parse_job_traits(html)] == committed["traits"]
 
 
 def test_update_downloads_and_exports_versioned_snapshot(tmp_path: Path) -> None:
@@ -52,6 +58,10 @@ def test_update_downloads_and_exports_versioned_snapshot(tmp_path: Path) -> None
         "sha256": hashlib.sha256(source_bytes).hexdigest(),
     }
     assert len(document["actions"]) == 40
+    assert document["schema_version"] == 2
+    assert document["traits"][0]["name"] == "Increased Action Damage"
+    assert "action_damage_multiplier" not in document["traits"][0]
+    assert document["traits"][1]["action_damage_multiplier"] == 1.2
 
 
 def test_complete_machinist_snapshot_has_expected_coverage() -> None:
@@ -113,6 +123,26 @@ def test_bard_guide_crawls_all_actions_and_special_potencies(tmp_path: Path) -> 
         "minimum_cost": 20,
     }
     assert actions["Shadowbite"]["potency"]["barrage_potency"] == 300
+    assert [
+        trait["action_damage_multiplier"] for trait in document["traits"]
+        if trait["name"].startswith("Increased Action Damage")
+    ] == [1.1, 1.2]
+
+
+def test_unrecognized_action_damage_trait_does_not_replace_snapshot(tmp_path: Path) -> None:
+    destination = tmp_path / "bard/7.55/actions.json"
+    destination.parent.mkdir(parents=True)
+    destination.write_text('{"previous": true}\n', encoding="utf-8")
+    html = (FIXTURES / "bard_full_7_5.html").read_text(encoding="utf-8")
+    changed = html.replace("Increases base action damage by 20%.", "Makes attacks stronger.", 1)
+    assert changed != html
+
+    with pytest.raises(JobGuideParseError, match="Unsupported action damage trait wording"):
+        update_job_guide(
+            job="bard", patch="7.55", output_root=tmp_path,
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, text=changed)),
+        )
+    assert destination.read_text(encoding="utf-8") == '{"previous": true}\n'
 
 
 @pytest.mark.parametrize("patch", ["", "latest", "7", "../7.5", "7.5/other", "7.5"])

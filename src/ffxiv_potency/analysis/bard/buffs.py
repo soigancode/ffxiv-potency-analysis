@@ -23,7 +23,8 @@ def bard_self_buff_windows(
         key=lambda event: event.get("timestamp", 0),
     )
     for cast in relevant_casts:
-        name = ability_names.get(cast.get("abilityGameID"))
+        ability_id = cast.get("abilityGameID")
+        name = ability_names.get(ability_id) if isinstance(ability_id, int) else None
         if name in SONGS:
             coda.add(name)
         elif name == "Radiant Finale":
@@ -37,6 +38,8 @@ def bard_self_buff_windows(
         if event.get("sourceID") != source_id or event.get("targetID") != source_id:
             continue
         status_id = event.get("abilityGameID")
+        if not isinstance(status_id, int):
+            continue
         name = ability_names.get(status_id)
         if name not in SELF_DAMAGE_BUFFS and status_id != 1002964:
             continue
@@ -58,11 +61,13 @@ def bard_self_buff_windows(
         elif kind in ("applybuff", "refreshbuff"):
             duration = event.get("duration")
             end = timestamp + int(duration) if isinstance(duration, (int, float)) else timestamp
-            strength = (
-                finale_strength.get(event.get("packetID"))
-                if status_id == 1002964
-                else SELF_DAMAGE_BUFFS[name]
-            )
+            packet_id = event.get("packetID")
+            if status_id == 1002964:
+                strength = finale_strength.get(packet_id) if isinstance(packet_id, int) else None
+            elif name is not None:
+                strength = SELF_DAMAGE_BUFFS[name]
+            else:
+                continue
             if strength is None:
                 continue  # Coda is unknown; do not invent a buff strength.
             previous = active.get(status_id)

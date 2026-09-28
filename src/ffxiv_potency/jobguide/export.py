@@ -4,14 +4,15 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .models import Action
-from .parse import parse_job_actions
+from .models import Action, Trait
+from .parse import parse_job_actions, parse_job_traits
 
 
 def export_actions(
     actions: list[Action],
     destination: Path,
     *,
+    traits: list[Trait] | None = None,
     job: str,
     patch: str,
     source_url: str,
@@ -32,11 +33,12 @@ def export_actions(
         source_metadata["sha256"] = source_sha256
 
     document = {
-        "schema_version": 1,
+        "schema_version": 2,
         "job": job,
         "patch": patch,
         "source": source_metadata,
         "actions": [action.to_dict() for action in actions],
+        "traits": [trait.to_dict() for trait in traits] if traits is not None else [],
     }
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
@@ -56,9 +58,11 @@ def import_saved_guide(
 
     html = source.read_text(encoding="utf-8")
     actions = parse_job_actions(html)
+    traits = parse_job_traits(html)
     return export_actions(
         actions,
         destination,
+        traits=traits,
         job=job,
         patch=patch,
         source_url=source_url,

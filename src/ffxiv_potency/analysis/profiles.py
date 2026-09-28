@@ -110,7 +110,7 @@ def _critical_damage_multiplier(critical_hit: int, level_sub: int, level_divisor
     return (1400 + 200 * (critical_hit - level_sub) // level_divisor) / 1000
 
 
-def _load_combat_profile(job: str) -> _CombatProfile:
+def _load_combat_profile(job: str, action_document: dict | None = None) -> _CombatProfile:
     resource = reference_path(job.lower(), LATEST_KNOWN_PATCH, "combat_profile.json")
     if not resource.is_file():
         raise AnalysisError(f"no combat profile is configured for job {job!r}")
@@ -141,10 +141,27 @@ def _load_combat_profile(job: str) -> _CombatProfile:
     }
     if not all(isinstance(value, int) and value > 0 for value in required_ints.values()):
         raise AnalysisError(f"invalid combat profile for job {job!r}")
-    auto_profile = profile["auto_attack"]
-    trait_multiplier = auto_profile.get("action_trait_multiplier")
+    # Synthetic/older action snapshots without traits use the bundled guide.
+    if action_document is None or "traits" not in action_document:
+        guide = _load_json(reference_path(job.lower(), LATEST_KNOWN_PATCH, "actions.json"), dict)
+    else:
+        guide = action_document
+    traits = guide.get("traits")
+    level = profile.get("level")
+    if not isinstance(level, int) or not isinstance(traits, list):
+        raise AnalysisError(f"missing action damage traits for job {job!r}")
+    eligible = [
+        trait for trait in traits
+        if isinstance(trait, dict)
+        and isinstance(trait.get("name"), str)
+        and trait["name"].startswith("Increased Action Damage")
+        and isinstance(trait.get("level"), int)
+        and trait["level"] <= level
+    ]
+    strongest = max(eligible, key=lambda trait: trait["level"], default=None)
+    trait_multiplier = strongest.get("action_damage_multiplier") if strongest else None
     if not isinstance(trait_multiplier, (int, float)) or trait_multiplier <= 0:
-        raise AnalysisError(f"invalid auto-attack trait multiplier for job {job!r}")
+        raise AnalysisError(f"missing usable action damage trait for job {job!r} at level {level}")
     action_names = potion.get("action_names")
     if not isinstance(action_names, list) or not all(
         isinstance(name, str) for name in action_names
@@ -218,4 +235,3 @@ def _load_combat_profile(job: str) -> _CombatProfile:
         )
         / 1000,
     )
-

@@ -10,6 +10,7 @@ from .models import (
     GaugeScaling,
     Potency,
     PotencyModifier,
+    Trait,
     TriggeredPotency,
 )
 from .parse import (
@@ -18,6 +19,7 @@ from .parse import (
     ParseReport,
     inspect_job_actions,
     parse_job_actions,
+    parse_job_traits,
 )
 from .snapshot import LATEST_KNOWN_PATCH, MACHINIST_URL, SnapshotResult, update_job_guide
 
@@ -36,10 +38,12 @@ __all__ = [
     "Potency",
     "PotencyModifier",
     "SnapshotResult",
+    "Trait",
     "TriggeredPotency",
     "export_actions",
     "import_saved_guide",
     "inspect_job_actions",
     "parse_job_actions",
+    "parse_job_traits",
     "update_job_guide",
 ]

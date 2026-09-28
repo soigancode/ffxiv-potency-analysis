@@ -127,7 +127,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     if not isinstance(job, str) or not job:
         raise AnalysisError(f"{actions_path} is missing job")
     pet_profiles = _load_pet_profiles(job)
-    combat_profile = _load_combat_profile(job)
+    combat_profile = _load_combat_profile(job, action_document)
     raid_effects = _load_raid_effects(actions_path)
 
     # FF Logs emits zero-amount damage rows for immune targets (hitType 10),
@@ -363,9 +363,15 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         fraction = landed_fraction(event)
         values = values[0] * fraction, values[1] * fraction
 
+        tick_timestamp = event.get("timestamp")
+        tick_packet = event.get("packetID")
+        tick_target = event.get("targetID")
         bard_tick = (
-            bard_ticks.get((event.get("timestamp"), event.get("packetID"), event.get("targetID")))
+            bard_ticks.get((tick_timestamp, tick_packet, tick_target))
             if job.casefold() == "bard" and event.get("tick")
+            and isinstance(tick_timestamp, int)
+            and isinstance(tick_packet, int)
+            and isinstance(tick_target, int)
             else None
         )
         if job.casefold() == "bard":
@@ -374,19 +380,21 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             ):
                 raise AnalysisError(f"cannot match {name} tick to a landed DoT application")
             buff_string = bard_tick.snapshot_buffs if bard_tick is not None else str(event.get("buffs", ""))
-            buff_time = bard_tick.snapshot_timestamp if bard_tick is not None else event.get("timestamp", 0)
+            snapshot_time = bard_tick.snapshot_timestamp if bard_tick is not None else None
+            event_time = event.get("timestamp")
+            buff_time = snapshot_time if snapshot_time is not None else (
+                float(event_time) if isinstance(event_time, (int, float)) else 0.0
+            )
             factor = _bard_self_multiplier(buff_string, buff_time, bard_self_windows)
             values = values[0] * factor, values[1] * factor
 
-        wildfire_snapshot = name == "Wildfire" and wildfire is not None and event.get("tick") and isinstance(triggered, dict)
-        potted = (
-            id(event) in wildfire.potted_events
-            if wildfire_snapshot
-            else _has_buff(
+        if name == "Wildfire" and wildfire is not None and event.get("tick") and isinstance(triggered, dict):
+            potted = id(event) in wildfire.potted_events
+        else:
+            potted = _has_buff(
                 {"buffs": bard_tick.snapshot_buffs} if bard_tick is not None else event,
                 combat_profile.potion_buff_id,
             )
-        )
         if potted:
             potion_multiplier = (
                 combat_profile.pet_potion_multipliers.get(
@@ -517,7 +525,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 ghosted_targets[name].append((seconds, target["name"]))
             target_resources = cast.get("targetResources")
             hit_points = target_resources.get("hitPoints") if isinstance(target_resources, dict) else None
-            if not isinstance(target, dict) or target.get("name") == "Environment":
+            if not isinstance(target_id, int) or not isinstance(target, dict) or target.get("name") == "Environment":
                 return
             if isinstance(hit_points, int) and not isinstance(hit_points, bool) and hit_points in (0, 1):
                 ghosted_target_low_hp[name].append((seconds, hit_points))
@@ -653,7 +661,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     ) / (combat_profile.critical_damage_multiplier * 1.25 - 1)
     potency_estimates = tuple(
         replace(estimate, apex_uses=tuple(
-            replace(use, potency=apex_potency_by_packet.get(use.packet, 0.0))
+            replace(use, potency=apex_potency_by_packet.get(use.packet, 0.0) if use.packet is not None else 0.0)
             for use in estimate.apex_uses
         )) if estimate.apex_uses else estimate
         for estimate in potency_estimates

@@ -17,7 +17,7 @@
 
 ## Jobs, gear, and content
 
-- Import traits that affect action damage without listing new potency from the job guide. Replace the manually configured multipliers where the imported data is reliable.
+- Interpret additional damage-affecting traits from the job guide when adding jobs or synced levels. BRD and MCH Increased Action Damage traits are already exported and used for auto-attack conversion at level 100.
 - Support additional jobs and validate them against real logs.
 - Support older (synced) ultimates.
 - Support more gear profiles or user-provided stats. For older or synced content, distinguish the encounter's release patch from the patch and gear used to play it.

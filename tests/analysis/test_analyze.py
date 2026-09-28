@@ -24,6 +24,21 @@ def test_player_main_stat_matches_relic_set_damage_and_potion_gain() -> None:
     assert expected == pytest.approx(12402.73, abs=.005)
 
 
+def test_auto_attack_trait_comes_from_guide_not_combat_profile() -> None:
+    actions = json.loads(
+        (Path(__file__).parents[2] / "data/bard/7.55/actions.json").read_text(encoding="utf-8")
+    )
+    assert _load_combat_profile("bard").action_trait_multiplier == 1.2
+    final_trait = next(
+        trait for trait in actions["traits"] if trait["name"] == "Increased Action Damage II"
+    )
+    final_trait["action_damage_multiplier"] = 1.25
+    assert _load_combat_profile("bard", actions).action_trait_multiplier == 1.25
+    del final_trait["action_damage_multiplier"]
+    with pytest.raises(AnalysisError, match="missing usable action damage trait"):
+        _load_combat_profile("bard", actions)
+
+
 def write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(value), encoding="utf-8")
 
