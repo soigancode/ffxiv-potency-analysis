@@ -4,7 +4,8 @@ import re
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
 
-_REPORT_PATH = re.compile(r"^/reports/([A-Za-z0-9]+)$")
+_REPORT_CODE = re.compile(r"(?:a:)?[A-Za-z0-9]+\Z")
+_REPORT_PATH = re.compile(r"^/reports/((?:a:)?[A-Za-z0-9]+)$")
 _ALLOWED_HOSTS = {"fflogs.com", "www.fflogs.com"}
 
 
@@ -13,6 +14,21 @@ class ReportReference:
     report_code: str
     fight_id: int
     source_id: int
+
+
+def valid_report_code(code: str) -> bool:
+    """Accept standard and FF Logs anonymous report codes."""
+    return _REPORT_CODE.fullmatch(code) is not None
+
+
+def report_directory_name(code: str) -> str:
+    """Avoid a colon in paths so anonymous reports work on Windows too."""
+    return "a-" + code[2:] if code.startswith("a:") else code
+
+
+def report_code_from_directory(name: str) -> str | None:
+    code = "a:" + name[2:] if name.startswith("a-") else name
+    return code if valid_report_code(code) else None
 
 
 def _positive_integer(query: dict[str, list[str]], name: str) -> int:

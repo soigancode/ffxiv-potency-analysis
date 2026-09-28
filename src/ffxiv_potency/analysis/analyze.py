@@ -1,0 +1,787 @@
+"""Turn saved FF Logs events into an auditable potency report."""
+
+from __future__ import annotations
+
+from collections import Counter, defaultdict
+from dataclasses import replace
+from pathlib import Path
+from typing import Any
+
+from ..patches import LATEST_KNOWN_PATCH
+from .auto_attacks import _is_auto_attack, _summarize_auto_attacks
+from .bard.barrage import _barrage_shadowbite_packets
+from .bard.buffs import _bard_self_multiplier, bard_self_buff_windows
+from .bard.dots import reconstruct_bard_dots, summarize_bard_dots
+from .bard.songs import _bard_coda, _bard_song_durations
+from .bard.variable_potency import _bard_damage_estimates
+from .damage import landed_fraction
+from .errors import AnalysisError
+from .events import _event_name, _has_buff, _load_json
+from .luck import (
+    _guaranteed_outcome_packets,
+    _has_inherently_guaranteed_outcome,
+    _load_raid_effects,
+    _luck_contribution,
+    _raid_luck_adjustment,
+    _summarize_hit_outcomes,
+)
+from .machinist.queen import summarize_queen_deployments
+from .machinist.wildfire import WildfireTracker
+from .models import (
+    ActionSummary,
+    AnalysisResult,
+    PetDeploymentSummary,
+    PotionSummary,
+    ReducedDamageHit,
+)
+from .pets import _deployment_for_event, _reconstruct_pet_deployments
+from .potency import _direct_potency, _is_channeled_action
+from .potion import _potion_windows
+from .profiles import _load_combat_profile, _load_pet_profiles
+
+
+def _find_ranking_amount(
+    value: Any, source_id: int | None, source_name: str | None
+) -> float | None:
+    if isinstance(value, dict):
+        actor_id = value.get("id")
+        actor_name = value.get("name")
+        amount = value.get("amount")
+        identity_matches = (source_id is not None and actor_id == source_id) or (
+            source_name is not None
+            and isinstance(actor_name, str)
+            and actor_name.casefold() == source_name.casefold()
+        )
+        if identity_matches and isinstance(amount, (int, float)):
+            return float(amount)
+        for child in value.values():
+            found = _find_ranking_amount(child, source_id, source_name)
+            if found is not None:
+                return found
+    elif isinstance(value, list):
+        for child in value:
+            found = _find_ranking_amount(child, source_id, source_name)
+            if found is not None:
+                return found
+    return None
+
+
+def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
+    """Analyze one directory produced by :func:`download_report_events`.
+
+    FF Logs returns both ``calculateddamage`` and the later authoritative
+    ``damage`` record for many packets. Only the latter is considered landed.
+    """
+
+    fight = _load_json(directory / "fight.json", dict)
+    master_data = _load_json(directory / "master-data.json", dict)
+    raw_damage = _load_json(directory / "damage-events.json", list)
+    casts = _load_json(directory / "cast-events.json", list)
+    buffs_path = directory / "buff-events.json"
+    buffs = _load_json(buffs_path, list) if buffs_path.is_file() else []
+    targetability_path = directory / "targetability-events.json"
+    targetability_events = (
+        _load_json(targetability_path, list) if targetability_path.is_file() else []
+    )
+    overkill_path = directory / "encounter-overkill-events.json"
+    encounter_overkills = _load_json(overkill_path, list) if overkill_path.is_file() else []
+    action_document = _load_json(actions_path, dict)
+    snapshot_patch = action_document.get("patch")
+    if snapshot_patch is not None and snapshot_patch != LATEST_KNOWN_PATCH:
+        raise AnalysisError(
+            f"only patch {LATEST_KNOWN_PATCH} actions are supported for now; "
+            f"received {snapshot_patch!r}"
+        )
+
+    start = fight.get("startTime")
+    end = fight.get("endTime")
+    if not isinstance(start, (int, float)) or not isinstance(end, (int, float)) or end <= start:
+        raise AnalysisError("fight.json contains an invalid time range")
+    duration = (end - start) / 1000
+
+    abilities = master_data.get("abilities")
+    if not isinstance(abilities, list):
+        raise AnalysisError("master-data.json is missing abilities")
+    ability_names = {
+        item["gameID"]: item["name"]
+        for item in abilities
+        if isinstance(item, dict)
+        and isinstance(item.get("gameID"), int)
+        and isinstance(item.get("name"), str)
+    }
+    actors_value = master_data.get("actors", [])
+    actors = {
+        item["id"]: item
+        for item in actors_value
+        if isinstance(item, dict) and isinstance(item.get("id"), int)
+    }
+    actions_value = action_document.get("actions")
+    if not isinstance(actions_value, list):
+        raise AnalysisError(f"{actions_path} is missing actions")
+    actions = {
+        item["name"]: item
+        for item in actions_value
+        if isinstance(item, dict) and isinstance(item.get("name"), str)
+    }
+    job = action_document.get("job")
+    if not isinstance(job, str) or not job:
+        raise AnalysisError(f"{actions_path} is missing job")
+    pet_profiles = _load_pet_profiles(job)
+    combat_profile = _load_combat_profile(job)
+    raid_effects = _load_raid_effects(actions_path)
+
+    # FF Logs emits zero-amount damage rows for immune targets (hitType 10),
+    # sometimes alongside a positive hit on another target from the same cast.
+    landed = [
+        event
+        for event in raw_damage
+        if isinstance(event, dict)
+        and event.get("type") == "damage"
+        and event.get("hitType") != 10
+        and event.get("amount") != 0
+    ]
+    landed_by_packet: dict[tuple[Any, Any], list[dict[str, Any]]] = defaultdict(list)
+    for event in landed:
+        if event.get("packetID") is not None:
+            landed_by_packet[(event.get("packetID"), event.get("abilityGameID"))].append(event)
+    landed_packets = set(landed_by_packet)
+
+    # A selected target may differ from the first enemy hit by a travelling
+    # attack. For aggregate potency, any one landed hit can take full potency.
+    # Prefer the selected target if it took damage; otherwise use the first
+    # landed hit. Per-target attribution will require more information.
+    selected_targets = {
+        (event.get("packetID"), event.get("abilityGameID")): event.get("targetID")
+        for event in casts
+        if isinstance(event, dict) and event.get("packetID") is not None
+    }
+    primary_hits = {
+        packet: next(
+            (hit for hit in hits if hit.get("targetID") == selected_targets.get(packet)),
+            hits[0],
+        )
+        if selected_targets.get(packet) is not None
+        else hits[0]
+        for packet, hits in landed_by_packet.items()
+    }
+
+    totals: dict[str, list[float]] = defaultdict(lambda: [0, 0.0, 0.0])
+    encore_totals: dict[tuple[Any, Any], list[float]] = defaultdict(lambda: [0, 0.0, 0.0])
+    pet_totals: dict[PetDeploymentSummary, list[float]] = defaultdict(lambda: [0.0, 0.0])
+    pet_landed_actions: dict[PetDeploymentSummary, set[str]] = defaultdict(set)
+    use_keys: dict[str, set[tuple[Any, ...]]] = defaultdict(set)
+    unmatched: dict[str, int] = defaultdict(int)
+    auto_attack_events: list[dict[str, Any]] = []
+    matched_events = 0
+    potted_min = potted_max = potion_gain_min = potion_gain_max = 0.0
+    luck_weighted_bonus = luck_weighted_maximum = luck_weighted_raid_adjustment = 0.0
+
+    def record_luck(event: dict[str, Any], potency_weight: float) -> None:
+        """Accumulate the same weighted outcome for actions, pets, and auto-attacks."""
+        nonlocal luck_weighted_bonus, luck_weighted_maximum, luck_weighted_raid_adjustment
+        if event.get("tick"):
+            return
+        contribution = _luck_contribution(event, combat_profile.critical_damage_multiplier)
+        if contribution is None:
+            return
+        luck_weighted_bonus += potency_weight * contribution
+        luck_weighted_raid_adjustment += potency_weight * _raid_luck_adjustment(
+            event, raid_effects, ability_names, combat_profile
+        )
+        luck_weighted_maximum += potency_weight * (
+            combat_profile.critical_damage_multiplier * 1.25 - 1
+        )
+
+    sorted_casts = sorted(
+        (e for e in casts if isinstance(e, dict)), key=lambda e: e.get("timestamp", 0)
+    )
+    player_source_counts = Counter(
+        event.get("sourceID")
+        for event in sorted_casts
+        if actors.get(event.get("sourceID"), {}).get("type") == "Player"
+    )
+    source_id = player_source_counts.most_common(1)[0][0] if player_source_counts else None
+    source_name = actors.get(source_id, {}).get("name", f"Source {source_id}")
+    rankings_path = directory / "rankings.json"
+    rankings = _load_json(rankings_path, dict) if rankings_path.is_file() else {}
+    ndps = (
+        _find_ranking_amount(rankings.get("rankings"), source_id, str(source_name))
+        if rankings.get("metric") == "ndps"
+        else None
+    )
+    rdps = (
+        _find_ranking_amount(rankings.get("rdps"), source_id, str(source_name))
+        if rankings.get("metric") == "ndps"
+        else None
+    )
+    potion_windows = _potion_windows(
+        sorted_casts,
+        landed,
+        buffs,
+        ability_names,
+        combat_profile,
+        float(start),
+        float(end),
+        source_id,
+        snapshot_extension_ms=45000 if job.casefold() == "bard" else 0,
+    )
+    bard_self_windows = (
+        bard_self_buff_windows(sorted_casts, buffs, ability_names, source_id)
+        if job.casefold() == "bard" and source_id is not None else {}
+    )
+    bard_ticks = (
+        {
+            (tick.timestamp, tick.application_packet, tick.target_id): tick
+            for tick in reconstruct_bard_dots(raw_damage, ability_names, source_id)
+        }
+        if job.casefold() == "bard" and source_id is not None else {}
+    )
+    wildfire = (
+        WildfireTracker(
+            sorted_casts, buffs, ability_names, actions, landed_by_packet,
+            potion_windows, source_id, float(start), float(end),
+            combat_profile.potion_buff_id, combat_profile.player_potion_multiplier,
+        )
+        if job.casefold() == "machinist" else None
+    )
+
+    pet_deployments = _reconstruct_pet_deployments(
+        sorted_casts, actions, ability_names, landed_by_packet, pet_profiles, float(start)
+    )
+    guaranteed_packets = _guaranteed_outcome_packets(sorted_casts, actions, ability_names)
+    channel_casts: dict[str, list[tuple[int, dict[str, Any]]]] = defaultdict(list)
+    for cast_index, cast in enumerate(sorted_casts):
+        cast_name = _event_name(cast, ability_names)
+        if _is_channeled_action(actions.get(cast_name, {})):
+            channel_casts[cast_name].append((cast_index, cast))
+
+    # Map temporary flat potency modifiers (currently Hypercharge) to the
+    # packets that consume them. Uses are consumed by qualifying casts even if
+    # they later ghost, while only landed packets contribute potency below.
+    modifier_bonuses: dict[tuple[Any, Any], int] = defaultdict(int)
+    for index, modifier_cast in enumerate(sorted_casts):
+        modifier_action = actions.get(_event_name(modifier_cast, ability_names), {})
+        modifier_potency = modifier_action.get("potency")
+        modifier = modifier_potency.get("modifier") if isinstance(modifier_potency, dict) else None
+        if not isinstance(modifier, dict):
+            continue
+        bonus = modifier.get("bonus")
+        maximum_uses = modifier.get("maximum_uses")
+        if not isinstance(bonus, int) or not isinstance(maximum_uses, int):
+            continue
+        used = 0
+        for candidate in sorted_casts[index + 1 :]:
+            candidate_name = _event_name(candidate, ability_names)
+            if candidate_name == _event_name(modifier_cast, ability_names):
+                break
+            candidate_action = actions.get(candidate_name, {})
+            candidate_potency = candidate_action.get("potency")
+            action_type = candidate_action.get("type", "")
+            is_single_target_weaponskill = (
+                isinstance(action_type, str)
+                and "weaponskill" in action_type.lower()
+                and isinstance(candidate_potency, dict)
+                and candidate_potency.get("falloff") is None
+            )
+            if not is_single_target_weaponskill:
+                continue
+            packet = (candidate.get("packetID"), candidate.get("abilityGameID"))
+            if candidate.get("packetID") is not None:
+                modifier_bonuses[packet] += bonus
+            used += 1
+            if used == maximum_uses:
+                break
+
+    bard_estimates, potency_estimates = (
+        _bard_damage_estimates(
+            landed, sorted_casts, raw_damage, ability_names,
+            combat_profile.critical_damage_multiplier,
+            fight_start=start,
+            potion_multiplier=combat_profile.player_potion_multiplier,
+            potion_buff_id=combat_profile.potion_buff_id,
+        )
+        if job.casefold() == "bard"
+        else ({}, ())
+    )
+    barrage_shadowbites = (
+        _barrage_shadowbite_packets(sorted_casts, buffs, ability_names, source_id)
+        if job.casefold() == "bard" and source_id is not None else set()
+    )
+
+    apex_potency_by_packet: dict[tuple[int | None, int | None], float] = defaultdict(float)
+    for event in landed:
+        name = _event_name(event, ability_names)
+        if _is_auto_attack(event, name):
+            auto_attack_events.append({**event, "_resolved_name": name})
+            continue
+        action = actions.get(name)
+        if action is None:
+            unmatched[name] += 1
+            continue
+
+        source_actor = action.get("source_actor")
+        profile = pet_profiles.get(source_actor) if isinstance(source_actor, str) else None
+        deployment = (
+            _deployment_for_event(
+                source_actor, event.get("timestamp"), pet_deployments, float(start)
+            )
+            if isinstance(source_actor, str) and profile is not None
+            else None
+        )
+
+        potency = action.get("potency")
+        triggered = potency.get("triggered") if isinstance(potency, dict) else None
+        values: tuple[float, float] | None = None
+        if name == "Wildfire" and wildfire is not None and event.get("tick") and isinstance(triggered, dict):
+            maximum_triggers = triggered.get("maximum_triggers")
+            potency_per_trigger = triggered.get("potency_per_trigger")
+            if isinstance(maximum_triggers, int) and isinstance(potency_per_trigger, int):
+                value = wildfire.record(event, maximum_triggers, potency_per_trigger)
+                if value is not None:
+                    values = value, value
+        if values is None:
+            key = (event.get("packetID"), event.get("abilityGameID"))
+            estimate = bard_estimates.get(id(event))
+            if estimate is not None:
+                values = estimate[0], estimate[0]
+            else:
+                values = _direct_potency(
+                action,
+                event,
+                is_primary_target=event.get("packetID") is None or event is primary_hits.get(key),
+                modifier_bonus=modifier_bonuses.get(key, 0),
+                source_multiplier=profile.potency_multiplier if profile is not None else 1.0,
+                gauge_spent=deployment.gauge_spent if deployment is not None else None,
+                gauge_minimum=profile.gauge_minimum if profile is not None else None,
+                gauge_maximum=profile.gauge_maximum if profile is not None else None,
+                barrage=key in barrage_shadowbites,
+                )
+        if values is None:
+            unmatched[name] += 1
+            continue
+
+        fraction = landed_fraction(event)
+        values = values[0] * fraction, values[1] * fraction
+
+        bard_tick = (
+            bard_ticks.get((event.get("timestamp"), event.get("packetID"), event.get("targetID")))
+            if job.casefold() == "bard" and event.get("tick")
+            else None
+        )
+        if job.casefold() == "bard":
+            if event.get("tick") and name in {"Caustic Bite", "Stormbite"} and (
+                bard_tick is None or not bard_tick.matched or bard_tick.snapshot_timestamp is None
+            ):
+                raise AnalysisError(f"cannot match {name} tick to a landed DoT application")
+            buff_string = bard_tick.snapshot_buffs if bard_tick is not None else str(event.get("buffs", ""))
+            buff_time = bard_tick.snapshot_timestamp if bard_tick is not None else event.get("timestamp", 0)
+            factor = _bard_self_multiplier(buff_string, buff_time, bard_self_windows)
+            values = values[0] * factor, values[1] * factor
+
+        wildfire_snapshot = name == "Wildfire" and wildfire is not None and event.get("tick") and isinstance(triggered, dict)
+        potted = (
+            id(event) in wildfire.potted_events
+            if wildfire_snapshot
+            else _has_buff(
+                {"buffs": bard_tick.snapshot_buffs} if bard_tick is not None else event,
+                combat_profile.potion_buff_id,
+            )
+        )
+        if potted:
+            potion_multiplier = (
+                combat_profile.pet_potion_multipliers.get(
+                    source_actor, combat_profile.player_potion_multiplier
+                )
+                if isinstance(source_actor, str)
+                else combat_profile.player_potion_multiplier
+            )
+            potted_min += values[0]
+            potted_max += values[1]
+            potion_gain_min += values[0] * (potion_multiplier - 1)
+            potion_gain_max += values[1] * (potion_multiplier - 1)
+            values = values[0] * potion_multiplier, values[1] * potion_multiplier
+
+        if name == "Apex Arrow":
+            apex_potency_by_packet[(event.get("packetID"), event.get("abilityGameID"))] += (
+                values[0] + values[1]
+            ) / 2
+
+        if deployment is not None:
+            pet_row = pet_totals[deployment]
+            pet_row[0] += values[0]
+            pet_row[1] += values[1]
+            pet_landed_actions[deployment].add(name)
+
+        key = (event.get("packetID"), event.get("abilityGameID"))
+        is_random_outcome = (
+            key not in guaranteed_packets
+            and name not in combat_profile.non_random_damage_actions
+            and not _has_inherently_guaranteed_outcome(action)
+        )
+        if is_random_outcome:
+            record_luck(event, sum(values) / 2)
+
+        matched_events += 1
+        row = totals[name]
+        row[0] += 1
+        row[1] += values[0]
+        row[2] += values[1]
+        if name == "Radiant Encore" and event.get("packetID") is not None:
+            encore_row = encore_totals[(event["packetID"], event.get("abilityGameID"))]
+            encore_row[0] += 1
+            encore_row[1] += values[0]
+            encore_row[2] += values[1]
+        packet_id = event.get("packetID")
+        use_key = (
+            (
+                packet_id,
+                event.get("abilityGameID"),
+                event.get("timestamp") if event.get("tick") else None,
+            )
+            if packet_id is not None
+            else ("event", id(event))
+        )
+        use_keys[name].add(use_key)
+
+    ghosted: dict[str, int] = defaultdict(int)
+    ghosted_times: dict[str, list[float]] = defaultdict(list)
+    ghosted_targets: dict[str, list[tuple[float, str]]] = defaultdict(list)
+    ghosted_target_low_hp: dict[str, list[tuple[float, int]]] = defaultdict(list)
+    ghosted_ending_times: dict[str, list[tuple[float, str]]] = defaultdict(list)
+    boss_events: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for event in (*raw_damage, *casts, *encounter_overkills):
+        if isinstance(event, dict) and isinstance(event.get("targetID"), int):
+            boss_events[event["targetID"]].append(event)
+
+    # Repeated overkill ticks while a boss remains present indicate a phase HP
+    # lock. A single overkill instead fits an add dying at the end of a cast.
+    overkill_by_target: dict[int, list[float]] = defaultdict(list)
+    for event in encounter_overkills:
+        target_id = event.get("targetID")
+        event_time = event.get("timestamp")
+        if (isinstance(target_id, int) and isinstance(event_time, (int, float))
+                and isinstance(event.get("overkill"), (int, float))
+                and event["overkill"] > 0):
+            overkill_by_target[target_id].append(event_time)
+    phase_lock_windows: dict[int, list[tuple[float, float]]] = defaultdict(list)
+    for target_id, times in overkill_by_target.items():
+        if actors.get(target_id, {}).get("subType") != "Boss":
+            # Adds such as Charnel Cells may keep receiving overkill from their
+            # assigned player; this alone is not evidence of a boss HP lock.
+            continue
+        ordered = sorted(set(times))
+        clusters: list[list[float]] = []
+        for event_time in ordered:
+            if not clusters or event_time - clusters[-1][-1] > 5000:
+                clusters.append([])
+            clusters[-1].append(event_time)
+        for cluster in clusters:
+            first, later = cluster[0], cluster[-1]
+            if later - first < 2000:
+                continue
+            disappear = min(
+                (
+                    event["timestamp"] for event in targetability_events
+                     if event.get("sourceID") == target_id
+                     and event.get("targetable") == 0
+                     and isinstance(event.get("timestamp"), (int, float))
+                     and later <= event["timestamp"] <= later + 5000),
+                default=later + 4000,
+            )
+            phase_lock_windows[target_id].append((first - 1000, disappear))
+
+    def record_ghost(name: str, cast: dict[str, Any]) -> None:
+        ghosted[name] += 1
+        timestamp = cast.get("timestamp")
+        if isinstance(timestamp, (int, float)):
+            seconds = (timestamp - start) / 1000
+            ghosted_times[name].append(seconds)
+            target_id = cast.get("targetID")
+            target = actors.get(target_id)
+            if not isinstance(target, dict) or target.get("name") == "Environment":
+                matching = next(
+                    (
+                        event for event in raw_damage
+                        if isinstance(event, dict)
+                        and event.get("packetID") is not None
+                        and event.get("packetID") == cast.get("packetID")
+                        and event.get("abilityGameID") == cast.get("abilityGameID")
+                        and actors.get(event.get("targetID"), {}).get("name") != "Environment"
+                    ),
+                    None,
+                )
+                if matching is not None:
+                    target_id = matching.get("targetID")
+                    target = actors.get(target_id)
+            if isinstance(target, dict) and isinstance(target.get("name"), str):
+                ghosted_targets[name].append((seconds, target["name"]))
+            target_resources = cast.get("targetResources")
+            hit_points = target_resources.get("hitPoints") if isinstance(target_resources, dict) else None
+            if not isinstance(target, dict) or target.get("name") == "Environment":
+                return
+            if isinstance(hit_points, int) and not isinstance(hit_points, bool) and hit_points in (0, 1):
+                ghosted_target_low_hp[name].append((seconds, hit_points))
+                return
+            following = [
+                event
+                for event in boss_events[target_id]
+                if isinstance(event.get("timestamp"), (int, float))
+                and timestamp < event["timestamp"] <= timestamp + 2500
+            ]
+            low_hp = next(
+                (
+                    event["targetResources"]["hitPoints"]
+                    for event in sorted(following, key=lambda event: event["timestamp"])
+                    if isinstance(event.get("targetResources"), dict)
+                    and event["targetResources"].get("hitPoints") in (0, 1)
+                ),
+                None,
+            )
+            target_untargetable = any(
+                isinstance(event, dict)
+                and event.get("type") == "targetabilityupdate"
+                and event.get("sourceID") == target_id
+                and event.get("targetable") == 0
+                and isinstance(event.get("timestamp"), (int, float))
+                and timestamp <= event["timestamp"] <= timestamp + 2000
+                for event in targetability_events
+            )
+            phase_locked = any(
+                began <= timestamp <= finished
+                for began, finished in phase_lock_windows[target_id]
+            )
+            if phase_locked:
+                ghosted_ending_times[name].append((seconds, "phase HP lock; damage excluded"))
+            elif target_untargetable:
+                ghosted_ending_times[name].append(
+                    (seconds, "target became untargetable before hit landed")
+                )
+            elif low_hp is not None:
+                ghosted_target_low_hp[name].append((seconds, low_hp))
+            elif any(
+                event.get("type") == "damage"
+                and isinstance(event.get("overkill"), (int, float))
+                and event["overkill"] > 0
+                and event.get("packetID") != cast.get("packetID")
+                and isinstance(event.get("timestamp"), (int, float))
+                and timestamp - 500 <= event["timestamp"] <= timestamp + 2000
+                for event in boss_events[target_id]
+            ):
+                ghosted_ending_times[name].append((seconds, "target defeated before hit landed"))
+            elif end - timestamp <= 1500:
+                ghosted_ending_times[name].append((seconds, "fight ending"))
+
+    for name, channel_uses in channel_casts.items():
+        for cast_index, cast in channel_uses:
+            next_action = next(
+                (
+                    candidate.get("timestamp")
+                    for candidate in sorted_casts[cast_index + 1 :]
+                    if candidate.get("sourceID") == cast.get("sourceID")
+                ),
+                end,
+            )
+            if not isinstance(next_action, (int, float)):
+                continue
+            if not any(
+                _event_name(hit, ability_names) == name
+                and hit.get("sourceID") == cast.get("sourceID")
+                and isinstance(hit.get("timestamp"), (int, float))
+                and cast.get("timestamp", start) <= hit["timestamp"] < next_action
+                for hit in landed
+            ):
+                record_ghost(name, cast)
+    for cast in sorted_casts:
+        name = _event_name(cast, ability_names)
+        if name in channel_casts:
+            continue
+        action = actions.get(name)
+        potency = action.get("potency") if action else None
+        if not isinstance(potency, dict) or not isinstance(potency.get("base"), int):
+            continue
+        packet = (cast.get("packetID"), cast.get("abilityGameID"))
+        if cast.get("packetID") is not None and packet not in landed_packets:
+            record_ghost(name, cast)
+
+    summaries = tuple(
+        ActionSummary(
+            name,
+            int(values[0]),
+            values[1],
+            values[2],
+            uses=(
+                len({
+                    (hit.get("packetID"), hit.get("abilityGameID"))
+                    for hit in landed
+                    if not hit.get("tick") and _event_name(hit, ability_names) == name
+                })
+                if job.casefold() == "bard" and name in {"Caustic Bite", "Stormbite"}
+                else len(channel_casts[name]) if name in channel_casts else len(use_keys[name])
+            ),
+        )
+        for name, values in sorted(totals.items(), key=lambda item: (-item[1][1], item[0]))
+    )
+    if auto_attack_events:
+        auto_attacks, auto_potted, auto_gain = _summarize_auto_attacks(
+            auto_attack_events, job, combat_profile, bard_self_windows
+        )
+        potted_min += auto_potted
+        potted_max += auto_potted
+        potion_gain_min += auto_gain
+        potion_gain_max += auto_gain
+    else:
+        auto_attacks = ()
+    auto_attack_potency = sum(item.total_potency for item in auto_attacks)
+    if auto_attack_events:
+        auto_potency_by_name = {item.name: item.potency_per_hit for item in auto_attacks}
+        for event in auto_attack_events:
+            potency_weight = (
+                auto_potency_by_name[str(event["_resolved_name"])] * landed_fraction(event)
+            )
+            if bard_self_windows:
+                potency_weight *= _bard_self_multiplier(
+                    str(event.get("buffs", "")), float(event.get("timestamp", 0)),
+                    bard_self_windows,
+                )
+            if _has_buff(event, combat_profile.potion_buff_id):
+                potency_weight *= combat_profile.player_potion_multiplier
+            record_luck(event, potency_weight)
+    gear_baseline = (
+        (1 + combat_profile.critical_rate * (combat_profile.critical_damage_multiplier - 1))
+        * (1 + combat_profile.direct_rate * 0.25)
+        - 1
+    ) / (combat_profile.critical_damage_multiplier * 1.25 - 1)
+    potency_estimates = tuple(
+        replace(estimate, apex_uses=tuple(
+            replace(use, potency=apex_potency_by_packet.get(use.packet, 0.0))
+            for use in estimate.apex_uses
+        )) if estimate.apex_uses else estimate
+        for estimate in potency_estimates
+    )
+    _, bard_finales, bard_songs = (
+        _bard_coda(sorted_casts, ability_names, float(start))
+        if job.casefold() == "bard" else ({}, (), ())
+    )
+    bard_song_durations = (
+        _bard_song_durations(sorted_casts, buffs, ability_names, source_id, float(end))
+        if job.casefold() == "bard" else ()
+    )
+    if bard_finales:
+        finale_encores: list[list[float]] = [[0, 0.0, 0.0] for _ in bard_finales]
+        for cast in sorted_casts:
+            if (_event_name(cast, ability_names) != "Radiant Encore"
+                    or cast.get("sourceID") != source_id
+                    or not isinstance(cast.get("timestamp"), (int, float))):
+                continue
+            encore_time = (cast["timestamp"] - start) / 1000
+            finale_index = next(
+                (
+                    index for index in range(len(bard_finales) - 1, -1, -1)
+                    if 0 <= encore_time - bard_finales[index].timestamp_seconds <= 30
+                ),
+                None,
+            )
+            if finale_index is None:
+                continue
+            row = encore_totals.get((cast.get("packetID"), cast.get("abilityGameID")))
+            if row is not None:
+                for i, value in enumerate(row):
+                    finale_encores[finale_index][i] += value
+        bard_finales = tuple(
+            replace(
+                finale,
+                encore_hits=int(row[0]),
+                encore_potency_min=row[1],
+                encore_potency_max=row[2],
+            )
+            for finale, row in zip(bard_finales, finale_encores)
+        )
+    bard_dot_summary = (
+        summarize_bard_dots(
+            sorted_casts, raw_damage, buffs, ability_names, actions, source_id,
+            potion_multiplier=combat_profile.player_potion_multiplier,
+        )
+        if job.casefold() == "bard" and source_id is not None else ()
+    )
+    return AnalysisResult(
+        fight_name=str(fight.get("name", "Unknown fight")),
+        encounter_id=fight.get("encounterID")
+        if isinstance(fight.get("encounterID"), int)
+        else None,
+        source_name=str(source_name),
+        ndps=ndps,
+        rdps=rdps,
+        duration_seconds=duration,
+        raw_damage_events=len(raw_damage),
+        landed_damage_events=len(landed),
+        matched_damage_events=matched_events,
+        potency_min=sum(item.potency_min for item in summaries) + auto_attack_potency,
+        potency_max=sum(item.potency_max for item in summaries) + auto_attack_potency,
+        actions=summaries,
+        auto_attacks=auto_attacks,
+        pet_deployments=summarize_queen_deployments(
+            pet_deployments, sorted_casts, ability_names, source_id, float(start),
+            pet_totals, pet_landed_actions,
+        ) if job.casefold() == "machinist" else tuple(
+            replace(deployment, potency_min=pet_totals[deployment][0],
+                    potency_max=pet_totals[deployment][1]) for deployment in pet_deployments
+        ),
+        wildfires=wildfire.summaries() if wildfire is not None else (),
+        potency_estimates=potency_estimates,
+        bard_songs=bard_songs,
+        bard_song_durations=bard_song_durations,
+        bard_finales=bard_finales,
+        bard_dots=bard_dot_summary,
+        hit_outcomes=_summarize_hit_outcomes(landed),
+        potion=PotionSummary(
+            uses=len(potion_windows),
+            potted_potency_min=potted_min,
+            potted_potency_max=potted_max,
+            gained_potency_min=potion_gain_min,
+            gained_potency_max=potion_gain_max,
+            windows=potion_windows,
+        ),
+        unmatched=tuple(sorted(unmatched.items(), key=lambda item: (-item[1], item[0]))),
+        ghosted=tuple(sorted(ghosted.items(), key=lambda item: (-item[1], item[0]))),
+        ghosted_times=tuple((name, tuple(times)) for name, times in sorted(ghosted_times.items())),
+        ghosted_targets=tuple(
+            (name, tuple(times)) for name, times in sorted(ghosted_targets.items())
+        ),
+        ghosted_target_low_hp=tuple(
+            (name, tuple(times)) for name, times in sorted(ghosted_target_low_hp.items())
+        ),
+        ghosted_ending_times=tuple(
+            (name, tuple(times)) for name, times in sorted(ghosted_ending_times.items())
+        ),
+        reduced_damage_hits=tuple(
+            ReducedDamageHit(
+                (event["timestamp"] - start) / 1000,
+                _event_name(event, ability_names),
+                event["amount"],
+                event["overkill"],
+                actors.get(event.get("targetID"), {}).get("name", ""),
+            )
+            for event in landed
+            if isinstance(event.get("timestamp"), (int, float))
+            and isinstance(event.get("amount"), int)
+            and event["amount"] > 0
+            and isinstance(event.get("overkill"), int)
+            and event["overkill"] > 0
+        ),
+        luck_score=luck_weighted_bonus / luck_weighted_maximum if luck_weighted_maximum else 0.0,
+        adjusted_luck_score=(
+            max(
+                0.0,
+                min(
+                    1.0,
+                    (luck_weighted_bonus - luck_weighted_raid_adjustment) / luck_weighted_maximum,
+                ),
+            )
+            if luck_weighted_maximum
+            else 0.0
+        ),
+        luck_baseline=gear_baseline,
+        critical_gear_baseline=combat_profile.critical_rate,
+        direct_gear_baseline=combat_profile.direct_rate,
+        direct_critical_gear_baseline=combat_profile.critical_rate * combat_profile.direct_rate,
+    )

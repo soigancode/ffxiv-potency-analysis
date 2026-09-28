@@ -1,6 +1,0 @@
-{
-  "schema_version": 1,
-  "jobs": {
-    "machinist": [2.48, 2.56, 2.64, 2.80]
-  }
-}

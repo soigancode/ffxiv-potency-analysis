@@ -29,3 +29,17 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.hatch.build.targets.wheel.force-include]
+"data/bard/7.55/actions.json" = "ffxiv_potency/data/bard/7.55/actions.json"
+"data/bard/7.55/combat_profile.json" = "ffxiv_potency/data/bard/7.55/combat_profile.json"
+"data/bard/gear_sets/7.4_savage.json" = "ffxiv_potency/data/bard/gear_sets/7.4_savage.json"
+"data/bard/gear_sets/7.55_relic.json" = "ffxiv_potency/data/bard/gear_sets/7.55_relic.json"
+"data/bard/weapon_delays.json" = "ffxiv_potency/data/bard/weapon_delays.json"
+"data/machinist/7.55/actions.json" = "ffxiv_potency/data/machinist/7.55/actions.json"
+"data/machinist/7.55/combat_profile.json" = "ffxiv_potency/data/machinist/7.55/combat_profile.json"
+"data/machinist/7.55/pet_scaling.json" = "ffxiv_potency/data/machinist/7.55/pet_scaling.json"
+"data/machinist/gear_sets/7.4_savage.json" = "ffxiv_potency/data/machinist/gear_sets/7.4_savage.json"
+"data/machinist/gear_sets/7.55_relic.json" = "ffxiv_potency/data/machinist/gear_sets/7.55_relic.json"
+"data/machinist/weapon_delays.json" = "ffxiv_potency/data/machinist/weapon_delays.json"
+"data/raid_effects/7.55.json" = "ffxiv_potency/data/raid_effects/7.55.json"

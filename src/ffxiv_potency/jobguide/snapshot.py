@@ -7,12 +7,15 @@ from pathlib import Path
 
 import httpx
 
+from ..patches import LATEST_KNOWN_PATCH
 from .export import export_actions
 from .fetch import fetch_job_guide
 from .parse import parse_job_actions
 
-MACHINIST_URL = "https://eu.finalfantasyxiv.com/jobguide/machinist/"
-LATEST_KNOWN_PATCH = "7.55"
+JOBGUIDE_URL_TEMPLATE = "https://eu.finalfantasyxiv.com/jobguide/{job}/"
+MACHINIST_URL = JOBGUIDE_URL_TEMPLATE.format(job="machinist")
+BARD_URL = JOBGUIDE_URL_TEMPLATE.format(job="bard")
+JOBGUIDE_URLS = {"machinist": MACHINIST_URL, "bard": BARD_URL}
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,15 +32,15 @@ def update_job_guide(
     job: str,
     patch: str,
     output_root: Path,
-    url: str = MACHINIST_URL,
+    url: str | None = None,
     transport: httpx.BaseTransport | None = None,
     retrieved_at: datetime | None = None,
 ) -> SnapshotResult:
     """Download, strictly parse, and export one versioned job-guide snapshot."""
 
     normalized_job = job.casefold()
-    if normalized_job != "machinist":
-        raise ValueError(f"unsupported job: {job!r}; currently only 'machinist' is supported")
+    if normalized_job not in JOBGUIDE_URLS:
+        raise ValueError(f"unsupported job-guide job: {job!r}")
     if patch != LATEST_KNOWN_PATCH:
         raise ValueError(
             f"only patch {LATEST_KNOWN_PATCH} is supported for now; received {patch!r}"
@@ -51,6 +54,7 @@ def update_job_guide(
     source_path = snapshot_directory / "source.html"
     actions_path = snapshot_directory / "actions.json"
 
+    url = url or JOBGUIDE_URLS[normalized_job]
     fetch_job_guide(url, source_path, transport=transport)
     source_bytes = source_path.read_bytes()
     html = source_bytes.decode("utf-8")

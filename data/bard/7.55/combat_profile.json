@@ -1,0 +1,40 @@
+{
+  "level": 100,
+  "patch": "7.55",
+  "level_main": 440,
+  "level_sub": 420,
+  "level_divisor": 2780,
+  "attack_power_coefficient": 195,
+  "player_damage_coefficient": 237,
+  "dexterity": {
+    "solo_unpotted": 6513,
+    "party_unpotted": 6838,
+    "party_potted": 7379
+  },
+  "secondary_stats": {
+    "critical_hit": 3585,
+    "direct_hit": 1823,
+    "determination": 2765,
+    "skill_speed": 474
+  },
+  "attribute_modifiers": {
+    "player": 115
+  },
+  "auto_attack": {
+    "base_potency": 80,
+    "weapon_damage": 158,
+    "action_trait_multiplier": 1.2
+  },
+  "potion": {
+    "buff_id": 1000049,
+    "action_names": [
+      "Grade 4 Gemdraught of Dexterity [HQ]"
+    ],
+    "percent": 10,
+    "cap": 541,
+    "duration_seconds": 30
+  },
+  "luck": {
+    "non_random_damage_actions": []
+  }
+}
