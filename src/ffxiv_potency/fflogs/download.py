@@ -118,6 +118,7 @@ class DownloadResult:
     damage_event_count: int
     cast_event_count: int
     buff_events: Path | None = None
+    debuff_events: Path | None = None
     targetability_events: Path | None = None
     encounter_overkill_events: Path | None = None
 
@@ -265,8 +266,8 @@ def _download_events(
             {
                 "code": reference.report_code,
                 "fightIDs": [reference.fight_id],
-                "sourceID": None if data_type == "Buffs" else reference.source_id,
-                "targetID": reference.source_id if data_type == "Buffs" else None,
+                "sourceID": None if data_type in {"Buffs", "Debuffs"} else reference.source_id,
+                "targetID": reference.source_id if data_type in {"Buffs", "Debuffs"} else None,
                 "startTime": start_time,
                 "includeResources": include_resources,
             },
@@ -292,7 +293,7 @@ def download_report_events(
     client_secret: str | None = None,
     transport: httpx.BaseTransport | None = None,
 ) -> DownloadResult:
-    """Download metadata, casts, damage, and buff state changes."""
+    """Download metadata, casts, damage, and player buff/debuff state changes."""
 
     directory = (
         output_root
@@ -319,6 +320,7 @@ def download_report_events(
         damage_events = _download_events(client, reference, "DamageDone")
         cast_events = _download_events(client, reference, "Casts")
         buff_events = _download_events(client, reference, "Buffs")
+        debuff_events = _download_events(client, reference, "Debuffs")
         targetability_events = _download_targetability_events(client, reference)
         encounter_overkills = _download_encounter_overkills(client, reference)
 
@@ -327,6 +329,7 @@ def download_report_events(
     damage_path = _write_json(directory / "damage-events.json", damage_events)
     cast_path = _write_json(directory / "cast-events.json", cast_events)
     buff_path = _write_json(directory / "buff-events.json", buff_events)
+    debuff_path = _write_json(directory / "debuff-events.json", debuff_events)
     targetability_path = _write_json(directory / "targetability-events.json", targetability_events)
     overkill_path = _write_json(directory / "encounter-overkill-events.json", encounter_overkills)
     rankings_path = _write_json(directory / "rankings.json", _saved_rankings(rdps, ndps))
@@ -340,6 +343,7 @@ def download_report_events(
         damage_event_count=len(damage_events),
         cast_event_count=len(cast_events),
         buff_events=buff_path,
+        debuff_events=debuff_path,
         targetability_events=targetability_path,
         encounter_overkill_events=overkill_path,
     )

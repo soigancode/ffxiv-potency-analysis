@@ -21,6 +21,7 @@ from ffxiv_potency.analysis.models import (
     BrdOutsideExpectedHit,
     BrdPitchHitEstimate,
     BrdPotencyEstimateSummary,
+    ConsumableIdentity,
     ReducedDamageHit,
 )
 from ffxiv_potency.fflogs import DownloadResult, ReportReference
@@ -230,7 +231,12 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
         auto_attacks=(AutoAttackSummary("Shot", 3, 2.672, 2.64, 88, 264),),
         pet_deployments=(PetDeploymentSummary("Queen", 222.2, "Battery", 50),),
         hit_outcomes=HitOutcomeSummary(1, 2, 3, 4),
-        potion=PotionSummary(3, 100, 100, 7, 7, windows=(PotionWindow(-2, 28, inferred=True),)),
+        potion=PotionSummary(
+            3, 100, 100, 7, 7,
+            windows=(PotionWindow(-2, 28, inferred=True),),
+            item=ConsumableIdentity("Grade 4 Gemdraught of Dexterity [HQ]", recorded=True),
+        ),
+        food=ConsumableIdentity("Caramel Popcorn [HQ]", recorded=True),
         unmatched=(("Shot", 1),),
         ghosted=(("Chain Saw", 2),),
         luck_score=0.4231,
@@ -269,7 +275,8 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert cli.main(["analyse", str(directory), "--actions", str(actions)]) == 0
     output = capsys.readouterr().out
     assert output.startswith("\nPlayer:") and output.endswith("\n\n")
-    assert "Fight: Test Boss (1), 00m10s\nnDPS: 12,345.6\nrDPS: 12,330.4" in output
+    assert ("Fight: Test Boss (1), 00m10s\nFood: Caramel Popcorn [HQ]\n"
+            "nDPS: 12,345.6\nrDPS: 12,330.4") in output
     assert "Player: Test Player" in output
     assert "Landed potency: 350-400" in output
     assert "Potency per second: 35.00-40.00" in output
@@ -284,6 +291,7 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert "estimated 2.672s -> 2.64s weapon delay" in output
     assert "Potency gained: 7" in output
     assert "Window 1: -00m02s–00m28s" in output
+    assert "Potions:\n  Uses: 3\n  Item: Grade 4 Gemdraught of Dexterity [HQ]" in output
     assert "inferred" not in output
     assert "03m42s Queen" in output
     assert "00m14s–00m25s: 5/6 landed weaponskills, 1,289 potency" in output
@@ -737,10 +745,19 @@ def test_cli_rankings_shortcuts_compare_top_logs(
     assert any("def456?fight=4&source=7" in url for url in seen)
 
 
-@pytest.mark.parametrize("rank", ["0", "11"])
-def test_cli_rejects_rank_outside_top_ten(rank: str, capsys) -> None:
-    assert cli.main(["fflogs", "brd", "umad", rank]) == 1
-    assert "rank must be between 1 and 10" in capsys.readouterr().err
+def test_cli_rejects_nonpositive_rank(capsys) -> None:
+    assert cli.main(["fflogs", "brd", "umad", "0"]) == 1
+    assert "rank must be a positive number" in capsys.readouterr().err
+
+
+def test_cli_passes_rank_beyond_ten_to_leaderboard(monkeypatch, capsys) -> None:
+    def missing_rank(encounter_id: int, job: str, rank: int) -> None:
+        assert (encounter_id, job, rank) == (1085, "bard", 42)
+        raise cli.FFLogsError("rank 42 does not exist for bard in encounter 1085")
+
+    monkeypatch.setattr(cli, "ranked_source", missing_rank)
+    assert cli.main(["fflogs", "brd", "umad", "42"]) == 1
+    assert "rank 42 does not exist" in capsys.readouterr().err
 
 
 def test_progress_reuses_one_line_and_clears_it(monkeypatch, tmp_path: Path) -> None:

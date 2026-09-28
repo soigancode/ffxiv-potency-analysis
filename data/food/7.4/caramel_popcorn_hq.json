@@ -1,0 +1,10 @@
+{
+  "name": "Caramel Popcorn",
+  "quality": "HQ",
+  "introduced_patch": "7.4",
+  "bonuses": {
+    "determination": {"percent": 10, "cap": 151},
+    "vitality": {"percent": 10, "cap": 297},
+    "critical_hit": {"percent": 10, "cap": 91}
+  }
+}

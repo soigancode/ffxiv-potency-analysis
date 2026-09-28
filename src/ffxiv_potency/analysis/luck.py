@@ -117,6 +117,9 @@ def _raid_luck_adjustment(
     effects: list[dict[str, Any]],
     ability_names: dict[int, str],
     profile: _CombatProfile,
+    *,
+    critical_rate: float | None = None,
+    critical_multiplier: float | None = None,
 ) -> float:
     """Expected extra damage bonus caused by raid crit/DH rate buffs."""
     crit_bonus = direct_bonus = 0.0
@@ -132,9 +135,12 @@ def _raid_luck_adjustment(
                 crit_bonus += float(effect["bonus"])
             else:
                 direct_bonus += float(effect["bonus"])
-    strength = profile.critical_damage_multiplier - 1
-    before = (1 + profile.critical_rate * strength) * (1 + profile.direct_rate * 0.25)
-    after = (1 + min(1.0, profile.critical_rate + crit_bonus) * strength) * (
+    rate = profile.critical_rate if critical_rate is None else critical_rate
+    strength = (
+        profile.critical_damage_multiplier if critical_multiplier is None else critical_multiplier
+    ) - 1
+    before = (1 + rate * strength) * (1 + profile.direct_rate * 0.25)
+    after = (1 + min(1.0, rate + crit_bonus) * strength) * (
         1 + min(1.0, profile.direct_rate + direct_bonus) * 0.25
     )
     return after - before

@@ -10,6 +10,11 @@ from .events import _load_json
 
 @dataclass(frozen=True, slots=True)
 class _CombatProfile:
+    food_buff_id: int
+    food_name: str
+    unfed_critical_damage_multiplier: float
+    unfed_critical_rate: float
+    unfed_determination_ratio: float
     potion_buff_id: int
     potion_action_names: tuple[str, ...]
     potion_duration_seconds: int
@@ -110,15 +115,46 @@ def _critical_damage_multiplier(critical_hit: int, level_sub: int, level_divisor
     return (1400 + 200 * (critical_hit - level_sub) // level_divisor) / 1000
 
 
+def _critical_rate(critical_hit: int, level_sub: int, level_divisor: int) -> float:
+    return (50 + 200 * (critical_hit - level_sub) // level_divisor) / 1000
+
+
+def _determination_factor(determination: int, level_main: int, level_divisor: int) -> float:
+    return (1000 + 140 * (determination - level_main) // level_divisor) / 1000
+
+
 def _load_combat_profile(job: str, action_document: dict | None = None) -> _CombatProfile:
     resource = reference_path(job.lower(), LATEST_KNOWN_PATCH, "combat_profile.json")
     if not resource.is_file():
         raise AnalysisError(f"no combat profile is configured for job {job!r}")
     profile = _load_json(resource, dict)
+    food_reference = profile.get("food")
+    if not isinstance(food_reference, str) or not food_reference.startswith("food/"):
+        raise AnalysisError(f"invalid food reference for job {job!r}")
+    food = _load_json(reference_path("consumables", food_reference), dict)
+    food_bonuses = food.get("bonuses")
+    if (
+        not isinstance(food.get("buff_id"), int)
+        or not isinstance(food.get("name"), str)
+        or food.get("quality") != "HQ"
+        or not isinstance(food_bonuses, dict)
+    ):
+        raise AnalysisError(f"invalid HQ food for job {job!r}")
+    food_crit = food_bonuses.get("critical_hit")
+    food_det = food_bonuses.get("determination")
+    if not isinstance(food_crit, dict) or not isinstance(food_det, dict):
+        raise AnalysisError(f"missing critical hit or determination food bonus for job {job!r}")
     dexterity = profile.get("dexterity", {})
     stats = profile.get("secondary_stats", {})
     modifiers = profile.get("attribute_modifiers", {})
-    potion = profile.get("potion", {})
+    potion_reference = profile.get("potion")
+    if not isinstance(potion_reference, str) or not potion_reference.startswith("potions/"):
+        raise AnalysisError(f"invalid potion reference for job {job!r}")
+    potion = _load_json(reference_path("consumables", potion_reference), dict)
+    bonuses = potion.get("bonuses")
+    dexterity_bonus = bonuses.get("dexterity") if isinstance(bonuses, dict) else None
+    if not isinstance(dexterity_bonus, dict) or potion.get("quality") != "HQ":
+        raise AnalysisError(f"invalid HQ potion for job {job!r}")
     luck = profile.get("luck", {})
     required_ints = {
         "level_main": profile.get("level_main"),
@@ -130,10 +166,16 @@ def _load_combat_profile(job: str, action_document: dict | None = None) -> _Comb
         "party": dexterity.get("party_unpotted"),
         "potted": dexterity.get("party_potted"),
         "player_modifier": modifiers.get("player"),
-        "potion_cap": potion.get("cap"),
+        "potion_cap": dexterity_bonus.get("cap"),
+        "potion_percent": dexterity_bonus.get("percent"),
         "buff_id": potion.get("buff_id"),
         "potion_duration": potion.get("duration_seconds"),
         "critical_hit": stats.get("critical_hit"),
+        "determination": stats.get("determination"),
+        "food_crit_cap": food_crit.get("cap"),
+        "food_crit_percent": food_crit.get("percent"),
+        "food_det_cap": food_det.get("cap"),
+        "food_det_percent": food_det.get("percent"),
         "direct_hit": stats.get("direct_hit"),
         "auto_base_potency": profile.get("auto_attack", {}).get("base_potency"),
         "weapon_damage": profile.get("auto_attack", {}).get("weapon_damage"),
@@ -141,6 +183,19 @@ def _load_combat_profile(job: str, action_document: dict | None = None) -> _Comb
     }
     if not all(isinstance(value, int) and value > 0 for value in required_ints.values()):
         raise AnalysisError(f"invalid combat profile for job {job!r}")
+    potion_gain = min(
+        required_ints["party"] * required_ints["potion_percent"] // 100,
+        required_ints["potion_cap"],
+    )
+    if required_ints["potted"] != required_ints["party"] + potion_gain:
+        raise AnalysisError(f"potted Dexterity does not match the HQ potion for job {job!r}")
+    for stat, label in (("critical_hit", "crit"), ("determination", "det")):
+        unfed = required_ints[stat] - required_ints[f"food_{label}_cap"]
+        if min(
+            unfed * required_ints[f"food_{label}_percent"] // 100,
+            required_ints[f"food_{label}_cap"],
+        ) != required_ints[f"food_{label}_cap"]:
+            raise AnalysisError(f"configured {stat} must include its capped HQ food bonus")
     # Synthetic/older action snapshots without traits use the bundled guide.
     if action_document is None or "traits" not in action_document:
         guide = _load_json(reference_path(job.lower(), LATEST_KNOWN_PATCH, "actions.json"), dict)
@@ -193,11 +248,29 @@ def _load_combat_profile(job: str, action_document: dict | None = None) -> _Comb
         if not isinstance(modifier, int) or modifier <= 0:
             raise AnalysisError(f"invalid attribute modifier for {actor!r}")
         pet_before = _pet_main_stat_factor(required_ints["solo"], modifier, **factor_args)
-        pet_after = _pet_main_stat_factor(
-            required_ints["solo"] + required_ints["potion_cap"], modifier, **factor_args
+        pet_gain = min(
+            required_ints["solo"] * required_ints["potion_percent"] // 100,
+            required_ints["potion_cap"],
         )
+        pet_after = _pet_main_stat_factor(required_ints["solo"] + pet_gain, modifier, **factor_args)
         pet_multipliers[actor] = pet_after / pet_before
     return _CombatProfile(
+        food_buff_id=food["buff_id"],
+        food_name=f"{food['name']} [HQ]",
+        unfed_critical_damage_multiplier=_critical_damage_multiplier(
+            required_ints["critical_hit"] - required_ints["food_crit_cap"],
+            required_ints["level_sub"], required_ints["level_divisor"],
+        ),
+        unfed_critical_rate=_critical_rate(
+            required_ints["critical_hit"] - required_ints["food_crit_cap"],
+            required_ints["level_sub"], required_ints["level_divisor"],
+        ),
+        unfed_determination_ratio=(
+            _determination_factor(required_ints["determination"], required_ints["level_main"],
+                                  required_ints["level_divisor"])
+            / _determination_factor(required_ints["determination"] - required_ints["food_det_cap"],
+                                    required_ints["level_main"], required_ints["level_divisor"])
+        ),
         potion_buff_id=required_ints["buff_id"],
         potion_action_names=tuple(action_names),
         potion_duration_seconds=required_ints["potion_duration"],
@@ -221,13 +294,10 @@ def _load_combat_profile(job: str, action_document: dict | None = None) -> _Comb
             // required_ints["level_divisor"]
         )
         / 1000,
-        critical_rate=(
-            50
-            + 200
-            * (required_ints["critical_hit"] - required_ints["level_sub"])
-            // required_ints["level_divisor"]
-        )
-        / 1000,
+        critical_rate=_critical_rate(
+            required_ints["critical_hit"], required_ints["level_sub"],
+            required_ints["level_divisor"],
+        ),
         direct_rate=(
             550
             * (required_ints["direct_hit"] - required_ints["level_sub"])

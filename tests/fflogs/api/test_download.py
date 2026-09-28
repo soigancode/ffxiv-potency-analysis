@@ -127,6 +127,13 @@ def test_downloads_metadata_and_paginated_events(
                 "data": [{"timestamp": 200, "type": "removebuff", "abilityGameID": 49}],
                 "nextPageTimestamp": None,
             }
+        elif "Debuffs" in query:
+            assert variables["sourceID"] is None
+            assert variables["targetID"] == 18
+            events = {
+                "data": [{"timestamp": 300, "type": "applydebuff", "abilityGameID": 43}],
+                "nextPageTimestamp": None,
+            }
         else:
             assert "Casts" in query
             assert variables["sourceID"] == 18
@@ -154,9 +161,11 @@ def test_downloads_metadata_and_paginated_events(
     ]
     assert json.loads(result.cast_events.read_text()) == [{"timestamp": 50, "type": "cast"}]
     assert result.buff_events is not None
+    assert result.debuff_events is not None
     assert result.targetability_events is not None
     assert result.encounter_overkill_events is not None
     assert json.loads(result.buff_events.read_text())[0]["type"] == "removebuff"
+    assert json.loads(result.debuff_events.read_text())[0]["type"] == "applydebuff"
     assert json.loads(result.targetability_events.read_text())[0]["targetable"] == 0
     assert json.loads(result.encounter_overkill_events.read_text())[0]["sourceID"] == 9
     assert json.loads(result.fight.read_text())["name"] == "Test Boss"

@@ -14,6 +14,7 @@ from .brd.buffs import _brd_self_multiplier, brd_self_buff_windows
 from .brd.dots import reconstruct_brd_dots, summarize_brd_dots
 from .brd.songs import _brd_coda, _brd_song_durations
 from .brd.variable_potency import _brd_damage_estimates
+from .consumables import food_active, food_gaps, identify_consumable
 from .damage import landed_fraction
 from .errors import AnalysisError
 from .events import _event_name, _has_buff, _load_json
@@ -175,22 +176,44 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     matched_events = 0
     potted_min = potted_max = potion_gain_min = potion_gain_max = 0.0
     luck_weighted_bonus = luck_weighted_maximum = luck_weighted_raid_adjustment = 0.0
+    luck_weighted_expected = critical_rate_sum = direct_rate_sum = cdh_rate_sum = 0.0
+    eligible_hit_count = 0
+    missing_food: tuple[tuple[float, float], ...] = ()
 
     def record_luck(event: dict[str, Any], potency_weight: float) -> None:
         """Accumulate the same weighted outcome for actions, pets, and auto-attacks."""
         nonlocal luck_weighted_bonus, luck_weighted_maximum, luck_weighted_raid_adjustment
+        nonlocal luck_weighted_expected, critical_rate_sum, direct_rate_sum, cdh_rate_sum
+        nonlocal eligible_hit_count
         if event.get("tick"):
             return
-        contribution = _luck_contribution(event, combat_profile.critical_damage_multiplier)
+        timestamp = event.get("timestamp")
+        unfed = isinstance(timestamp, (int, float)) and not food_active(timestamp, missing_food)
+        critical_multiplier = (
+            combat_profile.unfed_critical_damage_multiplier if unfed
+            else combat_profile.critical_damage_multiplier
+        )
+        critical_rate = (
+            combat_profile.unfed_critical_rate if unfed else combat_profile.critical_rate
+        )
+        contribution = _luck_contribution(event, critical_multiplier)
         if contribution is None:
             return
         luck_weighted_bonus += potency_weight * contribution
         luck_weighted_raid_adjustment += potency_weight * _raid_luck_adjustment(
-            event, raid_effects, ability_names, combat_profile
+            event, raid_effects, ability_names, combat_profile,
+            critical_rate=critical_rate, critical_multiplier=critical_multiplier,
         )
-        luck_weighted_maximum += potency_weight * (
-            combat_profile.critical_damage_multiplier * 1.25 - 1
+        maximum = critical_multiplier * 1.25 - 1
+        luck_weighted_maximum += potency_weight * maximum
+        luck_weighted_expected += potency_weight * (
+            (1 + critical_rate * (critical_multiplier - 1))
+            * (1 + combat_profile.direct_rate * 0.25) - 1
         )
+        critical_rate_sum += critical_rate
+        direct_rate_sum += combat_profile.direct_rate
+        cdh_rate_sum += critical_rate * combat_profile.direct_rate
+        eligible_hit_count += 1
 
     sorted_casts = sorted(
         (e for e in casts if isinstance(e, dict)), key=lambda e: e.get("timestamp", 0)
@@ -202,6 +225,18 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     )
     source_id = player_source_counts.most_common(1)[0][0] if player_source_counts else None
     source_name = actors.get(source_id, {}).get("name", f"Source {source_id}")
+    missing_food = food_gaps(
+        buffs, source_id, combat_profile.food_buff_id, float(start), float(end)
+    )
+    food = identify_consumable(
+        buffs, sorted_casts, ability_names, source_id,
+        combat_profile.food_buff_id, combat_profile.food_name,
+    )
+    potion_item = identify_consumable(
+        buffs, sorted_casts, ability_names, source_id,
+        combat_profile.potion_buff_id, combat_profile.potion_action_names[0],
+        cast_names=combat_profile.potion_action_names,
+    )
     rankings_path = directory / "rankings.json"
     rankings = _load_json(rankings_path, dict) if rankings_path.is_file() else {}
     ndps = (
@@ -299,6 +334,9 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             fight_start=start,
             potion_multiplier=combat_profile.player_potion_multiplier,
             potion_buff_id=combat_profile.potion_buff_id,
+            unfed_critical_multiplier=combat_profile.unfed_critical_damage_multiplier,
+            unfed_determination_ratio=combat_profile.unfed_determination_ratio,
+            food_missing=missing_food,
         )
         if job.casefold() == "bard"
         else ({}, ())
@@ -659,10 +697,8 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 potency_weight *= combat_profile.player_potion_multiplier
             record_luck(event, potency_weight)
     gear_baseline = (
-        (1 + combat_profile.critical_rate * (combat_profile.critical_damage_multiplier - 1))
-        * (1 + combat_profile.direct_rate * 0.25)
-        - 1
-    ) / (combat_profile.critical_damage_multiplier * 1.25 - 1)
+        luck_weighted_expected / luck_weighted_maximum if luck_weighted_maximum else 0.0
+    )
     potency_estimates = tuple(
         replace(estimate, apex_uses=tuple(
             replace(use, potency=apex_potency_by_packet.get(use.packet, 0.0) if use.packet is not None else 0.0)
@@ -752,6 +788,12 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             gained_potency_min=potion_gain_min,
             gained_potency_max=potion_gain_max,
             windows=potion_windows,
+            item=potion_item,
+        ),
+        food=food,
+        food_missing_windows=tuple(
+            ((begin - start) / 1000, (finish - start) / 1000)
+            for begin, finish in missing_food
         ),
         unmatched=tuple(sorted(unmatched.items(), key=lambda item: (-item[1], item[0]))),
         ghosted=tuple(sorted(ghosted.items(), key=lambda item: (-item[1], item[0]))),
@@ -793,7 +835,16 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             else 0.0
         ),
         luck_baseline=gear_baseline,
-        critical_gear_baseline=combat_profile.critical_rate,
-        direct_gear_baseline=combat_profile.direct_rate,
-        direct_critical_gear_baseline=combat_profile.critical_rate * combat_profile.direct_rate,
+        critical_gear_baseline=(
+            critical_rate_sum / eligible_hit_count if eligible_hit_count
+            else combat_profile.critical_rate
+        ),
+        direct_gear_baseline=(
+            direct_rate_sum / eligible_hit_count if eligible_hit_count
+            else combat_profile.direct_rate
+        ),
+        direct_critical_gear_baseline=(
+            cdh_rate_sum / eligible_hit_count if eligible_hit_count
+            else combat_profile.critical_rate * combat_profile.direct_rate
+        ),
     )

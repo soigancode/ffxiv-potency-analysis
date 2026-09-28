@@ -171,6 +171,11 @@ def _print_analysis(
     if rank is not None:
         print(f"Rank: {rank}")
     print(f"Fight: {_format_fight(result)}, {_format_duration(result.duration_seconds)}")
+    if result.food is not None:
+        note = "" if result.food.recorded else " (configured; not identified in fight events)"
+        print(f"Food: {result.food.name}{note}")
+        for begin, finish in result.food_missing_windows:
+            print(f"  Without food: {_format_timestamp(begin)}–{_format_timestamp(finish)}")
     print(f"nDPS: {result.ndps:,.1f}" if result.ndps is not None else "nDPS: n/a")
     print(f"rDPS: {result.rdps:,.1f}" if result.rdps is not None else "rDPS: n/a")
     print(f"Landed damage events: {result.landed_damage_events}")
@@ -272,6 +277,9 @@ def _print_analysis(
                   f"{' on ' + target if target else ''}{note}")
     print("\nPotions:")
     print(f"  Uses: {result.potion.uses}")
+    if result.potion.uses and result.potion.item is not None:
+        note = "" if result.potion.item.recorded else " (configured; not identified in fight events)"
+        print(f"  Item: {result.potion.item.name}{note}")
     for index, window in enumerate(result.potion.windows, 1):
         if window.start_seconds is not None and window.end_seconds is not None:
             print(
@@ -688,8 +696,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         f"unknown fight {args.fight!r}; choose: {', '.join(CURRENT_FIGHTS)}"
                     )
                 if args.rank is not None:
-                    if not 1 <= args.rank <= 10:
-                        raise ValueError("rank must be between 1 and 10")
+                    if args.rank < 1:
+                        raise ValueError("rank must be a positive number")
                     with _Progress() as progress:
                         progress.message("Processing...")
                         reference = ranked_source(encounter_id, job, args.rank)

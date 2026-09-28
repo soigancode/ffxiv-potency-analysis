@@ -37,9 +37,44 @@ def test_one_rank_resolves_only_its_report() -> None:
     assert len(requests) == 2
 
 
-def test_one_rank_requires_top_ten_position() -> None:
-    with pytest.raises(ValueError, match="between 1 and 10"):
-        ranked_source(1085, "bard", 11)
+def test_one_rank_requires_positive_position() -> None:
+    with pytest.raises(ValueError, match="positive number"):
+        ranked_source(1085, "bard", 0)
+
+
+def test_one_rank_reads_later_pages_and_reports_missing_rank() -> None:
+    requested_pages: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/token":
+            return httpx.Response(200, json={"access_token": "token"})
+        body = json.loads(request.content)
+        if "EncounterRankings" in body["query"]:
+            page = body["variables"]["page"]
+            requested_pages.append(page)
+            rows = (
+                [{"name": f"Player {rank}"} for rank in range(1, 11)] if page == 1
+                else [{"name": "Player 11", "report": {"code": "page2", "fightID": 5}}]
+                if page == 2 else []
+            )
+            return httpx.Response(200, json={"data": {"worldData": {"encounter": {
+                "id": 101, "characterRankings": {"rankings": rows},
+            }}}})
+        assert body["variables"] == {"code": "page2", "fightIDs": [5]}
+        return httpx.Response(200, json={"data": {"reportData": {"report": {
+            "fights": [{"id": 5, "encounterID": 101, "friendlyPlayers": [7]}],
+            "masterData": {"actors": [
+                {"id": 7, "name": "Player 11", "type": "Player", "subType": "Bard"},
+            ]},
+        }}}})
+
+    kwargs = {"client_id": "id", "client_secret": "secret", "transport": httpx.MockTransport(handler)}
+    assert ranked_source(101, "bard", 11, **kwargs) == ReportReference("page2", 5, 7)
+    assert requested_pages == [1, 2]
+    requested_pages.clear()
+    with pytest.raises(FFLogsError, match="rank 12 does not exist"):
+        ranked_source(101, "bard", 12, **kwargs)
+    assert requested_pages == [1, 2, 3]
 
 
 def test_current_job_rankings_resolve_report_source_ids_in_order() -> None:

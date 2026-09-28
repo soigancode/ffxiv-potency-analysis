@@ -1,0 +1,11 @@
+{
+  "name": "Grade 4 Gemdraught of Dexterity",
+  "quality": "HQ",
+  "introduced_patch": "7.4",
+  "buff_id": 1000049,
+  "action_names": ["Grade 4 Gemdraught of Dexterity [HQ]"],
+  "duration_seconds": 30,
+  "bonuses": {
+    "dexterity": {"percent": 10, "cap": 541}
+  }
+}

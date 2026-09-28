@@ -6,6 +6,7 @@ from collections import defaultdict
 from statistics import median
 from typing import Any
 
+from ..consumables import food_active
 from ..events import _event_name, _has_buff
 from ..models import (
     BrdApexUseEstimate,
@@ -26,6 +27,9 @@ def _brd_damage_estimates(
     fight_start: float = 0.0,
     potion_multiplier: float = 1.0,
     potion_buff_id: int = 1000049,
+    unfed_critical_multiplier: float | None = None,
+    unfed_determination_ratio: float = 1.0,
+    food_missing: tuple[tuple[float, float], ...] = (),
 ) -> tuple[dict[int, tuple[float, bool, float]], tuple[BrdPotencyEstimateSummary, ...]]:
     """Infer BRD variable potency from fixed attacks by the same player.
 
@@ -37,8 +41,13 @@ def _brd_damage_estimates(
 
     def normalized(event: dict[str, Any]) -> float:
         amount = float(event["amount"])
+        timestamp = event.get("timestamp")
+        unfed = isinstance(timestamp, (int, float)) and not food_active(timestamp, food_missing)
         if event.get("hitType") == 2:
-            amount /= critical_multiplier
+            amount /= (
+                unfed_critical_multiplier
+                if unfed and unfed_critical_multiplier is not None else critical_multiplier
+            )
         if event.get("directHit") is True:
             amount /= 1.25
         # FF Logs includes raid buffs, target debuffs, and a 1.05 Medicated
@@ -49,6 +58,8 @@ def _brd_damage_estimates(
             amount /= multiplier
             if _has_buff(event, potion_buff_id):
                 amount *= 1.05 / potion_multiplier
+        if unfed:
+            amount *= unfed_determination_ratio
         return amount
 
     references: dict[Any, list[tuple[float, float]]] = defaultdict(list)

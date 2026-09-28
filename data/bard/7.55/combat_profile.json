@@ -1,6 +1,7 @@
 {
   "level": 100,
   "patch": "7.55",
+  "food": "food/7.4/caramel_popcorn_hq.json",
   "level_main": 440,
   "level_sub": 420,
   "level_divisor": 2780,
@@ -24,15 +25,7 @@
     "base_potency": 80,
     "weapon_damage": 158
   },
-  "potion": {
-    "buff_id": 1000049,
-    "action_names": [
-      "Grade 4 Gemdraught of Dexterity [HQ]"
-    ],
-    "percent": 10,
-    "cap": 541,
-    "duration_seconds": 30
-  },
+  "potion": "potions/7.4/grade_4_gemdraught_of_dexterity_hq.json",
   "luck": {
     "non_random_damage_actions": []
   }

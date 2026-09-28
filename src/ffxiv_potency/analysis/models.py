@@ -112,6 +112,12 @@ class HitOutcomeSummary:
 
 
 @dataclass(frozen=True, slots=True)
+class ConsumableIdentity:
+    name: str
+    recorded: bool
+
+
+@dataclass(frozen=True, slots=True)
 class PotionWindow:
     start_seconds: float | None
     end_seconds: float | None
@@ -128,6 +134,7 @@ class PotionSummary:
     gained_potency_min: float
     gained_potency_max: float
     windows: tuple[PotionWindow, ...] = ()
+    item: ConsumableIdentity | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,6 +174,8 @@ class AnalysisResult:
     brd_song_durations: tuple[tuple[str, float], ...] = ()
     brd_finales: tuple[BrdFinaleSummary, ...] = ()
     brd_dots: tuple[BrdDotActionSummary, ...] = ()
+    food: ConsumableIdentity | None = None
+    food_missing_windows: tuple[tuple[float, float], ...] = ()
 
     @property
     def pps_min(self) -> float:

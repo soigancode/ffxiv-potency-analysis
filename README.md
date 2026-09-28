@@ -52,7 +52,7 @@ ffxiv-potency fflogs brd umad
 ffxiv-potency fflogs mch m10s
 ```
 
-Analyse **one leaderboard position** instead (1–10):
+Analyse **any leaderboard position** instead:
 
 ```bash
 ffxiv-potency fflogs brd umad 3
@@ -79,7 +79,7 @@ Copy a selected player's FF Logs URL containing `fight` and `source`, and quote 
 ffxiv-potency analyse "https://www.fflogs.com/reports/REPORT1?fight=9&source=18"
 ```
 
-The report starts with the player, fight, duration, nDPS, rDPS, landed events, potency, and PPS. It then shows any variable potency estimates, reduced damage and ghosted casts, potion windows, hit outcomes and luck, action totals, auto-attacks, and job-specific details. A ghosted cast dealt no positive recorded damage; its note may identify an untargetable target, a defeated target, or a boss phase HP lock.
+The report starts with the player, fight, duration, food, nDPS, rDPS, landed events, potency, and PPS. It then shows any variable potency estimates, reduced damage and ghosted casts, potion item and windows, hit outcomes and luck, action totals, auto-attacks, and job-specific details. If FF Logs does not identify a consumed item in the fight events, the report labels its configured name as unverified. A ghosted cast dealt no positive recorded damage; its note may identify an untargetable target, a defeated target, or a boss phase HP lock.
 
 To download a selected fight without analysing it, run `ffxiv-potency fflogs "<report URL with fight and source>"`. To empty `data/logs`, run `ffxiv-potency clear logs`; it asks for confirmation and leaves job data intact. Add `--yes` to skip the prompt.
 
@@ -108,6 +108,12 @@ FF Logs **rDPS and nDPS** remain the original reported damage metrics. Potency a
 ## Calculation details
 
 ### Shared calculations
+
+#### Food
+
+The shared HQ food and potion definitions are in `data/consumables/`. The configured BiS stats already include Caramel Popcorn's food bonuses.
+
+When FF Logs records `Well Fed` ending or being reapplied, the report shows the interval without food. During that interval, BRD damage-based potency estimates use the lower Determination and Crit values, and luck baselines use the lower Crit rate. Food does not directly multiply action potency. If no food changes are recorded, the configured food is assumed throughout the fight and marked unverified in the report.
 
 #### Potions
 

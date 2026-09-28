@@ -1,5 +1,6 @@
 """Resolve current encounter rankings to selected FF Logs report sources."""
 
+from itertools import count
 from typing import Any
 
 import httpx
@@ -169,16 +170,21 @@ def ranked_source(
     encounter_id: int, job: str, rank: int, *, client_id: str | None = None,
     client_secret: str | None = None, transport: httpx.BaseTransport | None = None,
 ) -> ReportReference:
-    """Resolve one leaderboard position without loading the other reports."""
-    if not 1 <= rank <= 10:
-        raise ValueError("rank must be between 1 and 10")
+    """Resolve any positive leaderboard position without loading other reports."""
+    if rank < 1:
+        raise ValueError("rank must be a positive number")
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
-        rows = _ranking_rows(client.graphql(
-            _RANKINGS_QUERY, {"encounterID": encounter_id, "specName": job.capitalize()}
-        ), encounter_id)
-        if len(rows) < rank:
-            raise FFLogsError(f"rank {rank} does not exist for {job} in encounter {encounter_id}")
-        return _resolve_row(client, rows[rank - 1], rank, encounter_id, job, {})
+        position = 0
+        for page in count(1):
+            rows = _ranking_rows(client.graphql(_PAGED_RANKINGS_QUERY, {
+                "encounterID": encounter_id, "specName": job.capitalize(), "page": page,
+            }), encounter_id)
+            if not rows:
+                break
+            if rank <= position + len(rows):
+                return _resolve_row(client, rows[rank - position - 1], rank, encounter_id, job, {})
+            position += len(rows)
+    raise FFLogsError(f"rank {rank} does not exist for {job} in encounter {encounter_id}")
 
 
 def accessible_ranked_sources(

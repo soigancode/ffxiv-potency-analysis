@@ -1,6 +1,7 @@
 {
   "label": "7.55 Relic BiS",
   "patch": "7.55",
+  "food": "food/7.4/caramel_popcorn_hq.json",
   "level": 100,
   "weapon_damage": 158,
   "weapon_delay_seconds": 3.04,
