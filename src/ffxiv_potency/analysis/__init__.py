@@ -7,10 +7,10 @@ from .models import (
     AnalysisResult,
     AutoAttackSummary,
     HitOutcomeSummary,
+    MchWildfireSummary,
     PetDeploymentSummary,
     PotionSummary,
     PotionWindow,
-    WildfireSummary,
 )
 
 __all__ = [
@@ -19,9 +19,9 @@ __all__ = [
     "AnalysisResult",
     "AutoAttackSummary",
     "HitOutcomeSummary",
+    "MchWildfireSummary",
     "PetDeploymentSummary",
     "PotionSummary",
     "PotionWindow",
-    "WildfireSummary",
     "analyze_saved_fight",
 ]

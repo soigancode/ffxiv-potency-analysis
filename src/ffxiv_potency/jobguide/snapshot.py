@@ -13,9 +13,9 @@ from .fetch import fetch_job_guide
 from .parse import parse_job_actions, parse_job_traits
 
 JOBGUIDE_URL_TEMPLATE = "https://eu.finalfantasyxiv.com/jobguide/{job}/"
-MACHINIST_URL = JOBGUIDE_URL_TEMPLATE.format(job="machinist")
-BARD_URL = JOBGUIDE_URL_TEMPLATE.format(job="bard")
-JOBGUIDE_URLS = {"machinist": MACHINIST_URL, "bard": BARD_URL}
+BRD_URL = JOBGUIDE_URL_TEMPLATE.format(job="bard")
+MCH_URL = JOBGUIDE_URL_TEMPLATE.format(job="machinist")
+JOBGUIDE_URLS = {"bard": BRD_URL, "machinist": MCH_URL}
 
 
 @dataclass(frozen=True, slots=True)

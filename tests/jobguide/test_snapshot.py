@@ -12,12 +12,12 @@ from ffxiv_potency.jobguide import (
     parse_job_actions,
     parse_job_traits,
 )
-from ffxiv_potency.jobguide.snapshot import BARD_URL, update_job_guide
+from ffxiv_potency.jobguide.snapshot import BRD_URL, update_job_guide
 
 FIXTURES = Path(__file__).parents[1] / "fixtures/jobguide"
 
 
-@pytest.mark.parametrize("job", ["machinist", "bard"])
+@pytest.mark.parametrize("job", ["bard", "machinist"])
 def test_full_guide_matches_committed_action_snapshot(job: str) -> None:
     html = (FIXTURES / f"{job}_full_7_5.html").read_text(encoding="utf-8")
     committed = json.loads(
@@ -64,7 +64,7 @@ def test_update_downloads_and_exports_versioned_snapshot(tmp_path: Path) -> None
     assert document["traits"][1]["action_damage_multiplier"] == 1.2
 
 
-def test_complete_machinist_snapshot_has_expected_coverage() -> None:
+def test_complete_mch_snapshot_has_expected_coverage() -> None:
     html = (FIXTURES / "machinist_full_7_5.html").read_text(encoding="utf-8")
 
     report = inspect_job_actions(html)
@@ -79,11 +79,11 @@ def test_complete_machinist_snapshot_has_expected_coverage() -> None:
     assert actions["Reassemble"].potency is None
 
 
-def test_bard_guide_crawls_all_actions_and_special_potencies(tmp_path: Path) -> None:
+def test_brd_guide_crawls_all_actions_and_special_potencies(tmp_path: Path) -> None:
     html = (FIXTURES / "bard_full_7_5.html").read_bytes()
 
     def handler(request: httpx.Request) -> httpx.Response:
-        assert str(request.url) == BARD_URL
+        assert str(request.url) == BRD_URL
         return httpx.Response(200, content=html)
 
     result = update_job_guide(
@@ -97,7 +97,7 @@ def test_bard_guide_crawls_all_actions_and_special_potencies(tmp_path: Path) -> 
     assert result.source.read_bytes() == html
     document = json.loads(result.actions.read_text(encoding="utf-8"))
     assert document["job"] == "bard"
-    assert document["source"]["url"] == BARD_URL
+    assert document["source"]["url"] == BRD_URL
     actions = {row["name"]: row for row in document["actions"]}
     assert len(actions) == 34
     assert actions["Barrage"]["potency"] is None

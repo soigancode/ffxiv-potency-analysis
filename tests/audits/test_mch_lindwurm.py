@@ -17,16 +17,16 @@ from ffxiv_potency.analysis import analyze_saved_fight
 
 
 def test_real_lindwurm_final_queen_lands_bunker_but_not_collider(
-    tmp_path: Path, machinist_actions: Path, load_audit, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, mch_actions: Path, load_audit, capsys: pytest.CaptureFixture[str]
 ) -> None:
     load_audit("lindwurm_audit.json", "lindwurm")
-    result = analyze_saved_fight(tmp_path, machinist_actions)
+    result = analyze_saved_fight(tmp_path, mch_actions)
 
     (queen,) = result.pet_deployments
     assert result.encounter_id == 104
     assert queen.gauge_spent == 50
     assert queen.potency_min == queen.potency_max == pytest.approx((240 + 3 * 120 + 340) * 0.89)
-    assert queen.missing_finishers == ("Crowned Collider",)
+    assert queen.mch_missing_finishers == ("Crowned Collider",)
     assert result.unmatched == ()
     cli._print_analysis(result)
     assert (
@@ -36,7 +36,7 @@ def test_real_lindwurm_final_queen_lands_bunker_but_not_collider(
 
 
 def test_queen_overdrive_marks_its_deployment(
-    tmp_path: Path, machinist_actions: Path, load_audit, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, mch_actions: Path, load_audit, capsys: pytest.CaptureFixture[str]
 ) -> None:
     source = load_audit("lindwurm_audit.json", "lindwurm")
     source["master_data"]["abilities"].append({"gameID": 9001, "name": "Queen Overdrive"})
@@ -53,19 +53,19 @@ def test_queen_overdrive_marks_its_deployment(
     (tmp_path / "master-data.json").write_text(json.dumps(source["master_data"]), encoding="utf-8")
     (tmp_path / "cast-events.json").write_text(json.dumps(source["cast_events"]), encoding="utf-8")
 
-    result = analyze_saved_fight(tmp_path, machinist_actions)
+    result = analyze_saved_fight(tmp_path, mch_actions)
     (queen,) = result.pet_deployments
-    assert queen.overdrive_seconds == pytest.approx(391.551)
+    assert queen.mch_overdrive_seconds == pytest.approx(391.551)
     assert queen.potency_min == pytest.approx(836.6)
     cli._print_analysis(result)
     assert "(Queen Overdrive at 06m32s)" in capsys.readouterr().out
 
 
 def test_real_lindwurm_ii_queen_lands_both_finishers(
-    tmp_path: Path, machinist_actions: Path, load_audit
+    tmp_path: Path, mch_actions: Path, load_audit
 ) -> None:
     load_audit("lindwurm_audit.json", "lindwurm_ii_potted")
-    result = analyze_saved_fight(tmp_path, machinist_actions)
+    result = analyze_saved_fight(tmp_path, mch_actions)
 
     (queen,) = result.pet_deployments
     assert result.encounter_id == 105
@@ -75,14 +75,14 @@ def test_real_lindwurm_ii_queen_lands_both_finishers(
         == queen.potency_max
         == pytest.approx((5 * 144 + 408 + 468) * 0.89 * 563 / 525)
     )
-    assert queen.missing_finishers == ()
+    assert queen.mch_missing_finishers == ()
 
 
 def test_real_lindwurm_ii_queen_caps_battery_and_uses_roller_dash(
-    tmp_path: Path, machinist_actions: Path, load_audit
+    tmp_path: Path, mch_actions: Path, load_audit
 ) -> None:
     load_audit("lindwurm_audit.json", "lindwurm_ii_max_battery")
-    result = analyze_saved_fight(tmp_path, machinist_actions)
+    result = analyze_saved_fight(tmp_path, mch_actions)
 
     (queen,) = result.pet_deployments
     # Five combo hits (10 each), Air Anchor, Chain Saw, Excavator (20 each):
@@ -92,11 +92,11 @@ def test_real_lindwurm_ii_queen_caps_battery_and_uses_roller_dash(
     assert (
         queen.potency_min == queen.potency_max == pytest.approx((480 + 3 * 240 + 680 + 780) * 0.89)
     )
-    assert queen.missing_finishers == ()
+    assert queen.mch_missing_finishers == ()
 
 
 def test_queen_without_either_finisher_reports_both(
-    tmp_path: Path, machinist_actions: Path, load_audit, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, mch_actions: Path, load_audit, capsys: pytest.CaptureFixture[str]
 ) -> None:
     # A controlled variant of the real interrupted deployment: Bunker also
     # fails to land, as could happen if the fight ended a little earlier.
@@ -108,10 +108,10 @@ def test_queen_without_either_finisher_reports_both(
     )
     damage = [event for event in source["damage_events"] if event.get("abilityGameID") != bunker_id]
     (tmp_path / "damage-events.json").write_text(json.dumps(damage), encoding="utf-8")
-    result = analyze_saved_fight(tmp_path, machinist_actions)
+    result = analyze_saved_fight(tmp_path, mch_actions)
 
     (queen,) = result.pet_deployments
     assert queen.potency_min == queen.potency_max == pytest.approx((240 + 3 * 120) * 0.89)
-    assert queen.missing_finishers == ("Pile Bunker", "Crowned Collider")
+    assert queen.mch_missing_finishers == ("Pile Bunker", "Crowned Collider")
     cli._print_analysis(result)
     assert "missing Pile Bunker and Crowned Collider" in capsys.readouterr().out

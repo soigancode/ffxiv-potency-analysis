@@ -7,7 +7,7 @@ from typing import Any
 
 from ..damage import landed_fraction
 from ..dots import DotRules, DotTick, reconstruct_dot_ticks
-from .buffs import bard_self_buff_windows
+from .buffs import brd_self_buff_windows
 
 DOT_NAMES = frozenset({"Caustic Bite", "Stormbite"})
 DIRECT_NAMES = DOT_NAMES | {"Iron Jaws"}
@@ -15,7 +15,7 @@ DOT_DURATION_MS = 45_000
 
 
 @dataclass(frozen=True, slots=True)
-class BardDotActionSummary:
+class BrdDotActionSummary:
     name: str
     landed_uses: int
     ticks: int
@@ -27,7 +27,7 @@ class BardDotActionSummary:
         return self.direct_potency + self.tick_potency
 
 
-def reconstruct_bard_dots(
+def reconstruct_brd_dots(
     damage: list[dict[str, Any]],
     ability_names: dict[int, str],
     source_id: int,
@@ -39,7 +39,7 @@ def reconstruct_bard_dots(
     )
 
 
-def bard_dot_potency(
+def brd_dot_potency(
     tick: DotTick,
     potency_per_tick: int,
     *,
@@ -80,7 +80,7 @@ def _buffed_potency(
     return base * multiplier
 
 
-def summarize_bard_dots(
+def summarize_brd_dots(
     casts: list[dict[str, Any]],
     damage: list[dict[str, Any]],
     buffs: list[dict[str, Any]],
@@ -89,12 +89,12 @@ def summarize_bard_dots(
     source_id: int,
     *,
     potion_multiplier: float,
-) -> tuple[BardDotActionSummary, ...]:
+) -> tuple[BrdDotActionSummary, ...]:
     """Calculate initial hits, Iron Jaws hits and all DoT ticks.
 
     An unresolvable tick fails rather than understating the fight's potency.
     """
-    windows = bard_self_buff_windows(casts, buffs, ability_names, source_id)
+    windows = brd_self_buff_windows(casts, buffs, ability_names, source_id)
     potency: dict[str, list[float]] = {name: [0, 0, 0.0, 0.0] for name in DIRECT_NAMES}
     for event in damage:
         if (event.get("type") != "damage" or event.get("sourceID") != source_id
@@ -114,15 +114,15 @@ def summarize_bard_dots(
             base, event["timestamp"], str(event.get("buffs", "")),
             potion_multiplier, windows,
         )
-    for tick in reconstruct_bard_dots(damage, ability_names, source_id):
+    for tick in reconstruct_brd_dots(damage, ability_names, source_id):
         per_tick = actions[tick.name]["potency"]["damage_over_time"]["potency_per_tick"]
         row = potency[tick.name]
         row[1] += 1
-        row[3] += bard_dot_potency(
+        row[3] += brd_dot_potency(
             tick, per_tick, potion_multiplier=potion_multiplier, self_buff_windows=windows
         )
     return tuple(
-        BardDotActionSummary(name, int(row[0]), int(row[1]), row[2], row[3])
+        BrdDotActionSummary(name, int(row[0]), int(row[1]), row[2], row[3])
         for name, row in sorted(potency.items())
     )
 

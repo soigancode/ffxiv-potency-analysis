@@ -11,10 +11,10 @@ from .fetch import fetch_job_guide
 from .snapshot import JOBGUIDE_URL_TEMPLATE, LATEST_KNOWN_PATCH
 
 EFFECT_JOBS = {
+    "scholar": ("Chain Stratagem",),
     "dragoon": ("Battle Litany",),
     "bard": ("Battle Voice", "Army's Paeon", "The Wanderer's Minuet"),
     "dancer": ("Devilment",),
-    "scholar": ("Chain Stratagem",),
 }
 RATE_PATTERN = re.compile(
     r"(?:(critical|direct) hit rate|rate at which target takes (critical) hits)[^.%]*? by (\d+)%",

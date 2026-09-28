@@ -60,12 +60,12 @@ def test_crawls_seven_raid_rates_from_four_guides(tmp_path: Path) -> None:
     assert destination == tmp_path / "raid_effects/7.55.json"
     assert [effect["bonus"] for effect in json.loads(destination.read_text())["effects"]] == [
         0.10,
+        0.10,
         0.20,
         0.03,
         0.04,
         0.20,
         0.20,
-        0.10,
     ]
     assert (tmp_path / "raid_buffs/7.55/bard.html").is_file()
     actions = tmp_path / "machinist/7.55/actions.json"

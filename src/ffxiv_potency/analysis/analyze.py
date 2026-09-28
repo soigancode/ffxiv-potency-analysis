@@ -9,11 +9,11 @@ from typing import Any
 
 from ..patches import LATEST_KNOWN_PATCH
 from .auto_attacks import _is_auto_attack, _summarize_auto_attacks
-from .bard.barrage import _barrage_shadowbite_packets
-from .bard.buffs import _bard_self_multiplier, bard_self_buff_windows
-from .bard.dots import reconstruct_bard_dots, summarize_bard_dots
-from .bard.songs import _bard_coda, _bard_song_durations
-from .bard.variable_potency import _bard_damage_estimates
+from .brd.barrage import _barrage_shadowbite_packets
+from .brd.buffs import _brd_self_multiplier, brd_self_buff_windows
+from .brd.dots import reconstruct_brd_dots, summarize_brd_dots
+from .brd.songs import _brd_coda, _brd_song_durations
+from .brd.variable_potency import _brd_damage_estimates
 from .damage import landed_fraction
 from .errors import AnalysisError
 from .events import _event_name, _has_buff, _load_json
@@ -25,8 +25,8 @@ from .luck import (
     _raid_luck_adjustment,
     _summarize_hit_outcomes,
 )
-from .machinist.queen import summarize_queen_deployments
-from .machinist.wildfire import WildfireTracker
+from .mch.queen import summarize_mch_queen_deployments
+from .mch.wildfire import MchWildfireTracker
 from .models import (
     ActionSummary,
     AnalysisResult,
@@ -225,19 +225,19 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         source_id,
         snapshot_extension_ms=45000 if job.casefold() == "bard" else 0,
     )
-    bard_self_windows = (
-        bard_self_buff_windows(sorted_casts, buffs, ability_names, source_id)
+    brd_self_windows = (
+        brd_self_buff_windows(sorted_casts, buffs, ability_names, source_id)
         if job.casefold() == "bard" and source_id is not None else {}
     )
-    bard_ticks = (
+    brd_ticks = (
         {
             (tick.timestamp, tick.application_packet, tick.target_id): tick
-            for tick in reconstruct_bard_dots(raw_damage, ability_names, source_id)
+            for tick in reconstruct_brd_dots(raw_damage, ability_names, source_id)
         }
         if job.casefold() == "bard" and source_id is not None else {}
     )
     wildfire = (
-        WildfireTracker(
+        MchWildfireTracker(
             sorted_casts, buffs, ability_names, actions, landed_by_packet,
             potion_windows, source_id, float(start), float(end),
             combat_profile.potion_buff_id, combat_profile.player_potion_multiplier,
@@ -292,8 +292,8 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             if used == maximum_uses:
                 break
 
-    bard_estimates, potency_estimates = (
-        _bard_damage_estimates(
+    brd_estimates, potency_estimates = (
+        _brd_damage_estimates(
             landed, sorted_casts, raw_damage, ability_names,
             combat_profile.critical_damage_multiplier,
             fight_start=start,
@@ -303,7 +303,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         if job.casefold() == "bard"
         else ({}, ())
     )
-    barrage_shadowbites = (
+    brd_barrage_shadowbites = (
         _barrage_shadowbite_packets(sorted_casts, buffs, ability_names, source_id)
         if job.casefold() == "bard" and source_id is not None else set()
     )
@@ -341,7 +341,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                     values = value, value
         if values is None:
             key = (event.get("packetID"), event.get("abilityGameID"))
-            estimate = bard_estimates.get(id(event))
+            estimate = brd_estimates.get(id(event))
             if estimate is not None:
                 values = estimate[0], estimate[0]
             else:
@@ -354,7 +354,11 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 gauge_spent=deployment.gauge_spent if deployment is not None else None,
                 gauge_minimum=profile.gauge_minimum if profile is not None else None,
                 gauge_maximum=profile.gauge_maximum if profile is not None else None,
-                barrage=key in barrage_shadowbites,
+                base_potency_override=(
+                    potency.get("barrage_potency")
+                    if key in brd_barrage_shadowbites and isinstance(potency, dict)
+                    else None
+                ),
                 )
         if values is None:
             unmatched[name] += 1
@@ -366,8 +370,8 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         tick_timestamp = event.get("timestamp")
         tick_packet = event.get("packetID")
         tick_target = event.get("targetID")
-        bard_tick = (
-            bard_ticks.get((tick_timestamp, tick_packet, tick_target))
+        brd_tick = (
+            brd_ticks.get((tick_timestamp, tick_packet, tick_target))
             if job.casefold() == "bard" and event.get("tick")
             and isinstance(tick_timestamp, int)
             and isinstance(tick_packet, int)
@@ -376,23 +380,23 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         )
         if job.casefold() == "bard":
             if event.get("tick") and name in {"Caustic Bite", "Stormbite"} and (
-                bard_tick is None or not bard_tick.matched or bard_tick.snapshot_timestamp is None
+                brd_tick is None or not brd_tick.matched or brd_tick.snapshot_timestamp is None
             ):
                 raise AnalysisError(f"cannot match {name} tick to a landed DoT application")
-            buff_string = bard_tick.snapshot_buffs if bard_tick is not None else str(event.get("buffs", ""))
-            snapshot_time = bard_tick.snapshot_timestamp if bard_tick is not None else None
+            buff_string = brd_tick.snapshot_buffs if brd_tick is not None else str(event.get("buffs", ""))
+            snapshot_time = brd_tick.snapshot_timestamp if brd_tick is not None else None
             event_time = event.get("timestamp")
             buff_time = snapshot_time if snapshot_time is not None else (
                 float(event_time) if isinstance(event_time, (int, float)) else 0.0
             )
-            factor = _bard_self_multiplier(buff_string, buff_time, bard_self_windows)
+            factor = _brd_self_multiplier(buff_string, buff_time, brd_self_windows)
             values = values[0] * factor, values[1] * factor
 
         if name == "Wildfire" and wildfire is not None and event.get("tick") and isinstance(triggered, dict):
             potted = id(event) in wildfire.potted_events
         else:
             potted = _has_buff(
-                {"buffs": bard_tick.snapshot_buffs} if bard_tick is not None else event,
+                {"buffs": brd_tick.snapshot_buffs} if brd_tick is not None else event,
                 combat_profile.potion_buff_id,
             )
         if potted:
@@ -631,7 +635,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     )
     if auto_attack_events:
         auto_attacks, auto_potted, auto_gain = _summarize_auto_attacks(
-            auto_attack_events, job, combat_profile, bard_self_windows
+            auto_attack_events, job, combat_profile, brd_self_windows
         )
         potted_min += auto_potted
         potted_max += auto_potted
@@ -646,10 +650,10 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             potency_weight = (
                 auto_potency_by_name[str(event["_resolved_name"])] * landed_fraction(event)
             )
-            if bard_self_windows:
-                potency_weight *= _bard_self_multiplier(
+            if brd_self_windows:
+                potency_weight *= _brd_self_multiplier(
                     str(event.get("buffs", "")), float(event.get("timestamp", 0)),
-                    bard_self_windows,
+                    brd_self_windows,
                 )
             if _has_buff(event, combat_profile.potion_buff_id):
                 potency_weight *= combat_profile.player_potion_multiplier
@@ -666,16 +670,16 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         )) if estimate.apex_uses else estimate
         for estimate in potency_estimates
     )
-    _, bard_finales, bard_songs = (
-        _bard_coda(sorted_casts, ability_names, float(start))
+    _, brd_finales, brd_songs = (
+        _brd_coda(sorted_casts, ability_names, float(start))
         if job.casefold() == "bard" else ({}, (), ())
     )
-    bard_song_durations = (
-        _bard_song_durations(sorted_casts, buffs, ability_names, source_id, float(end))
+    brd_song_durations = (
+        _brd_song_durations(sorted_casts, buffs, ability_names, source_id, float(end))
         if job.casefold() == "bard" else ()
     )
-    if bard_finales:
-        finale_encores: list[list[float]] = [[0, 0.0, 0.0] for _ in bard_finales]
+    if brd_finales:
+        finale_encores: list[list[float]] = [[0, 0.0, 0.0] for _ in brd_finales]
         for cast in sorted_casts:
             if (_event_name(cast, ability_names) != "Radiant Encore"
                     or cast.get("sourceID") != source_id
@@ -684,8 +688,8 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             encore_time = (cast["timestamp"] - start) / 1000
             finale_index = next(
                 (
-                    index for index in range(len(bard_finales) - 1, -1, -1)
-                    if 0 <= encore_time - bard_finales[index].timestamp_seconds <= 30
+                    index for index in range(len(brd_finales) - 1, -1, -1)
+                    if 0 <= encore_time - brd_finales[index].timestamp_seconds <= 30
                 ),
                 None,
             )
@@ -695,17 +699,17 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             if row is not None:
                 for i, value in enumerate(row):
                     finale_encores[finale_index][i] += value
-        bard_finales = tuple(
+        brd_finales = tuple(
             replace(
                 finale,
                 encore_hits=int(row[0]),
                 encore_potency_min=row[1],
                 encore_potency_max=row[2],
             )
-            for finale, row in zip(bard_finales, finale_encores)
+            for finale, row in zip(brd_finales, finale_encores)
         )
-    bard_dot_summary = (
-        summarize_bard_dots(
+    brd_dot_summary = (
+        summarize_brd_dots(
             sorted_casts, raw_damage, buffs, ability_names, actions, source_id,
             potion_multiplier=combat_profile.player_potion_multiplier,
         )
@@ -727,19 +731,19 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         potency_max=sum(item.potency_max for item in summaries) + auto_attack_potency,
         actions=summaries,
         auto_attacks=auto_attacks,
-        pet_deployments=summarize_queen_deployments(
+        pet_deployments=summarize_mch_queen_deployments(
             pet_deployments, sorted_casts, ability_names, source_id, float(start),
             pet_totals, pet_landed_actions,
         ) if job.casefold() == "machinist" else tuple(
             replace(deployment, potency_min=pet_totals[deployment][0],
                     potency_max=pet_totals[deployment][1]) for deployment in pet_deployments
         ),
-        wildfires=wildfire.summaries() if wildfire is not None else (),
-        potency_estimates=potency_estimates,
-        bard_songs=bard_songs,
-        bard_song_durations=bard_song_durations,
-        bard_finales=bard_finales,
-        bard_dots=bard_dot_summary,
+        mch_wildfires=wildfire.summaries() if wildfire is not None else (),
+        brd_potency_estimates=potency_estimates,
+        brd_songs=brd_songs,
+        brd_song_durations=brd_song_durations,
+        brd_finales=brd_finales,
+        brd_dots=brd_dot_summary,
         hit_outcomes=_summarize_hit_outcomes(landed),
         potion=PotionSummary(
             uses=len(potion_windows),

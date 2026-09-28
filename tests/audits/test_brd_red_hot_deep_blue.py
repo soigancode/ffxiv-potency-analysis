@@ -8,11 +8,11 @@ import pytest
 
 from ffxiv_potency import cli
 from ffxiv_potency.analysis import analyze_saved_fight
-from ffxiv_potency.analysis.bard.dots import reconstruct_bard_dots
+from ffxiv_potency.analysis.brd.dots import reconstruct_brd_dots
 from ffxiv_potency.fflogs import ReportReference
 
 
-def test_anonymous_bard_dot_refresh_after_untargetable_phase(
+def test_anonymous_brd_dot_refresh_after_untargetable_phase(
     tmp_path: Path, extract_fight
 ) -> None:
     extract_fight(
@@ -22,7 +22,7 @@ def test_anonymous_bard_dot_refresh_after_untargetable_phase(
     master = json.loads((tmp_path / "master-data.json").read_text(encoding="utf-8"))
     names = {item["gameID"]: item["name"] for item in master["abilities"]}
     damage = json.loads((tmp_path / "damage-events.json").read_text(encoding="utf-8"))
-    ticks = reconstruct_bard_dots(damage, names, 7)
+    ticks = reconstruct_brd_dots(damage, names, 7)
 
     assert len(ticks) == 395
     assert all(tick.matched for tick in ticks)
@@ -38,7 +38,7 @@ def test_anonymous_bard_dot_refresh_after_untargetable_phase(
     assert result.potency_min == pytest.approx(116378.79720375093)
 
 
-def test_anonymous_bard_appears_as_anonymous_in_comparison(
+def test_anonymous_brd_appears_as_anonymous_in_comparison(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     directory = tmp_path / "a-DNaXrgHGZ8PbCkfL/fight-22/source-7"
@@ -56,7 +56,7 @@ def test_anonymous_bard_appears_as_anonymous_in_comparison(
     assert "Player (7)" not in output
 
 
-def test_anonymous_bard_analysis_groups_landed_events(
+def test_anonymous_brd_analysis_groups_landed_events(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
     extract_fight(

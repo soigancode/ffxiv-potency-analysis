@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
-class WildfireSummary:
+class MchWildfireSummary:
     applied_seconds: float
     detonated_seconds: float | None
     landed_weaponskills: int
@@ -21,7 +21,7 @@ class WildfireSummary:
 
 
 @dataclass(slots=True)
-class WildfireTracker:
+class MchWildfireTracker:
     casts: list[dict[str, Any]]
     buffs: list[dict[str, Any]]
     names: dict[int, str]
@@ -34,7 +34,7 @@ class WildfireTracker:
     potion_buff_id: int
     potion_multiplier: float
     applications: dict[int, float] = field(init=False)
-    records: dict[int, WildfireSummary] = field(default_factory=dict)
+    records: dict[int, MchWildfireSummary] = field(default_factory=dict)
     potted_events: set[int] = field(default_factory=set)
 
     def __post_init__(self) -> None:
@@ -112,7 +112,7 @@ class WildfireTracker:
         potted = self._snapshotted_potion(cast, explosion)
         if potted:
             self.potted_events.add(id(explosion))
-        self.records[id(cast)] = WildfireSummary(
+        self.records[id(cast)] = MchWildfireSummary(
             (started - self.fight_start) / 1000,
             (event_time - self.fight_start) / 1000,
             triggers,
@@ -126,11 +126,11 @@ class WildfireTracker:
         )
         return value
 
-    def summaries(self) -> tuple[WildfireSummary, ...]:
+    def summaries(self) -> tuple[MchWildfireSummary, ...]:
         return tuple(
             self.records.get(
                 id(cast),
-                WildfireSummary(
+                MchWildfireSummary(
                     (self.application(cast) - self.fight_start) / 1000,
                     None,
                     min(self.landed_triggers(

@@ -2,7 +2,7 @@
 
 import pytest
 
-from ffxiv_potency.analysis.bard.variable_potency import _bard_damage_estimates
+from ffxiv_potency.analysis.brd.variable_potency import _brd_damage_estimates
 
 
 def test_pitch_perfect_immune_target_can_consume_full_hit() -> None:
@@ -18,7 +18,7 @@ def test_pitch_perfect_immune_target_can_consume_full_hit() -> None:
     immune = {"type": "damage", "abilityGameID": 2, "amount": 0,
               "timestamp": 0, "hitType": 10}
 
-    inferred, summaries = _bard_damage_estimates(
+    inferred, summaries = _brd_damage_estimates(
         references + [hit], [cast], [immune], names, 1.627
     )
 
@@ -39,7 +39,7 @@ def test_pitch_perfect_reports_stack_and_falloff_for_ambiguous_hit() -> None:
     immune = {"type": "damage", "abilityGameID": 2, "amount": 0,
               "timestamp": 0, "hitType": 10}
 
-    _, summaries = _bard_damage_estimates(references + [hit], [cast], [immune], names, 1.625)
+    _, summaries = _brd_damage_estimates(references + [hit], [cast], [immune], names, 1.625)
 
     uncertain = summaries[0].pitch_uncertain_hits[0]
     assert uncertain.plausible_fits == ("1-stack full hit", "2-stack falloff hit")
@@ -71,7 +71,7 @@ def test_reference_damage_ignores_other_targets_and_clipped_overkill() -> None:
     immune = {"type": "damage", "abilityGameID": 2, "amount": 0,
               "timestamp": 0, "hitType": 10}
 
-    inferred, summaries = _bard_damage_estimates(
+    inferred, summaries = _brd_damage_estimates(
         references + [hit], [cast], [immune], names, 1.627
     )
 
@@ -91,7 +91,7 @@ def test_raid_buffs_and_medicated_use_fflogs_multiplier_for_classification() -> 
            "timestamp": 800, "targetID": 10, "packetID": 10,
            "buffs": "medicated.raid.", "hitType": 1, "multiplier": 1.5}
 
-    inferred, summaries = _bard_damage_estimates(references + [hit], [], [], names, 1.627)
+    inferred, summaries = _brd_damage_estimates(references + [hit], [], [], names, 1.627)
 
     assert inferred[id(hit)] == (360, False, 0.0)
     assert summaries[0].uncertain_hits == 0
@@ -107,7 +107,7 @@ def test_pitch_perfect_accepts_six_percent_roll_with_baseline_tolerance() -> Non
     hit = {"type": "damage", "abilityGameID": 2, "amount": 33840,
            "timestamp": 800, "targetID": 10, "packetID": 10, "hitType": 1}
 
-    inferred, summaries = _bard_damage_estimates(references + [hit], [], [], names, 1.625)
+    inferred, summaries = _brd_damage_estimates(references + [hit], [], [], names, 1.625)
 
     assert inferred[id(hit)] == (360, False, 0.0)
     assert summaries[0].uncertain_hits == 0
@@ -123,7 +123,7 @@ def test_single_target_pitch_perfect_is_full_potency() -> None:
     hit = {"type": "damage", "abilityGameID": 2, "amount": 10300,
            "timestamp": 800, "targetID": 10, "packetID": 10, "hitType": 1}
 
-    inferred, summaries = _bard_damage_estimates(references + [hit], [], [], names, 1.625)
+    inferred, summaries = _brd_damage_estimates(references + [hit], [], [], names, 1.625)
 
     assert inferred[id(hit)] == (100, False, 0.0)
     assert summaries[0].outside_expected_hits == 0
@@ -139,7 +139,7 @@ def test_pitch_perfect_outside_interval_uses_nearest_potency_and_reports_it() ->
     hit = {"type": "damage", "abilityGameID": 2, "amount": 32000,
            "timestamp": 800, "targetID": 10, "packetID": 10, "hitType": 1}
 
-    inferred, summaries = _bard_damage_estimates(references + [hit], [], [], names, 1.625)
+    inferred, summaries = _brd_damage_estimates(references + [hit], [], [], names, 1.625)
 
     assert inferred[id(hit)][0] == 360
     assert summaries[0].outside_expected_hits == 1
@@ -165,7 +165,7 @@ def test_potted_pitch_perfect_uses_dexterity_factor_for_classification() -> None
            "timestamp": 800, "targetID": 10, "packetID": 10,
            "hitType": 1, "buffs": "1000049.", "multiplier": 1.05 * 1.2}
 
-    inferred, summaries = _bard_damage_estimates(
+    inferred, summaries = _brd_damage_estimates(
         references + [hit], [], [], names, 1.625,
         potion_multiplier=potion_multiplier,
     )
@@ -188,7 +188,7 @@ def test_apex_followed_by_blast_has_at_least_eighty_gauge() -> None:
              {"type": "cast", "abilityGameID": 4, "timestamp": 2000,
               "sourceID": 5}]
 
-    inferred, summaries = _bard_damage_estimates(
+    inferred, summaries = _brd_damage_estimates(
         references + [hit], casts, [], names, 1.627
     )
 
@@ -214,7 +214,7 @@ def test_apex_targets_share_one_gauge_estimate() -> None:
     casts = [{"abilityGameID": 3, "packetID": 12, "timestamp": 0, "sourceID": 5},
              {"abilityGameID": 4, "timestamp": 2000, "sourceID": 5}]
 
-    inferred, summaries = _bard_damage_estimates(references + [first, second], casts, [], names, 1.627)
+    inferred, summaries = _brd_damage_estimates(references + [first, second], casts, [], names, 1.627)
 
     assert inferred[id(first)][0] == inferred[id(second)][0]
     assert len(summaries[0].apex_uses) == 1
@@ -245,7 +245,7 @@ def test_radiant_encore_uses_distinct_songs_consumed_by_finale() -> None:
         {"abilityGameID": 8, "timestamp": 3100, "sourceID": 2, "packetID": 21},
     ]
 
-    inferred, summaries = _bard_damage_estimates(
+    inferred, summaries = _brd_damage_estimates(
         references + [first, second], casts, [], names, 1.627
     )
 

@@ -2,6 +2,14 @@
   "patch": "7.55",
   "effects": [
     {
+      "action": "Chain Stratagem",
+      "status": "Chain Stratagem",
+      "job": "scholar",
+      "target": "enemy",
+      "rate": "critical",
+      "bonus": 0.1
+    },
+    {
       "action": "Battle Litany",
       "status": "Battle Litany",
       "job": "dragoon",
@@ -48,14 +56,6 @@
       "target": "player",
       "rate": "direct",
       "bonus": 0.2
-    },
-    {
-      "action": "Chain Stratagem",
-      "status": "Chain Stratagem",
-      "job": "scholar",
-      "target": "enemy",
-      "rate": "critical",
-      "bonus": 0.1
     }
   ]
 }

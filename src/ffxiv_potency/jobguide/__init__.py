@@ -21,11 +21,12 @@ from .parse import (
     parse_job_actions,
     parse_job_traits,
 )
-from .snapshot import LATEST_KNOWN_PATCH, MACHINIST_URL, SnapshotResult, update_job_guide
+from .snapshot import BRD_URL, LATEST_KNOWN_PATCH, MCH_URL, SnapshotResult, update_job_guide
 
 __all__ = [
+    "BRD_URL",
     "LATEST_KNOWN_PATCH",
-    "MACHINIST_URL",
+    "MCH_URL",
     "Action",
     "AoeFalloff",
     "ComboPotency",

@@ -10,7 +10,7 @@ from ..models import PetDeploymentSummary
 from ..pets import _deployment_for_event
 
 
-def summarize_queen_deployments(
+def summarize_mch_queen_deployments(
     deployments: tuple[PetDeploymentSummary, ...],
     casts: list[dict[str, Any]],
     names: dict[int, str],
@@ -36,11 +36,11 @@ def summarize_queen_deployments(
             deployment,
             potency_min=totals[deployment][0],
             potency_max=totals[deployment][1],
-            missing_finishers=tuple(
+            mch_missing_finishers=tuple(
                 finisher for finisher in ("Pile Bunker", "Crowned Collider")
                 if finisher not in landed_actions[deployment]
             ) if deployment.actor == "Automaton Queen" else (),
-            overdrive_seconds=overdrives.get(deployment),
+            mch_overdrive_seconds=overdrives.get(deployment),
         )
         for deployment in deployments
     )

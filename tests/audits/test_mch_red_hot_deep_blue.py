@@ -15,10 +15,10 @@ from ffxiv_potency.analysis import analyze_saved_fight
 
 
 def test_audited_two_boss_fight_and_missing_prepull_cast(
-    tmp_path: Path, machinist_actions: Path, load_audit
+    tmp_path: Path, mch_actions: Path, load_audit
 ) -> None:
     load_audit("red_hot_deep_blue_audit.json")
-    result = analyze_saved_fight(tmp_path, machinist_actions)
+    result = analyze_saved_fight(tmp_path, mch_actions)
     by_name = {action.name: action for action in result.actions}
 
     for name in ("Chain Saw", "Excavator"):
@@ -48,10 +48,10 @@ def test_audited_two_boss_fight_and_missing_prepull_cast(
 
 
 def test_real_flamethrower_counts_zero_hit_cast_and_landed_ticks(
-    tmp_path: Path, machinist_actions: Path, extract_fight
+    tmp_path: Path, mch_actions: Path, extract_fight
 ) -> None:
     extract_fight("red_hot_deep_blue_full.zip", "R86rXnMqjHTDJz3A/fight-4/source-11/")
-    result = analyze_saved_fight(tmp_path, machinist_actions)
+    result = analyze_saved_fight(tmp_path, mch_actions)
     flamethrower = next(action for action in result.actions if action.name == "Flamethrower")
     assert (flamethrower.uses, flamethrower.hits) == (2, 14)
     assert flamethrower.potency_min == flamethrower.potency_max == 14 * 120
@@ -73,10 +73,10 @@ def test_real_flamethrower_counts_zero_hit_cast_and_landed_ticks(
 
 
 def test_dance_partner_devilment_adjusts_luck_only(
-    tmp_path: Path, machinist_actions: Path, extract_fight
+    tmp_path: Path, mch_actions: Path, extract_fight
 ) -> None:
     extract_fight("red_hot_deep_blue_full.zip", "R86rXnMqjHTDJz3A/fight-4/source-11/")
-    original = analyze_saved_fight(tmp_path, machinist_actions)
+    original = analyze_saved_fight(tmp_path, mch_actions)
     events_path = tmp_path / "damage-events.json"
     events = json.loads(events_path.read_text(encoding="utf-8"))
     affected = [event for event in events if "1001825." in event.get("buffs", "")]
@@ -85,7 +85,7 @@ def test_dance_partner_devilment_adjusts_luck_only(
         if "buffs" in event:
             event["buffs"] = event["buffs"].replace("1001825.", "")
     events_path.write_text(json.dumps(events), encoding="utf-8")
-    without_devilment = analyze_saved_fight(tmp_path, machinist_actions)
+    without_devilment = analyze_saved_fight(tmp_path, mch_actions)
 
     assert original.luck_score == without_devilment.luck_score
     assert original.adjusted_luck_score < without_devilment.adjusted_luck_score

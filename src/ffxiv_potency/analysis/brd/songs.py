@@ -12,7 +12,7 @@ SONGS = frozenset({"Mage's Ballad", "Army's Paeon", "The Wanderer's Minuet"})
 
 
 @dataclass(frozen=True, slots=True)
-class BardFinaleSummary:
+class BrdFinaleSummary:
     timestamp_seconds: float
     coda: int
     encore_hits: int = 0
@@ -20,15 +20,15 @@ class BardFinaleSummary:
     encore_potency_max: float = 0.0
 
 
-def _bard_coda(
+def _brd_coda(
     casts: list[dict[str, Any]], names: dict[int, str], fight_start: float = 0
-) -> tuple[dict[tuple[Any, Any], int], tuple[BardFinaleSummary, ...], tuple[tuple[str, int], ...]]:
+) -> tuple[dict[tuple[Any, Any], int], tuple[BrdFinaleSummary, ...], tuple[tuple[str, int], ...]]:
     """Use distinct songs since the last Finale to reconstruct consumed Coda."""
     songs = SONGS
     coda: dict[int, set[str]] = defaultdict(set)
     last_finale: dict[int, tuple[float, int]] = {}
     encore_coda: dict[tuple[Any, Any], int] = {}
-    finales: list[BardFinaleSummary] = []
+    finales: list[BrdFinaleSummary] = []
     song_counts: Counter[str] = Counter()
     for cast in sorted(casts, key=lambda item: item.get("timestamp", 0)):
         actor = cast.get("sourceID")
@@ -41,7 +41,7 @@ def _bard_coda(
             song_counts[name] += 1
         elif name == "Radiant Finale":
             last_finale[actor] = float(timestamp), len(coda[actor])
-            finales.append(BardFinaleSummary((timestamp - fight_start) / 1000, len(coda[actor])))
+            finales.append(BrdFinaleSummary((timestamp - fight_start) / 1000, len(coda[actor])))
             coda[actor].clear()
         elif name == "Radiant Encore":
             finale = last_finale.get(actor)
@@ -49,7 +49,7 @@ def _bard_coda(
                 encore_coda[(cast.get("packetID"), cast.get("abilityGameID"))] = finale[1]
     return encore_coda, tuple(finales), tuple(sorted(song_counts.items()))
 
-def _bard_song_durations(
+def _brd_song_durations(
     casts: list[dict[str, Any]], buffs: list[dict[str, Any]],
     names: dict[int, str], source_id: int | None, fight_end: float,
 ) -> tuple[tuple[str, float], ...]:

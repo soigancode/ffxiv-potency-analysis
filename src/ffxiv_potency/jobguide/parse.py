@@ -47,39 +47,39 @@ _DOT_MARKERS = {
 _STANDALONE_POTENCY_PATTERN = re.compile(r"^Potency:\s*(\d+)\s*$", re.IGNORECASE)
 _DURATION_PATTERN = re.compile(r"^Duration:\s*(\d+)s\s*$", re.IGNORECASE)
 _ACTION_START_PATTERN = re.compile(r'<tr\s+id=["\']pve_action__\d+["\']', re.IGNORECASE)
-_PET_ATTACK_PATTERN = re.compile(
+_MCH_PET_ATTACK_PATTERN = re.compile(
     r"attacks using (.+?), dealing damage with a potency of\s+(\d+)\b", re.IGNORECASE
 )
 _NAMED_POTENCY_PATTERN = re.compile(r"^(.+?) Potency:\s*(\d+)\s*$", re.IGNORECASE)
-_GAUGE_MAX_PATTERN = re.compile(
+_MCH_GAUGE_MAX_PATTERN = re.compile(
     r"^Potency increases as (.+?) exceeds required cost at time of deployment, "
     r"up to a maximum of\s+(\d+)\.$",
     re.IGNORECASE,
 )
-_GAUGE_ACTION_MAX_PATTERN = re.compile(
+_MCH_GAUGE_ACTION_MAX_PATTERN = re.compile(
     r"^Potency increases up to\s+(\d+) as (.+? Gauge) exceeds minimum cost\.$",
     re.IGNORECASE,
 )
-_STACK_POTENCY_PATTERN = re.compile(r"^(\d+) (Repertoire Stacks?|Coda): ([\d,]+)$", re.IGNORECASE)
-_BARRAGE_POTENCY_PATTERN = re.compile(r"^Barrage Potency: (\d+)$", re.IGNORECASE)
-_GAUGE_COST_PATTERN = re.compile(r"^(.+? Gauge) Cost:\s*(\d+)\s*$", re.IGNORECASE)
-_TRIGGER_PATTERN = re.compile(
+_BRD_STACK_POTENCY_PATTERN = re.compile(r"^(\d+) (Repertoire Stacks?|Coda): ([\d,]+)$", re.IGNORECASE)
+_BRD_BARRAGE_POTENCY_PATTERN = re.compile(r"^Barrage Potency: (\d+)$", re.IGNORECASE)
+_MCH_GAUGE_COST_PATTERN = re.compile(r"^(.+? Gauge) Cost:\s*(\d+)\s*$", re.IGNORECASE)
+_MCH_TRIGGER_PATTERN = re.compile(
     r"^Potency is increased by\s+(\d+) for each of your own weaponskills", re.IGNORECASE
 )
-_MAX_STACKS_PATTERN = re.compile(r"^Can be stacked up to\s+(\d+) times\.$", re.IGNORECASE)
-_MODIFIER_PATTERN = re.compile(
+_MCH_MAX_MCH_STACKS_PATTERN = re.compile(r"^Can be stacked up to\s+(\d+) times\.$", re.IGNORECASE)
+_MCH_MODIFIER_PATTERN = re.compile(
     r"^Overheated Effect: Increases the potency of (.+?) by\s+(\d+)\s*$", re.IGNORECASE
 )
-_STACKS_PATTERN = re.compile(r"^Grants\s+(\d+) stacks of Overheated", re.IGNORECASE)
-_GENERIC_PET_SCALING_PATTERN = re.compile(
+_MCH_STACKS_PATTERN = re.compile(r"^Grants\s+(\d+) stacks of Overheated", re.IGNORECASE)
+_MCH_GENERIC_PET_SCALING_PATTERN = re.compile(
     r"^Potency of .+ actions increases as .+ Gauge exceeds required cost", re.IGNORECASE
 )
 _TRIGGERS_ACTION_PATTERN = re.compile(r"^Orders .+? to use (.+?)\.$", re.IGNORECASE)
 _GAUGE_GAIN_PATTERN = re.compile(
     r"^(Additional Effect|Combo Bonus): Increases (.+? Gauge) by (\d+)$", re.IGNORECASE
 )
-_QUEEN_ACTIONS = {"Arm Punch", "Roller Dash", "Pile Bunker", "Crowned Collider"}
-_ROOK_ACTIONS = {"Rook Overload"}
+_MCH_QUEEN_ACTIONS = {"Arm Punch", "Roller Dash", "Pile Bunker", "Crowned Collider"}
+_MCH_ROOK_ACTIONS = {"Rook Overload"}
 
 
 class JobGuideParseError(ValueError):
@@ -209,9 +209,9 @@ def _damage_over_time(action_name: str, description: tuple[str, ...]) -> DamageO
     )
 
 
-def _gauge_scaling(description: tuple[str, ...]) -> GaugeScaling | None:
-    deployment = _first_match(_GAUGE_MAX_PATTERN, description)
-    action = _first_match(_GAUGE_ACTION_MAX_PATTERN, description)
+def _mch_gauge_scaling(description: tuple[str, ...]) -> GaugeScaling | None:
+    deployment = _first_match(_MCH_GAUGE_MAX_PATTERN, description)
+    action = _first_match(_MCH_GAUGE_ACTION_MAX_PATTERN, description)
     if deployment is None and action is None:
         return None
     if deployment is not None:
@@ -219,7 +219,7 @@ def _gauge_scaling(description: tuple[str, ...]) -> GaugeScaling | None:
     else:
         assert action is not None
         gauge, maximum = action.group(2), int(action.group(1))
-    cost = _first_match(_GAUGE_COST_PATTERN, description)
+    cost = _first_match(_MCH_GAUGE_COST_PATTERN, description)
     return GaugeScaling(
         gauge=gauge,
         maximum_potency=maximum,
@@ -227,9 +227,9 @@ def _gauge_scaling(description: tuple[str, ...]) -> GaugeScaling | None:
     )
 
 
-def _stack_potency(action_name: str, description: tuple[str, ...]) -> StackPotency | None:
+def _brd_stack_potency(action_name: str, description: tuple[str, ...]) -> StackPotency | None:
     stack_rows = [
-        match for line in description if (match := _STACK_POTENCY_PATTERN.match(line)) is not None
+        match for line in description if (match := _BRD_STACK_POTENCY_PATTERN.match(line)) is not None
     ]
     if not stack_rows:
         return None
@@ -242,20 +242,20 @@ def _stack_potency(action_name: str, description: tuple[str, ...]) -> StackPoten
     )
 
 
-def _barrage_potency(action_name: str, description: tuple[str, ...]) -> int | None:
+def _brd_barrage_potency(action_name: str, description: tuple[str, ...]) -> int | None:
     barrage_potencies = [
-        match for line in description if (match := _BARRAGE_POTENCY_PATTERN.match(line)) is not None
+        match for line in description if (match := _BRD_BARRAGE_POTENCY_PATTERN.match(line)) is not None
     ]
     if len(barrage_potencies) > 1:
         raise JobGuideParseError(f"Multiple Barrage potencies for {action_name!r}")
     return int(barrage_potencies[0].group(1)) if barrage_potencies else None
 
 
-def _triggered_potency(action_name: str, description: tuple[str, ...]) -> TriggeredPotency | None:
-    trigger = _first_match(_TRIGGER_PATTERN, description)
+def _mch_triggered_potency(action_name: str, description: tuple[str, ...]) -> TriggeredPotency | None:
+    trigger = _first_match(_MCH_TRIGGER_PATTERN, description)
     if trigger is None:
         return None
-    stacks = _first_match(_MAX_STACKS_PATTERN, description)
+    stacks = _first_match(_MCH_MAX_MCH_STACKS_PATTERN, description)
     if stacks is None:
         raise JobGuideParseError(f"Incomplete triggered potency for {action_name!r}")
     return TriggeredPotency(
@@ -264,11 +264,11 @@ def _triggered_potency(action_name: str, description: tuple[str, ...]) -> Trigge
     )
 
 
-def _potency_modifier(action_name: str, description: tuple[str, ...]) -> PotencyModifier | None:
-    modifier = _first_match(_MODIFIER_PATTERN, description)
+def _mch_potency_modifier(action_name: str, description: tuple[str, ...]) -> PotencyModifier | None:
+    modifier = _first_match(_MCH_MODIFIER_PATTERN, description)
     if modifier is None:
         return None
-    stacks = _first_match(_STACKS_PATTERN, description)
+    stacks = _first_match(_MCH_STACKS_PATTERN, description)
     if stacks is None:
         raise JobGuideParseError(f"Incomplete potency modifier for {action_name!r}")
     return PotencyModifier(
@@ -278,27 +278,31 @@ def _potency_modifier(action_name: str, description: tuple[str, ...]) -> Potency
     )
 
 
+def _brd_is_non_damage_barrage(action_name: str, description: tuple[str, ...]) -> bool:
+    return action_name == "Barrage" and bool(description) and description[0].startswith("Grants Barrage")
+
+
 def _parse_potency(action_name: str, description: tuple[str, ...]) -> Potency | None:
     if "potency" not in " ".join(description).casefold():
         return None
     if description and description[0].casefold().startswith(("orders ", "deploys ")):
         return None
-    if action_name == "Barrage" and description[0].startswith("Grants Barrage"):
+    if _brd_is_non_damage_barrage(action_name, description):
         # Its buff changes Refulgent Arrow and Shadowbite; Barrage itself deals no damage.
         return None
 
     base, falloff = _direct_potency(action_name, description)
     combo = _combo_potency(action_name, description)
     damage_over_time = _damage_over_time(action_name, description)
-    gauge_scaling = _gauge_scaling(description)
-    stack_potency = _stack_potency(action_name, description)
-    barrage_potency = _barrage_potency(action_name, description)
-    triggered = _triggered_potency(action_name, description)
-    modifier = _potency_modifier(action_name, description)
+    gauge_scaling = _mch_gauge_scaling(description)
+    stack_potency = _brd_stack_potency(action_name, description)
+    barrage_potency = _brd_barrage_potency(action_name, description)
+    triggered = _mch_triggered_potency(action_name, description)
+    modifier = _mch_potency_modifier(action_name, description)
 
     has_rule = any((base, damage_over_time, triggered, modifier, stack_potency))
     if not has_rule:
-        if any(_GENERIC_PET_SCALING_PATTERN.match(line) for line in description):
+        if any(_MCH_GENERIC_PET_SCALING_PATTERN.match(line) for line in description):
             return None
         raise JobGuideParseError(f"Unsupported potency wording for {action_name!r}")
 
@@ -322,8 +326,19 @@ def _parse_relationships(
         (match.group(1) for line in description if (match := _TRIGGERS_ACTION_PATTERN.match(line))),
         None,
     )
-    deploys_actor = action_name if action_name in {"Rook Autoturret", "Automaton Queen"} else None
-    return triggers_action, deploys_actor
+    return triggers_action, _mch_deployed_actor(action_name)
+
+
+def _mch_deployed_actor(action_name: str) -> str | None:
+    return action_name if action_name in {"Rook Autoturret", "Automaton Queen"} else None
+
+
+def _mch_source_actor(action_name: str) -> str | None:
+    if action_name in _MCH_QUEEN_ACTIONS:
+        return "Automaton Queen"
+    if action_name in _MCH_ROOK_ACTIONS:
+        return "Rook Autoturret"
+    return None
 
 
 def _parse_gauge_gains(description: tuple[str, ...]) -> tuple[GaugeGain, ...]:
@@ -374,18 +389,12 @@ def _parse_action_container(container: Tag, row_id: str) -> Action:
         description=description,
         triggers_action=triggers_action,
         deploys_actor=deploys_actor,
-        source_actor=(
-            "Automaton Queen"
-            if name in _QUEEN_ACTIONS
-            else "Rook Autoturret"
-            if name in _ROOK_ACTIONS
-            else None
-        ),
+        source_actor=_mch_source_actor(name),
         gauge_gains=_parse_gauge_gains(description),
     )
 
 
-def _derive_volley_fire(actions: list[Action]) -> Action | None:
+def _mch_derive_volley_fire(actions: list[Action]) -> Action | None:
     if any(action.name == "Volley Fire" for action in actions):
         return None
     deployment = next((action for action in actions if action.name == "Rook Autoturret"), None)
@@ -393,15 +402,15 @@ def _derive_volley_fire(actions: list[Action]) -> Action | None:
         return None
 
     attack_match = next(
-        (match for line in deployment.description if (match := _PET_ATTACK_PATTERN.search(line))),
+        (match for line in deployment.description if (match := _MCH_PET_ATTACK_PATTERN.search(line))),
         None,
     )
     maximum_match = next(
-        (match for line in deployment.description if (match := _GAUGE_MAX_PATTERN.match(line))),
+        (match for line in deployment.description if (match := _MCH_GAUGE_MAX_PATTERN.match(line))),
         None,
     )
     cost_match = next(
-        (match for line in deployment.description if (match := _GAUGE_COST_PATTERN.match(line))),
+        (match for line in deployment.description if (match := _MCH_GAUGE_COST_PATTERN.match(line))),
         None,
     )
     if attack_match is None or maximum_match is None:
@@ -410,7 +419,7 @@ def _derive_volley_fire(actions: list[Action]) -> Action | None:
     relevant_description = tuple(
         line
         for line in deployment.description
-        if _PET_ATTACK_PATTERN.search(line) or _GAUGE_MAX_PATTERN.match(line)
+        if _MCH_PET_ATTACK_PATTERN.search(line) or _MCH_GAUGE_MAX_PATTERN.match(line)
     )
     return Action(
         name=attack_match.group(1),
@@ -465,7 +474,7 @@ def inspect_job_actions(html: str) -> ParseReport:
             issues.append(ParseIssue(action_name=name, message=str(exc)))
 
     try:
-        volley_fire = _derive_volley_fire(actions)
+        volley_fire = _mch_derive_volley_fire(actions)
         if volley_fire is not None:
             actions.append(volley_fire)
     except JobGuideParseError as exc:

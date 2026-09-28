@@ -9,7 +9,7 @@ from .songs import SONGS
 SELF_DAMAGE_BUFFS = {"Raging Strikes": 1.15, "Mage's Ballad": 1.01}
 
 
-def bard_self_buff_windows(
+def brd_self_buff_windows(
     casts: list[dict[str, Any]],
     buffs: list[dict[str, Any]],
     ability_names: dict[int, str],
@@ -81,7 +81,7 @@ def bard_self_buff_windows(
         completed.setdefault(status_id, []).append(window)
     return {status: tuple(windows) for status, windows in completed.items()}
 
-def _bard_self_multiplier(
+def _brd_self_multiplier(
     buffs: str, timestamp: float, windows: dict[int, tuple[tuple[int, int, float], ...]]
 ) -> float:
     present = {int(value) for value in buffs.strip(".").split(".") if value.isdigit()}

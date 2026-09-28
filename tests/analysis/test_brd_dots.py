@@ -11,11 +11,11 @@ import pytest
 
 from ffxiv_potency.analysis import analyze_saved_fight
 from ffxiv_potency.analysis.auto_attacks import _summarize_auto_attacks
-from ffxiv_potency.analysis.bard.buffs import bard_self_buff_windows
-from ffxiv_potency.analysis.bard.dots import (
-    bard_dot_potency,
-    reconstruct_bard_dots,
-    summarize_bard_dots,
+from ffxiv_potency.analysis.brd.buffs import brd_self_buff_windows
+from ffxiv_potency.analysis.brd.dots import (
+    brd_dot_potency,
+    reconstruct_brd_dots,
+    summarize_brd_dots,
 )
 from ffxiv_potency.analysis.profiles import _load_combat_profile
 
@@ -26,7 +26,7 @@ def test_iron_jaws_clipped_to_one_damage_contributes_one_percent_potency() -> No
         "timestamp": 1000, "packetID": 1, "abilityGameID": 77,
         "amount": 1, "overkill": 99,
     }
-    summary = summarize_bard_dots(
+    summary = summarize_brd_dots(
         [], [event], [], {77: "Iron Jaws"}, {"Iron Jaws": {"potency": {"base": 100}}},
         2, potion_multiplier=1.08,
     )
@@ -43,7 +43,7 @@ def test_dancing_mad_dot_snapshots() -> None:
             return json.loads(saved.read(root + name + ".json"))
 
         names = {item["gameID"]: item["name"] for item in load("master-data")["abilities"]}
-        ticks = reconstruct_bard_dots(load("damage-events"), names, 2)
+        ticks = reconstruct_brd_dots(load("damage-events"), names, 2)
 
     assert len(ticks) == 691  # Eight zero-damage ticks did not land.
     assert all(tick.matched for tick in ticks)
@@ -77,7 +77,7 @@ def test_refresh_does_not_create_missing_dot_or_change_another_target() -> None:
         damage(3000, 20, 11, 2, "refreshed.", tick=True),
         damage(3000, 11, 12, 1, "other.", tick=True),
     ]
-    ticks = reconstruct_bard_dots(events, names, 2)
+    ticks = reconstruct_brd_dots(events, names, 2)
     assert [(tick.matched, tick.snapshot_buffs) for tick in ticks] == [
         (True, "refreshed."), (False, ""), (True, "other.")
     ]
@@ -95,14 +95,14 @@ def test_iron_jaws_refreshes_unexpired_dot_after_ticks_pause() -> None:
         {"type": "damage", "sourceID": 2, "targetID": 20, "timestamp": 45000,
          "packetID": 20, "abilityGameID": 1, "amount": 20, "tick": True},
     ]
-    ticks = reconstruct_bard_dots(events, names, 2)
+    ticks = reconstruct_brd_dots(events, names, 2)
     assert [(tick.matched, tick.snapshot_timestamp, tick.snapshot_buffs) for tick in ticks] == [
         (True, 1000, "old."), (True, 44000, "new."),
     ]
 
     events[2]["timestamp"] = 51000  # Past the old DoT's expiry and tick grace.
     events[3]["timestamp"] = 52000
-    assert not reconstruct_bard_dots(events, names, 2)[-1].matched
+    assert not reconstruct_brd_dots(events, names, 2)[-1].matched
 
 
 def test_dancing_mad_dot_potency_retains_potion_after_it_expires() -> None:
@@ -114,8 +114,8 @@ def test_dancing_mad_dot_potency_retains_potion_after_it_expires() -> None:
 
         names = {item["gameID"]: item["name"] for item in load("master-data")["abilities"]}
         buffs = load("buff-events")
-        windows = bard_self_buff_windows(load("cast-events"), buffs, names, 2)
-        ticks = reconstruct_bard_dots(load("damage-events"), names, 2)
+        windows = brd_self_buff_windows(load("cast-events"), buffs, names, 2)
+        ticks = reconstruct_brd_dots(load("damage-events"), names, 2)
 
     assert [round(window[2], 2) for window in windows[1002964]] == [
         1.02, 1.06, 1.06, 1.04, 1.06, 1.06, 1.06, 1.06, 1.06, 1.06
@@ -124,7 +124,7 @@ def test_dancing_mad_dot_potency_retains_potion_after_it_expires() -> None:
         tick for tick in ticks
         if tick.name == "Caustic Bite" and tick.application_packet == 33039
     )
-    assert bard_dot_potency(
+    assert brd_dot_potency(
         prepull_raging, 20, potion_multiplier=664 / 620, self_buff_windows=windows
     ) == pytest.approx(20 * 1.15 * 1.01 * 1.02)
     potion_falloffs = {
@@ -139,11 +139,11 @@ def test_dancing_mad_dot_potency_retains_potion_after_it_expires() -> None:
     )
     assert tick.application_name == "Iron Jaws"
     # An independent test factor makes an expired potion visible in the result.
-    potency = bard_dot_potency(
+    potency = brd_dot_potency(
         tick, 20 if tick.name == "Caustic Bite" else 25,
         potion_multiplier=1.08, self_buff_windows=windows,
     )
-    without_potion = bard_dot_potency(
+    without_potion = brd_dot_potency(
         tick, 20 if tick.name == "Caustic Bite" else 25,
         potion_multiplier=1.0, self_buff_windows=windows,
     )
@@ -156,7 +156,7 @@ def test_full_dancing_mad_analysis_uses_dot_snapshots_without_extra_potions(
     extract_fight("bard_dancing_mad.zip", "7CANHrvwKT6tp2Gx/fight-7/source-2/")
     actions = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
-    dots = {row.name: row for row in result.bard_dots}
+    dots = {row.name: row for row in result.brd_dots}
     full = {row.name: row for row in result.actions}
 
     assert result.potion.uses == 4
@@ -172,13 +172,13 @@ def test_full_dancing_mad_analysis_uses_dot_snapshots_without_extra_potions(
     assert full["Caustic Bite"].uses == 6
     assert full["Stormbite"].uses == 7
     encore = full["Radiant Encore"]
-    assert sum(row.encore_hits for row in result.bard_finales) == encore.hits
-    assert sum(row.encore_potency_min for row in result.bard_finales) == pytest.approx(
+    assert sum(row.encore_hits for row in result.brd_finales) == encore.hits
+    assert sum(row.encore_potency_min for row in result.brd_finales) == pytest.approx(
         encore.potency_min
     )
-    assert next(row for row in result.bard_finales if row.encore_hits == 2).coda == 3
+    assert next(row for row in result.brd_finales if row.encore_hits == 2).coda == 3
 
-    apex = next(row for row in result.potency_estimates if row.action == "Apex Arrow")
+    apex = next(row for row in result.brd_potency_estimates if row.action == "Apex Arrow")
     assert len(apex.apex_uses) == 18
     assert all(use.plausible_gauges for use in apex.apex_uses)
     assert all(use.gauge in use.plausible_gauges for use in apex.apex_uses)
@@ -212,7 +212,7 @@ def test_clipped_auto_attack_counts_only_landed_fraction_without_self_buffs() ->
 
 
 def test_prepull_raging_strikes_snapshot_is_counted() -> None:
-    windows = bard_self_buff_windows(
+    windows = brd_self_buff_windows(
         [],
         [{"timestamp": 30_000, "type": "removebuff", "sourceID": 2,
           "targetID": 2, "abilityGameID": 1000125}],

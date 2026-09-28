@@ -37,8 +37,8 @@ from .jobguide.raid_buffs import update_raid_effects
 from .jobguide.snapshot import LATEST_KNOWN_PATCH, update_job_guide
 
 SUPPORTED_JOBS = {
-    "mch": "machinist", "machinist": "machinist",
     "brd": "bard", "bard": "bard",
+    "mch": "machinist", "machinist": "machinist",
 }
 CURRENT_FIGHTS = {
     "m9s": 101,
@@ -95,7 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     jobguide = commands.add_parser("jobguide", help="update all job guides and buffs, or one item")
-    jobguide.add_argument("item", nargs="?", help="job name or abbreviation (MCH/BRD), or 'buffs'")
+    jobguide.add_argument("item", nargs="?", help="job name or abbreviation (BRD/MCH), or 'buffs'")
     jobguide.add_argument("--output", type=Path, default=Path("data"), help="output root")
 
     clear = commands.add_parser("clear", help="remove downloaded data")
@@ -104,7 +104,7 @@ def build_parser() -> argparse.ArgumentParser:
     clear.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
 
     fflogs = commands.add_parser("fflogs", help="download one selected FF Logs fight")
-    fflogs.add_argument("url", help="report URL, or job abbreviation such as MCH/BRD")
+    fflogs.add_argument("url", help="report URL, or job abbreviation such as BRD/MCH")
     fflogs.add_argument("fight", nargs="?", help="fight abbreviation such as m9s")
     fflogs.add_argument("rank", nargs="?", type=int, help="analyse leaderboard rank 1–10")
     fflogs.add_argument("--output", type=Path, default=Path("data/logs"), help="output root")
@@ -183,7 +183,7 @@ def _print_analysis(
     print(f"Landed potency: {_format_potency(result.potency_min, result.potency_max)}")
     print(f"Potency per second: {_format_pps(result.pps_min, result.pps_max)}")
     visible_estimates = tuple(
-        estimate for estimate in result.potency_estimates
+        estimate for estimate in result.brd_potency_estimates
         if estimate.action != "Radiant Encore"
     )
     if visible_estimates:
@@ -315,7 +315,7 @@ def _print_analysis(
         f"{_format_rate_comparison(result.adjusted_luck_score, result.luck_baseline)}"
     )
     print("\nActions:")
-    dot_actions = {dot.name for dot in result.bard_dots}
+    dot_actions = {dot.name for dot in result.brd_dots}
     for action in result.actions:
         potency = _format_potency(action.potency_min, action.potency_max)
         uses = (
@@ -328,25 +328,25 @@ def _print_analysis(
             else f"{action.hits} {'hit' if action.hits == 1 else 'hits'}"
         )
         print(f"  {action.name}: {uses}{hits}, {potency} total potency")
-    if result.bard_songs:
+    if result.brd_songs:
         print("\nSongs:")
-        averages = dict(result.bard_song_durations)
-        for song, count in result.bard_songs:
+        averages = dict(result.brd_song_durations)
+        for song, count in result.brd_songs:
             average = averages.get(song)
             duration = f", {average:.1f}s average duration" if average is not None else ""
             print(f"  {song}: {count} uses{duration}")
-    if result.bard_finales:
+    if result.brd_finales:
         print("\nRadiant Finale (Coda consumed):")
-        for finale in result.bard_finales:
+        for finale in result.brd_finales:
             hits = f"{finale.encore_hits} {'hit' if finale.encore_hits == 1 else 'hits'}"
             potency = _format_potency(finale.encore_potency_min, finale.encore_potency_max)
             print(
                 f"  {_format_timestamp(finale.timestamp_seconds)} {finale.coda} Coda, "
                 f"Radiant Encore: {hits} ({potency} potency)"
             )
-    if result.bard_dots:
+    if result.brd_dots:
         print("\nDamage over time:")
-        for dot in result.bard_dots:
+        for dot in result.brd_dots:
             if dot.ticks:
                 print(
                     f"  {dot.name}: {dot.landed_uses} application hits, "
@@ -364,9 +364,9 @@ def _print_analysis(
                 f"{auto_attack.potency_per_hit:.2f} potency/hit, "
                 f"{auto_attack.total_potency:,.0f} total potency"
             )
-    if result.wildfires:
+    if result.mch_wildfires:
         print("\nWildfire:")
-        for wildfire in result.wildfires:
+        for wildfire in result.mch_wildfires:
             started = _format_timestamp(wildfire.applied_seconds)
             ended = (
                 _format_timestamp(wildfire.detonated_seconds)
@@ -382,13 +382,13 @@ def _print_analysis(
         print("\nPet deployments:")
         for deployment in result.pet_deployments:
             missing = (
-                f" (missing {' and '.join(deployment.missing_finishers)})"
-                if deployment.missing_finishers
+                f" (missing {' and '.join(deployment.mch_missing_finishers)})"
+                if deployment.mch_missing_finishers
                 else ""
             )
             overdrive = (
-                f" (Queen Overdrive at {_format_timestamp(deployment.overdrive_seconds)})"
-                if deployment.overdrive_seconds is not None
+                f" (Queen Overdrive at {_format_timestamp(deployment.mch_overdrive_seconds)})"
+                if deployment.mch_overdrive_seconds is not None
                 else ""
             )
             print(
@@ -512,7 +512,7 @@ def _source_job(directory: Path) -> str:
 
 def _actions_for_job(job: str, override: Path | None) -> Path:
     if job not in SUPPORTED_JOBS.values():
-        raise ValueError(f"job {job!r} is not supported yet; currently only machinist and bard are supported")
+        raise ValueError(f"job {job!r} is not supported yet; currently only Bard and Machinist are supported")
     path = override or Path("data") / job / LATEST_KNOWN_PATCH / "actions.json"
     if override is None and not path.is_file():
         path = reference_path(job, LATEST_KNOWN_PATCH, "actions.json")
@@ -680,7 +680,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 job = SUPPORTED_JOBS.get(args.url.casefold())
                 if job is None:
                     raise ValueError(
-                        f"unsupported job {args.url!r}; use MCH or BRD"
+                        f"unsupported job {args.url!r}; use BRD or MCH"
                     )
                 encounter_id = CURRENT_FIGHTS.get(args.fight.casefold())
                 if encounter_id is None:
@@ -758,7 +758,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         job = SUPPORTED_JOBS.get(args.item.casefold())
         if job is None:
-            raise ValueError(f"unsupported job {args.item!r}; use MCH, BRD, or buffs")
+            raise ValueError(f"unsupported job {args.item!r}; use BRD, MCH, or buffs")
         result = update_job_guide(
             job=job,
             patch=LATEST_KNOWN_PATCH,

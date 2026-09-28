@@ -11,16 +11,16 @@ from ffxiv_potency.analysis import (
     AnalysisResult,
     AutoAttackSummary,
     HitOutcomeSummary,
+    MchWildfireSummary,
     PetDeploymentSummary,
     PotionSummary,
     PotionWindow,
-    WildfireSummary,
 )
 from ffxiv_potency.analysis.models import (
-    ApexUseEstimate,
-    OutsideExpectedHit,
-    PitchHitEstimate,
-    PotencyEstimateSummary,
+    BrdApexUseEstimate,
+    BrdOutsideExpectedHit,
+    BrdPitchHitEstimate,
+    BrdPotencyEstimateSummary,
     ReducedDamageHit,
 )
 from ffxiv_potency.fflogs import DownloadResult, ReportReference
@@ -75,7 +75,7 @@ def test_clear_logs_yes_supports_custom_download_directory(tmp_path: Path) -> No
     assert not any(logs.iterdir())
 
 
-def test_cli_analyses_saved_bard_fight(
+def test_cli_analyses_saved_brd_fight(
     monkeypatch, tmp_path: Path, extract_fight, capsys
 ) -> None:
     extract_fight("bard_dancing_mad.zip", "7CANHrvwKT6tp2Gx/fight-7/source-2/")
@@ -95,7 +95,7 @@ def test_cli_analyses_saved_bard_fight(
 
 
 @pytest.mark.parametrize("alias", ["machinist", "MACHINIST", "MCH", "mch"])
-def test_cli_updates_machinist_snapshot(monkeypatch, tmp_path: Path, capsys, alias: str) -> None:
+def test_cli_updates_mch_snapshot(monkeypatch, tmp_path: Path, capsys, alias: str) -> None:
     expected = SnapshotResult(
         source=tmp_path / "machinist" / "7.55" / "source.html",
         actions=tmp_path / "machinist" / "7.55" / "actions.json",
@@ -119,7 +119,7 @@ def test_cli_updates_machinist_snapshot(monkeypatch, tmp_path: Path, capsys, ali
 
 
 @pytest.mark.parametrize("alias", ["bard", "BARD", "BRD", "brd"])
-def test_cli_updates_bard_snapshot(monkeypatch, tmp_path: Path, capsys, alias: str) -> None:
+def test_cli_updates_brd_snapshot(monkeypatch, tmp_path: Path, capsys, alias: str) -> None:
     expected = SnapshotResult(
         source=tmp_path / "bard/7.55/source.html",
         actions=tmp_path / "bard/7.55/actions.json",
@@ -173,7 +173,7 @@ def test_cli_jobguide_without_item_updates_all_jobs_and_buffs(
     monkeypatch.setattr(cli, "update_raid_effects", fake_update_raid_effects)
 
     assert cli.main(["jobguide", "--output", str(tmp_path)]) == 0
-    assert updated == ["machinist", "bard", "buffs"]
+    assert updated == ["bard", "machinist", "buffs"]
     output = capsys.readouterr().out
     assert output.count("Wrote 1 actions:") == 2
     assert "Saved raid effects:" in output
@@ -244,19 +244,19 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
         ghosted_target_low_hp=(("Chain Saw", ((222.2, 0),)),),
         ghosted_ending_times=(("Chain Saw", ((12, "target defeated before hit landed"),)),),
         reduced_damage_hits=(ReducedDamageHit(222.2, "Iron Jaws", 1, 26097, "Test Boss"),),
-        potency_estimates=(
-            PotencyEstimateSummary(
+        brd_potency_estimates=(
+            BrdPotencyEstimateSummary(
                 "Apex Arrow", 2, 1, 35,
-                apex_uses=(ApexUseEstimate(12, 1, 85, (85,)),
-                           ApexUseEstimate(222.2, 1, 95, (95, 100))),
+                apex_uses=(BrdApexUseEstimate(12, 1, 85, (85,)),
+                           BrdApexUseEstimate(222.2, 1, 95, (95, 100))),
             ),
-            PotencyEstimateSummary(
+            BrdPotencyEstimateSummary(
                 "Pitch Perfect", 20, 1, 140, 1,
-                (OutsideExpectedHit(31_482, 360, 32_445, 36_948),),
-                pitch_uncertain_hits=(PitchHitEstimate(222.2, "3-stack full hit", (), True),),
+                (BrdOutsideExpectedHit(31_482, 360, 32_445, 36_948),),
+                pitch_uncertain_hits=(BrdPitchHitEstimate(222.2, "3-stack full hit", (), True),),
             ),
         ),
-        wildfires=(WildfireSummary(14.091, 24.673, 5, 1_288.78),),
+        mch_wildfires=(MchWildfireSummary(14.091, 24.673, 5, 1_288.78),),
     )
 
     def fake_analyze(saved_directory: Path, actions_path: Path) -> AnalysisResult:

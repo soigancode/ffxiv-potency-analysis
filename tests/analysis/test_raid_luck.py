@@ -45,7 +45,12 @@ def test_old_local_effects_fall_back_to_complete_bundled_data(tmp_path: Path) ->
         (Path(__file__).parents[2] / "data/raid_effects/7.55.json").read_text()
     )
     existing.write_text(
-        json.dumps({"patch": "7.55", "effects": bundled["effects"][:4] + bundled["effects"][6:]}),
+        json.dumps({
+            "patch": "7.55",
+            "effects": [
+                effect for effect in bundled["effects"] if effect["action"] != "Devilment"
+            ],
+        }),
         encoding="utf-8",
     )
     assert _load_raid_effects(actions) == bundled["effects"]

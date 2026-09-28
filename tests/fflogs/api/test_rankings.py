@@ -166,7 +166,7 @@ def test_research_skips_unavailable_and_anonymous_rankings() -> None:
     "rank_name, actor_name",
     [("Anonymous", "Player (7)"), ("Named on leaderboard", "Anonymous")],
 )
-def test_anonymous_report_code_resolves_sole_bard_in_fight(
+def test_anonymous_report_code_resolves_sole_brd_in_fight(
     rank_name: str, actor_name: str
 ) -> None:
     anonymous_code = "a:DNaXrgHGZ8PbCkfL"

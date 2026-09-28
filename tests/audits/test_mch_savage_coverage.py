@@ -19,7 +19,7 @@ from ffxiv_potency.analysis import analyze_saved_fight
 )
 def test_full_savage_log_coverage(
     tmp_path: Path,
-    machinist_actions: Path,
+    mch_actions: Path,
     extract_fight,
     archive_name: str,
     prefix: str,
@@ -30,7 +30,7 @@ def test_full_savage_log_coverage(
     potions: int,
 ) -> None:
     extract_fight(archive_name, prefix)
-    result = analyze_saved_fight(tmp_path, machinist_actions)
+    result = analyze_saved_fight(tmp_path, mch_actions)
 
     assert result.encounter_id == encounter
     assert result.landed_damage_events == landed
@@ -49,4 +49,4 @@ def test_full_savage_log_coverage(
         assert (by_name["Chain Saw"].uses, by_name["Chain Saw"].hits) == (9, 15)
         assert (by_name["Flamethrower"].uses, by_name["Flamethrower"].hits) == (2, 14)
     if encounter == 104:
-        assert result.pet_deployments[-1].missing_finishers == ("Crowned Collider",)
+        assert result.pet_deployments[-1].mch_missing_finishers == ("Crowned Collider",)

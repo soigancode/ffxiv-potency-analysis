@@ -28,7 +28,7 @@ _REQUIRED_FILES = {"fight.json", "master-data.json", "cast-events.json", "damage
 
 
 @pytest.fixture(scope="session")
-def machinist_action_json() -> str:
+def mch_action_json() -> str:
     html = (JOBGUIDE_FIXTURES / "machinist_full_7_5.html").read_text(encoding="utf-8")
     return json.dumps(
         {
@@ -40,9 +40,9 @@ def machinist_action_json() -> str:
 
 
 @pytest.fixture
-def machinist_actions(tmp_path: Path, machinist_action_json: str) -> Path:
+def mch_actions(tmp_path: Path, mch_action_json: str) -> Path:
     path = tmp_path / "actions.json"
-    path.write_text(machinist_action_json, encoding="utf-8")
+    path.write_text(mch_action_json, encoding="utf-8")
     return path
 
 

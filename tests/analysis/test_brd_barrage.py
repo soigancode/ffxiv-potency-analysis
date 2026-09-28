@@ -1,6 +1,6 @@
 """Barrage changes Shadowbite potency when the buff is consumed."""
 
-from ffxiv_potency.analysis.bard.barrage import _barrage_shadowbite_packets
+from ffxiv_potency.analysis.brd.barrage import _barrage_shadowbite_packets
 from ffxiv_potency.analysis.potency import _direct_potency
 
 
@@ -22,5 +22,7 @@ def test_barrage_shadowbite_uses_buff_window_including_removal_at_cast() -> None
     assert packets == {(11, 2)}
     action = {"name": "Shadowbite", "potency": {"base": 200, "barrage_potency": 300}}
     event = {"packetID": 11, "abilityGameID": 2}
-    assert _direct_potency(action, event, is_primary_target=True, barrage=True) == (300, 300)
+    assert _direct_potency(
+        action, event, is_primary_target=True, base_potency_override=300
+    ) == (300, 300)
     assert _direct_potency(action, event, is_primary_target=True) == (200, 200)

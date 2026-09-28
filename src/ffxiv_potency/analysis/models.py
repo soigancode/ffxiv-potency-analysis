@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass
 
-from .bard.dots import BardDotActionSummary
-from .bard.songs import BardFinaleSummary
-from .machinist.wildfire import WildfireSummary
+from .brd.dots import BrdDotActionSummary
+from .brd.songs import BrdFinaleSummary
+from .mch.wildfire import MchWildfireSummary
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,12 +34,12 @@ class PetDeploymentSummary:
     gauge_spent: int
     potency_min: float = 0.0
     potency_max: float = 0.0
-    missing_finishers: tuple[str, ...] = ()
-    overdrive_seconds: float | None = None
+    mch_missing_finishers: tuple[str, ...] = ()
+    mch_overdrive_seconds: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
-class OutsideExpectedHit:
+class BrdOutsideExpectedHit:
     normalized_damage: float
     potency: float
     lower_damage: float
@@ -56,7 +56,7 @@ class ReducedDamageHit:
 
 
 @dataclass(frozen=True, slots=True)
-class ApexUseEstimate:
+class BrdApexUseEstimate:
     seconds: float
     hits: int
     gauge: int
@@ -66,7 +66,7 @@ class ApexUseEstimate:
 
 
 @dataclass(frozen=True, slots=True)
-class PitchHitEstimate:
+class BrdPitchHitEstimate:
     seconds: float
     best_fit: str
     plausible_fits: tuple[str, ...]
@@ -75,15 +75,15 @@ class PitchHitEstimate:
 
 
 @dataclass(frozen=True, slots=True)
-class PotencyEstimateSummary:
+class BrdPotencyEstimateSummary:
     action: str
     estimated_hits: int
     uncertain_hits: int
     uncertainty_potency: float
     outside_expected_hits: int = 0
-    outside_expected_details: tuple[OutsideExpectedHit, ...] = ()
-    apex_uses: tuple[ApexUseEstimate, ...] = ()
-    pitch_uncertain_hits: tuple[PitchHitEstimate, ...] = ()
+    outside_expected_details: tuple[BrdOutsideExpectedHit, ...] = ()
+    apex_uses: tuple[BrdApexUseEstimate, ...] = ()
+    pitch_uncertain_hits: tuple[BrdPitchHitEstimate, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,12 +161,12 @@ class AnalysisResult:
     ghosted_target_low_hp: tuple[tuple[str, tuple[tuple[float, int], ...]], ...] = ()
     ghosted_ending_times: tuple[tuple[str, tuple[tuple[float, str], ...]], ...] = ()
     reduced_damage_hits: tuple[ReducedDamageHit, ...] = ()
-    wildfires: tuple[WildfireSummary, ...] = ()
-    potency_estimates: tuple[PotencyEstimateSummary, ...] = ()
-    bard_songs: tuple[tuple[str, int], ...] = ()
-    bard_song_durations: tuple[tuple[str, float], ...] = ()
-    bard_finales: tuple[BardFinaleSummary, ...] = ()
-    bard_dots: tuple[BardDotActionSummary, ...] = ()
+    mch_wildfires: tuple[MchWildfireSummary, ...] = ()
+    brd_potency_estimates: tuple[BrdPotencyEstimateSummary, ...] = ()
+    brd_songs: tuple[tuple[str, int], ...] = ()
+    brd_song_durations: tuple[tuple[str, float], ...] = ()
+    brd_finales: tuple[BrdFinaleSummary, ...] = ()
+    brd_dots: tuple[BrdDotActionSummary, ...] = ()
 
     @property
     def pps_min(self) -> float:

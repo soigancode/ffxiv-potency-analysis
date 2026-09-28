@@ -15,10 +15,10 @@ from ffxiv_potency.analysis import analyze_saved_fight
 
 
 def test_dancing_mad_potion_windows_and_phase_regression(
-    tmp_path: Path, machinist_actions: Path, extract_fight, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, mch_actions: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
     extract_fight("dancing_mad_ultimate.zip", "GaAKTpkz4dLq6Qrb/fight-14/source-14/")
-    result = analyze_saved_fight(tmp_path, machinist_actions)
+    result = analyze_saved_fight(tmp_path, mch_actions)
 
     assert result.encounter_id == 1085
     assert result.duration_seconds == pytest.approx(1108.412)
@@ -42,22 +42,22 @@ def test_dancing_mad_potion_windows_and_phase_regression(
     assert result.luck_score > result.adjusted_luck_score
 
     assert result.source_name == "Katsu Yggvera"
-    assert len(result.wildfires) == 10
-    assert result.wildfires[0].applied_seconds == pytest.approx(4.784)
-    assert result.wildfires[0].detonated_seconds == pytest.approx(14.770)
-    early = [use for use in result.wildfires if use.detonated_early]
+    assert len(result.mch_wildfires) == 10
+    assert result.mch_wildfires[0].applied_seconds == pytest.approx(4.784)
+    assert result.mch_wildfires[0].detonated_seconds == pytest.approx(14.770)
+    early = [use for use in result.mch_wildfires if use.detonated_early]
     assert [round(use.applied_seconds, 3) for use in early] == [365.927, 849.438, 1096.372]
     # Full Metal Field is cast as Wildfire applies at 365.927s and lands at
     # 366.951s; its landed hit contributes the sixth stack.
     assert [use.landed_weaponskills for use in early] == [6, 4, 1]
-    assert sum(use.potency for use in result.wildfires) == pytest.approx(
+    assert sum(use.potency for use in result.mch_wildfires) == pytest.approx(
         next(action.potency_min for action in result.actions if action.name == "Wildfire")
     )
 
-    overdriven = [queen for queen in result.pet_deployments if queen.overdrive_seconds is not None]
+    overdriven = [queen for queen in result.pet_deployments if queen.mch_overdrive_seconds is not None]
     assert len(overdriven) == 1
     assert overdriven[0].timestamp_seconds == pytest.approx(1095.079)
-    assert overdriven[0].overdrive_seconds == pytest.approx(1103.054)
+    assert overdriven[0].mch_overdrive_seconds == pytest.approx(1103.054)
 
     # Chain Stratagem is an enemy debuff carried by the affected damage events.
     # Removing its marker raises the reported luck: the observed crits remain,
@@ -69,7 +69,7 @@ def test_dancing_mad_potion_windows_and_phase_regression(
         if "buffs" in event:
             event["buffs"] = event["buffs"].replace("1001221.", "")
     events_path.write_text(json.dumps(events), encoding="utf-8")
-    without_chain = analyze_saved_fight(tmp_path, machinist_actions)
+    without_chain = analyze_saved_fight(tmp_path, mch_actions)
     assert without_chain.luck_score == pytest.approx(result.luck_score)
     assert without_chain.adjusted_luck_score > result.adjusted_luck_score
     assert without_chain.luck_baseline == result.luck_baseline

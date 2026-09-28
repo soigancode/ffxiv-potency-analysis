@@ -15,7 +15,7 @@ def _direct_potency(
     gauge_spent: int | None = None,
     gauge_minimum: int | None = None,
     gauge_maximum: int | None = None,
-    barrage: bool = False,
+    base_potency_override: int | None = None,
 ) -> tuple[float, float] | None:
     potency = action.get("potency")
     if not isinstance(potency, dict):
@@ -32,8 +32,8 @@ def _direct_potency(
             return None
 
     value = potency.get("base")
-    if barrage and action.get("name") == "Shadowbite":
-        value = potency.get("barrage_potency", value)
+    if base_potency_override is not None:
+        value = base_potency_override
     combo = potency.get("combo")
     if event.get("bonusPercent") is not None and isinstance(combo, dict):
         value = combo.get("potency", value)
@@ -67,5 +67,4 @@ def _direct_potency(
 def _is_channeled_action(action: dict[str, Any]) -> bool:
     description = " ".join(action.get("description", ())).casefold()
     return "effect ends upon using another action or moving" in description
-
 

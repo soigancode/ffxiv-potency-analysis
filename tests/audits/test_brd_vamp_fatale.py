@@ -9,7 +9,7 @@ from ffxiv_potency import cli
 from ffxiv_potency.analysis import analyze_saved_fight
 
 
-def test_bard_adds_and_clipped_hit(
+def test_brd_adds_and_clipped_hit(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
     extract_fight("bard_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
@@ -22,13 +22,13 @@ def test_bard_adds_and_clipped_hit(
     assert (by_name["Shadowbite"].uses, by_name["Shadowbite"].hits) == (5, 13)
     assert by_name["Shadowbite"].potency_min == pytest.approx(2604)
     assert (by_name["Rain of Death"].uses, by_name["Rain of Death"].hits) == (9, 28)
-    apex = next(row for row in result.potency_estimates if row.action == "Apex Arrow")
+    apex = next(row for row in result.brd_potency_estimates if row.action == "Apex Arrow")
     assert (len(apex.apex_uses), apex.estimated_hits) == (8, 11)
     assert all(use.potency is not None for use in apex.apex_uses)
     assert sum(use.potency for use in apex.apex_uses if use.potency is not None) == pytest.approx(
         by_name["Apex Arrow"].potency_min
     )
-    assert dict(result.bard_song_durations)["Army's Paeon"] == pytest.approx(36.97225)
+    assert dict(result.brd_song_durations)["Army's Paeon"] == pytest.approx(36.97225)
     assert result.reduced_damage_hits[0].target == "Charnel Cell"
     assert result.reduced_damage_hits[0].damage == 19_726
     assert result.reduced_damage_hits[0].overkill == 16_795

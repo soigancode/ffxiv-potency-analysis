@@ -8,15 +8,15 @@ from typing import Any
 
 from ..events import _event_name, _has_buff
 from ..models import (
-    ApexUseEstimate,
-    OutsideExpectedHit,
-    PitchHitEstimate,
-    PotencyEstimateSummary,
+    BrdApexUseEstimate,
+    BrdOutsideExpectedHit,
+    BrdPitchHitEstimate,
+    BrdPotencyEstimateSummary,
 )
-from .songs import _bard_coda
+from .songs import _brd_coda
 
 
-def _bard_damage_estimates(
+def _brd_damage_estimates(
     landed: list[dict[str, Any]],
     casts: list[dict[str, Any]],
     raw_damage: list[Any],
@@ -26,7 +26,7 @@ def _bard_damage_estimates(
     fight_start: float = 0.0,
     potion_multiplier: float = 1.0,
     potion_buff_id: int = 1000049,
-) -> tuple[dict[int, tuple[float, bool, float]], tuple[PotencyEstimateSummary, ...]]:
+) -> tuple[dict[int, tuple[float, bool, float]], tuple[BrdPotencyEstimateSummary, ...]]:
     """Infer BRD variable potency from fixed attacks by the same player.
 
     The returned values are base potency, before applying the potion in the
@@ -61,7 +61,7 @@ def _bard_damage_estimates(
             )
     if not references:
         return {}, ()
-    encore_coda, _, _ = _bard_coda(casts, names)
+    encore_coda, _, _ = _brd_coda(casts, names)
     all_references = [(target, time, value) for target, rows in references.items()
                       for time, value in rows]
     packets: dict[tuple[Any, Any], list[dict[str, Any]]] = defaultdict(list)
@@ -70,9 +70,9 @@ def _bard_damage_estimates(
             packets[(event.get("packetID"), event.get("abilityGameID"))].append(event)
     estimates: dict[int, tuple[float, bool, float]] = {}
     counts: dict[str, list[float]] = defaultdict(lambda: [0, 0, 0.0, 0])
-    outside_details: dict[str, list[OutsideExpectedHit]] = defaultdict(list)
-    apex_uses: list[ApexUseEstimate] = []
-    pitch_uncertain_hits: list[PitchHitEstimate] = []
+    outside_details: dict[str, list[BrdOutsideExpectedHit]] = defaultdict(list)
+    apex_uses: list[BrdApexUseEstimate] = []
+    pitch_uncertain_hits: list[BrdPitchHitEstimate] = []
     for packet, hits in packets.items():
         action = _event_name(hits[0], names)
         cast = next((cast for cast in casts if
@@ -143,7 +143,7 @@ def _bard_damage_estimates(
             hit_time = hits[0].get("timestamp")
             timestamp = cast_time if isinstance(cast_time, (int, float)) else hit_time
             if isinstance(timestamp, (int, float)):
-                apex_uses.append(ApexUseEstimate(
+                apex_uses.append(BrdApexUseEstimate(
                     (timestamp - fight_start) / 1000,
                     len(measured),
                     int(20 + (apex_choice - 140) / 7),
@@ -213,7 +213,7 @@ def _bard_damage_estimates(
                     closest_bound = min(
                         (lower_bound, upper_bound), key=lambda bound: abs(effective - bound)
                     )
-                    pitch_uncertain_hits.append(PitchHitEstimate(
+                    pitch_uncertain_hits.append(BrdPitchHitEstimate(
                         (timestamp - fight_start) / 1000,
                         pitch_label(chosen),
                         plausible,
@@ -227,7 +227,7 @@ def _bard_damage_estimates(
             if action == "Pitch Perfect" and not hit.get("overkill") and outside_expected:
                 counts[action][3] += 1
                 outside_details[action].append(
-                    OutsideExpectedHit(
+                    BrdOutsideExpectedHit(
                         normalized_damage=normalized(hit),
                         potency=chosen,
                         lower_damage=baselines[id(hit)] * chosen * (1 - tolerance),
@@ -235,7 +235,7 @@ def _bard_damage_estimates(
                     )
                 )
     return estimates, tuple(
-        PotencyEstimateSummary(
+        BrdPotencyEstimateSummary(
             name, int(row[0]), int(row[1]), row[2], int(row[3]),
             tuple(outside_details[name]),
             tuple(sorted(apex_uses, key=lambda use: use.seconds)) if name == "Apex Arrow" else (),

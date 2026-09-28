@@ -7,7 +7,7 @@ from itertools import pairwise
 from statistics import median
 from typing import Any
 
-from .bard.buffs import _bard_self_multiplier
+from .brd.buffs import _brd_self_multiplier
 from .damage import landed_fraction
 from .errors import AnalysisError
 from .events import _has_buff
@@ -88,7 +88,7 @@ def _summarize_auto_attacks(
         )
         buffed_bases = [
             potency_per_hit * landed_fraction(event) * (
-                _bard_self_multiplier(
+                _brd_self_multiplier(
                     str(event.get("buffs", "")), float(event.get("timestamp", 0)), self_windows
                 ) if self_windows else 1.0
             )
