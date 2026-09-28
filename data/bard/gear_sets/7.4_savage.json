@@ -1,0 +1,13 @@
+{
+  "label": "7.4 Savage BiS",
+  "patch": "7.4",
+  "level": 100,
+  "weapon_damage": 158,
+  "weapon_delay_seconds": 3.04,
+  "party_dexterity": 6838,
+  "critical_hit": 3549,
+  "direct_hit": 1981,
+  "determination": 2509,
+  "skill_speed": 474,
+  "expected_damage_per_100_potency": 12329.55
+}

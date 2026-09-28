@@ -1,20 +1,29 @@
+import io
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 
 from ffxiv_potency import cli
-from ffxiv_potency.fflogs import (
+from ffxiv_potency.analysis import (
     ActionSummary,
     AnalysisResult,
     AutoAttackSummary,
-    DownloadResult,
     HitOutcomeSummary,
     PetDeploymentSummary,
     PotionSummary,
     PotionWindow,
     WildfireSummary,
 )
+from ffxiv_potency.analysis.models import (
+    ApexUseEstimate,
+    OutsideExpectedHit,
+    PitchHitEstimate,
+    PotencyEstimateSummary,
+    ReducedDamageHit,
+)
+from ffxiv_potency.fflogs import DownloadResult, ReportReference
 from ffxiv_potency.jobguide import SnapshotResult
 
 
@@ -33,6 +42,56 @@ def _write_selected_log(directory: Path, source_id: int, subtype: str = "Machini
     (directory / "rankings.json").write_text(
         '{"metric":"ndps","rankings":{},"rdps":{}}', encoding="utf-8"
     )
+
+
+def test_clear_logs_requires_confirmation_and_keeps_job_snapshots(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    logs = tmp_path / "data/logs"
+    saved = logs / "report/fight-1/source-2/fight.json"
+    saved.parent.mkdir(parents=True)
+    saved.write_text("{}", encoding="utf-8")
+    actions = tmp_path / "data/bard/7.55/actions.json"
+    actions.parent.mkdir(parents=True)
+    actions.write_text("{}", encoding="utf-8")
+
+    monkeypatch.setattr("builtins.input", lambda prompt: "no")
+    assert cli.main(["clear", "logs"]) == 0
+    assert saved.exists()
+    assert "Cancelled." in capsys.readouterr().out
+
+    monkeypatch.setattr("builtins.input", lambda prompt: "yes")
+    assert cli.main(["clear", "logs"]) == 0
+    assert logs.is_dir() and not any(logs.iterdir())
+    assert actions.exists()
+
+
+def test_clear_logs_yes_supports_custom_download_directory(tmp_path: Path) -> None:
+    logs = tmp_path / "downloads"
+    logs.mkdir()
+    (logs / "fight.json").write_text("{}", encoding="utf-8")
+    assert cli.main(["clear", "logs", "--output", str(logs), "--yes"]) == 0
+    assert not any(logs.iterdir())
+
+
+def test_cli_analyses_saved_bard_fight(
+    monkeypatch, tmp_path: Path, extract_fight, capsys
+) -> None:
+    extract_fight("bard_dancing_mad.zip", "7CANHrvwKT6tp2Gx/fight-7/source-2/")
+    actions = tmp_path / "data/bard/7.55/actions.json"
+    actions.parent.mkdir(parents=True)
+    shutil.copyfile(Path(__file__).resolve().parents[1] / "data/bard/7.55/actions.json", actions)
+    monkeypatch.chdir(tmp_path)
+
+    assert cli.main(["analyse", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "Pitch Perfect" in output
+    assert "Apex Arrow" in output
+    assert "phase transition" not in output
+    variable_section = output.split("Variable potency:", 1)[1].split("\n\n", 1)[0]
+    assert "Radiant Encore" not in variable_section
+    assert "  Radiant Encore:" in output  # Still counted in the actions summary.
 
 
 @pytest.mark.parametrize("alias", ["machinist", "MACHINIST", "MCH", "mch"])
@@ -59,8 +118,26 @@ def test_cli_updates_machinist_snapshot(monkeypatch, tmp_path: Path, capsys, ali
     assert f"Wrote 40 actions: {expected.actions}" in output
 
 
+@pytest.mark.parametrize("alias", ["bard", "BARD", "BRD", "brd"])
+def test_cli_updates_bard_snapshot(monkeypatch, tmp_path: Path, capsys, alias: str) -> None:
+    expected = SnapshotResult(
+        source=tmp_path / "bard/7.55/source.html",
+        actions=tmp_path / "bard/7.55/actions.json",
+        action_count=34,
+    )
+
+    def fake_update_job_guide(**kwargs) -> SnapshotResult:
+        assert kwargs["job"] == "bard"
+        assert kwargs["output_root"] == tmp_path
+        return expected
+
+    monkeypatch.setattr(cli, "update_job_guide", fake_update_job_guide)
+    assert cli.main(["jobguide", alias, "--output", str(tmp_path)]) == 0
+    assert f"Wrote 34 actions: {expected.actions}" in capsys.readouterr().out
+
+
 def test_cli_updates_raid_buffs_without_patch(monkeypatch, tmp_path: Path, capsys) -> None:
-    expected = tmp_path / "raid_buffs/7.55/effects.json"
+    expected = tmp_path / "raid_effects/7.55.json"
 
     def fake_update(output_root: Path) -> Path:
         assert output_root == tmp_path
@@ -132,6 +209,22 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
         direct_gear_baseline=0.288,
         direct_critical_gear_baseline=0.277 * 0.288,
         ghosted_times=(("Chain Saw", (222.2, 12)),),
+        ghosted_targets=(("Chain Saw", ((222.2, "Test Boss"), (12, "Test Add"))),),
+        ghosted_target_low_hp=(("Chain Saw", ((222.2, 0),)),),
+        ghosted_ending_times=(("Chain Saw", ((12, "target defeated before hit landed"),)),),
+        reduced_damage_hits=(ReducedDamageHit(222.2, "Iron Jaws", 1, 26097, "Test Boss"),),
+        potency_estimates=(
+            PotencyEstimateSummary(
+                "Apex Arrow", 2, 1, 35,
+                apex_uses=(ApexUseEstimate(12, 1, 85, (85,)),
+                           ApexUseEstimate(222.2, 1, 95, (95, 100))),
+            ),
+            PotencyEstimateSummary(
+                "Pitch Perfect", 20, 1, 140, 1,
+                (OutsideExpectedHit(31_482, 360, 32_445, 36_948),),
+                pitch_uncertain_hits=(PitchHitEstimate(222.2, "3-stack full hit", (), True),),
+            ),
+        ),
         wildfires=(WildfireSummary(14.091, 24.673, 5, 1_288.78),),
     )
 
@@ -149,6 +242,14 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert "Player: Test Player" in output
     assert "Landed potency: 350-400" in output
     assert "Potency per second: 35.00-40.00" in output
+    assert "00m12s: 1 hit, 85 gauge" in output
+    assert "03m42s: 1 hit, best estimate 95 gauge (plausible 95–100 gauge)" in output
+    assert "Pitch Perfect: 20 hits, 1 hit with ambiguous potency\n" in output
+    assert "03m42s: closest fit: 3-stack full hit; outside expected damage" in output
+    assert "03m42s Chain Saw on Test Boss (target at 0 HP)" in output
+    assert "00m12s Chain Saw on Test Add (target defeated before hit landed)" in output
+    assert "03m42s Iron Jaws on Test Boss: 1/26,098 damage (0.0038% potency counted)" in output
+    assert output.index("Reduced damage hits:") < output.index("Ghosted damaging casts:")
     assert "estimated 2.672s -> 2.64s weapon delay" in output
     assert "Potency gained: 7" in output
     assert "Window 1: -00m02s–00m28s" in output
@@ -157,7 +258,7 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert "00m14s–00m25s: 5/6 landed weaponskills, 1,289 potency" in output
     assert output.index("Wildfire:") < output.index("Pet deployments:")
     assert "Shot: 1" in output
-    assert "  00m12s Chain Saw\n  03m42s Chain Saw" in output
+    assert "  00m12s Chain Saw on Test Add (target defeated before hit landed)" in output
     assert output.index("Ghosted damaging casts:") < output.index("Potions:")
     expected_outcomes = """Observed hit outcomes:
   Normal Hit: 1
@@ -267,6 +368,61 @@ def test_saved_fight_refreshes_old_rankings_only(monkeypatch, tmp_path: Path) ->
     assert refreshes == 1
 
 
+def test_analyse_backfills_targetability_without_redownloading_fight(
+    monkeypatch, tmp_path: Path
+) -> None:
+    url = "https://www.fflogs.com/reports/abc123?fight=9&source=18"
+    directory = tmp_path / "abc123/fight-9/source-18"
+    _write_selected_log(directory, 18)
+    monkeypatch.setenv("FFLOGS_CLIENT_ID", "test-id")
+    monkeypatch.setenv("FFLOGS_CLIENT_SECRET", "test-secret")
+    calls = []
+
+    def fake_refresh(reference, saved_directory: Path) -> None:
+        calls.append((reference.fight_id, saved_directory))
+        (saved_directory / "targetability-events.json").write_text("[]", encoding="utf-8")
+
+    def fake_overkills(reference, saved_directory: Path) -> None:
+        assert reference.fight_id == 9
+        assert saved_directory == directory
+        (saved_directory / "encounter-overkill-events.json").write_text("[]", encoding="utf-8")
+
+    monkeypatch.setattr(cli, "refresh_targetability_events", fake_refresh)
+    monkeypatch.setattr(cli, "refresh_encounter_overkill_events", fake_overkills)
+    assert cli._resolve_analysis_directory(
+        url, tmp_path, include_targetability=True
+    ) == directory
+    assert cli._resolve_analysis_directory(
+        url, tmp_path, include_targetability=True
+    ) == directory
+    assert calls == [(9, directory)]
+
+
+def test_anonymous_report_cache_reconstructs_original_code(tmp_path: Path) -> None:
+    reference = ReportReference("a:DNaXrgHGZ8PbCkfL", 22, 4)
+    directory = cli._saved_directory(tmp_path, reference)
+    assert directory == tmp_path / "a-DNaXrgHGZ8PbCkfL/fight-22/source-4"
+    assert cli._reference_from_directory(directory) == reference
+
+
+def test_compare_anonymous_player_uses_terminal_italics(
+    monkeypatch, tmp_path: Path
+) -> None:
+    path = tmp_path / "a-DNaXrgHGZ8PbCkfL/fight-22/source-7"
+    assert cli._comparison_player_field("Player (7)", path) == f"{'Anonymous':<24}"
+
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    monkeypatch.setattr(cli.sys, "stdout", Terminal())
+    field = cli._comparison_player_field("Player (7)", path)
+    assert field == "\x1b[3mAnonymous\x1b[23m" + " " * (24 - len("Anonymous"))
+    assert cli._comparison_player_field("Alice", tmp_path / "abc/fight-1/source-3") == (
+        f"{'Alice':<24}"
+    )
+
+
 def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys) -> None:
     urls = [
         "https://www.fflogs.com/reports/abc123?fight=9&source=18",
@@ -333,10 +489,21 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     assert "nDPS" in output and "15,000.0" in output
     assert "rDPS" in output and "15,100.0" in output
     assert "Player" in output and "Luck" in output and "51.54%" in output
+    assert "Rank" not in output
     assert "aLuck" in output and "45.12%" in output
     assert "Crit" not in output and "DH" not in output and "CDH" not in output
     assert "Alice" in output and "1,000" in output and "10" in output
     assert "Bob" in output and "1,200" in output and "12" in output
+
+    cli._compare_directories(
+        [tmp_path / "abc123/fight-9/source-18", tmp_path / "def456/fight-2/source-7"],
+        actions,
+        rank_positions=(1, 9),
+    )
+    ranked_output = capsys.readouterr().out
+    assert "Rank Player" in ranked_output
+    assert any(line.startswith("   1 Alice") for line in ranked_output.splitlines())
+    assert any(line.startswith("   9 Bob") for line in ranked_output.splitlines())
 
     def fail_download(*args, **kwargs):
         raise AssertionError("complete compare sources should be reused")
@@ -372,6 +539,11 @@ def test_cli_compare_accepts_ten_urls(monkeypatch, tmp_path: Path) -> None:
 
 def test_cli_default_actions_must_exist_before_compare(monkeypatch, tmp_path: Path, capsys) -> None:
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "reference_path",
+        lambda job, patch, filename: tmp_path / "data" / job / patch / filename,
+    )
     _write_selected_log(tmp_path / "data/logs/abc/fight-1/source-2", 2)
     _write_selected_log(tmp_path / "data/logs/def/fight-1/source-3", 3)
     urls = [
@@ -383,6 +555,12 @@ def test_cli_default_actions_must_exist_before_compare(monkeypatch, tmp_path: Pa
     error = capsys.readouterr().err
     assert "data/machinist/7.55/actions.json" in error
     assert "jobguide machinist" in error
+
+
+def test_cli_uses_installed_actions_when_no_checkout_snapshot(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+    assert cli._actions_for_job("bard", None).is_file()
+    assert cli._actions_for_job("machinist", None).is_file()
 
 
 def test_cli_selects_actions_from_detected_job(monkeypatch, tmp_path: Path, capsys) -> None:
@@ -487,34 +665,51 @@ def test_cli_compare_rejects_different_encounters(monkeypatch, tmp_path: Path, c
         ("dmu", 1085),
     ],
 )
+@pytest.mark.parametrize(
+    "alias, expected_job", [("MCH", "machinist"), ("brd", "bard"), ("BARD", "bard")]
+)
 def test_cli_rankings_shortcuts_compare_top_logs(
-    monkeypatch, tmp_path: Path, capsys, fight: str, encounter: int
+    monkeypatch, tmp_path: Path, capsys, fight: str, encounter: int,
+    alias: str, expected_job: str,
 ) -> None:
     from ffxiv_potency.fflogs import ReportReference
 
     seen = []
 
     def fake_rankings(encounter_id: int, job: str):
-        assert (encounter_id, job) == (encounter, "machinist")
-        return (ReportReference("abc123", 9, 18), ReportReference("def456", 4, 7))
+        assert (encounter_id, job) == (encounter, expected_job)
+        return (
+            ((1, ReportReference("abc123", 9, 18)),
+             (3, ReportReference("def456", 4, 7))),
+            ((2, "report unavailable"),),
+        )
 
     def fake_resolve(source: str, output: Path, *, announce: bool = True) -> Path:
         assert output == tmp_path and announce is False
         seen.append(source)
-        return tmp_path / str(len(seen))
+        return tmp_path / ("1" if "abc123" in source else "2")
 
-    def fake_compare(directories, override) -> None:
+    def fake_compare(directories, override, *, rank_positions=None) -> None:
         assert directories == [tmp_path / "1", tmp_path / "2"]
         assert override is None
+        assert rank_positions == (1, 3)
         print("Fight: Test Boss (101)")
 
-    monkeypatch.setattr(cli, "top_ranked_sources", fake_rankings)
+    monkeypatch.setattr(cli, "accessible_ranked_sources", fake_rankings)
     monkeypatch.setattr(cli, "_resolve_analysis_directory", fake_resolve)
     monkeypatch.setattr(cli, "_compare_directories", fake_compare)
-    assert cli.main(["fflogs", "MCH", fight, "--output", str(tmp_path)]) == 0
-    assert "Fight: Test Boss (101)" in capsys.readouterr().out
-    assert "abc123?fight=9&source=18" in seen[0]
-    assert "def456?fight=4&source=7" in seen[1]
+    assert cli.main(["fflogs", alias, fight, "--output", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "Fight: Test Boss (101)" in output
+    assert "Skipped inaccessible ranks: 2" in output
+    assert any("abc123?fight=9&source=18" in url for url in seen)
+    assert any("def456?fight=4&source=7" in url for url in seen)
+
+
+@pytest.mark.parametrize("rank", ["0", "11"])
+def test_cli_rejects_rank_outside_top_ten(rank: str, capsys) -> None:
+    assert cli.main(["fflogs", "brd", "umad", rank]) == 1
+    assert "rank must be between 1 and 10" in capsys.readouterr().err
 
 
 def test_progress_reuses_one_line_and_clears_it(monkeypatch, tmp_path: Path) -> None:
@@ -568,15 +763,20 @@ def test_rankings_show_processing_before_lookup(monkeypatch, tmp_path: Path) -> 
 
     def fake_rankings(encounter_id: int, job: str):
         assert terminal.getvalue() == "\rProcessing..."
-        return (ReportReference("abc123", 9, 18), ReportReference("def456", 4, 7))
+        return (
+            ((1, ReportReference("abc123", 9, 18)),
+             (2, ReportReference("def456", 4, 7))),
+            (),
+        )
 
     def fake_resolve(source: str, output: Path, *, announce: bool = True) -> Path:
         return tmp_path / "saved"
 
-    def fake_compare(directories, override, progress) -> None:
+    def fake_compare(directories, override, progress, *, rank_positions=None) -> None:
+        assert rank_positions == (1, 2)
         progress.clear()
 
-    monkeypatch.setattr(cli, "top_ranked_sources", fake_rankings)
+    monkeypatch.setattr(cli, "accessible_ranked_sources", fake_rankings)
     monkeypatch.setattr(cli, "_resolve_analysis_directory", fake_resolve)
     monkeypatch.setattr(cli, "_compare_directories", fake_compare)
     assert cli.main(["fflogs", "mch", "m10s", "--output", str(tmp_path)]) == 0

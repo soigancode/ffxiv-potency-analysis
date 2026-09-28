@@ -11,6 +11,9 @@ import pytest
 from ffxiv_potency.jobguide import parse_job_actions
 
 FIXTURES = Path(__file__).parent / "fixtures"
+JOBGUIDE_FIXTURES = FIXTURES / "jobguide"
+LOG_FIXTURES = FIXTURES / "logs"
+AUDIT_FIXTURES = FIXTURES / "audits"
 _LOG_FILES = {
     "fight": "fight.json",
     "master_data": "master-data.json",
@@ -18,13 +21,15 @@ _LOG_FILES = {
     "damage_events": "damage-events.json",
     "buff_events": "buff-events.json",
     "rankings": "rankings.json",
+    "targetability_events": "targetability-events.json",
+    "encounter_overkill_events": "encounter-overkill-events.json",
 }
 _REQUIRED_FILES = {"fight.json", "master-data.json", "cast-events.json", "damage-events.json"}
 
 
 @pytest.fixture(scope="session")
 def machinist_action_json() -> str:
-    html = (FIXTURES / "machinist_full_7_5.html").read_text(encoding="utf-8")
+    html = (JOBGUIDE_FIXTURES / "machinist_full_7_5.html").read_text(encoding="utf-8")
     return json.dumps(
         {
             "job": "machinist",
@@ -46,7 +51,7 @@ def load_audit(tmp_path: Path) -> Callable[[str], dict[str, Any]]:
     """Write a curated event fixture in the downloader's file format."""
 
     def load(name: str, case: str | None = None) -> dict[str, Any]:
-        source = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+        source = json.loads((AUDIT_FIXTURES / name).read_text(encoding="utf-8"))
         if case is not None:
             source = source["cases"][case]
         for key, filename in _LOG_FILES.items():
@@ -62,7 +67,7 @@ def extract_fight(tmp_path: Path) -> Callable[[str, str], None]:
     """Extract required fight files and any available buff/ranking records."""
 
     def extract(archive_name: str, prefix: str) -> None:
-        with ZipFile(FIXTURES / archive_name) as archive:
+        with ZipFile(LOG_FIXTURES / archive_name) as archive:
             members = set(archive.namelist())
             for filename in _LOG_FILES.values():
                 member = prefix + filename

@@ -1,0 +1,509 @@
+{
+  "schema_version": 1,
+  "job": "bard",
+  "patch": "7.55",
+  "source": {
+    "url": "https://eu.finalfantasyxiv.com/jobguide/bard/",
+    "retrieved_at": "2026-09-26T23:09:38.484858Z",
+    "sha256": "08bc3e0ec6da1879fa00d2f915075610bc306e45952c04ac6d0b16a48b5b5ce2"
+  },
+  "actions": [
+    {
+      "name": "Heavy Shot",
+      "level": 1,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 160
+      },
+      "description": [
+        "Delivers an attack with a potency of 160.",
+        "Additional Effect: 20% chance of granting Hawk's Eye",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Straight Shot",
+      "level": 2,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 200
+      },
+      "description": [
+        "Delivers an attack with a potency of 200.",
+        "Can only be executed when under the effect of Hawk's Eye or Barrage."
+      ]
+    },
+    {
+      "name": "Raging Strikes",
+      "level": 4,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Increases damage dealt by 15%.",
+        "Duration: 20s"
+      ]
+    },
+    {
+      "name": "Venomous Bite",
+      "level": 6,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 100,
+        "damage_over_time": {
+          "potency_per_tick": 15,
+          "duration_seconds": 45
+        }
+      },
+      "description": [
+        "Delivers an attack with a potency of 100.",
+        "Additional Effect: Venom",
+        "Potency: 15",
+        "Duration: 45s"
+      ]
+    },
+    {
+      "name": "Bloodletter",
+      "level": 12,
+      "type": "Ability",
+      "potency": {
+        "base": 130
+      },
+      "description": [
+        "Delivers an attack with a potency of 130.",
+        "Maximum Charges: 3",
+        "Shares a recast timer with Rain of Death."
+      ]
+    },
+    {
+      "name": "Repelling Shot",
+      "level": 15,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Jump 10 yalms away from current target.",
+        "Cannot be executed while bound."
+      ]
+    },
+    {
+      "name": "Quick Nock",
+      "level": 18,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 110
+      },
+      "description": [
+        "Delivers an attack with a potency of 110 to all enemies in a cone before you.",
+        "Additional Effect: 20% chance of granting Hawk's Eye",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Wide Volley",
+      "level": 25,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 140,
+        "barrage_potency": 220
+      },
+      "description": [
+        "Delivers an attack with a potency of 140 to target and all enemies nearby it.",
+        "Barrage Potency: 220",
+        "Can only be executed while under the effect of Hawk's Eye or Barrage."
+      ]
+    },
+    {
+      "name": "Windbite",
+      "level": 30,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 60,
+        "damage_over_time": {
+          "potency_per_tick": 20,
+          "duration_seconds": 45
+        }
+      },
+      "description": [
+        "Deals wind damage with a potency of 60.",
+        "Additional Effect: Wind damage over time",
+        "Potency: 20",
+        "Duration: 45s"
+      ]
+    },
+    {
+      "name": "Mage's Ballad",
+      "level": 30,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Grants Mage's Ballad to self and all party members within 50 yalms, increasing damage dealt by 1%.",
+        "Duration: 45s",
+        "Additional Effect: 80% chance to grant Repertoire",
+        "This effect can trigger repeatedly while singing the Mage's Ballad.",
+        "Repertoire Effect: Reduces the recast time of Heartbreak Shot and Rain of Death by 7.5s",
+        "Additional Effect: Grants Mage's Coda",
+        "Can only be executed while in combat."
+      ]
+    },
+    {
+      "name": "The Warden's Paean",
+      "level": 35,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Removes one select detrimental effect from self or target party member. If the target is not enfeebled, a barrier is created nullifying the target's next detrimental effect suffered.",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Barrage",
+      "level": 38,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Grants Barrage, allowing the use of Refulgent Arrow and Shadowbite. Upon execution, Refulgent Arrow will strike the selected target three times, while Shadowbite's potency will be increased to 300.",
+        "Duration: 10s",
+        "Additional Effect: Grants Resonant Arrow Ready",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Army's Paeon",
+      "level": 40,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Grants Army's Paeon to self and all party members within 50 yalms, increasing direct hit rate by 3%.",
+        "Duration: 45s",
+        "Additional Effect: 80% chance to grant Repertoire",
+        "This effect can trigger repeatedly while singing the Army's Paeon.",
+        "Repertoire Effect: Reduces weaponskill cast time and recast time, spell cast time and recast time, and auto-attack delay by 4%",
+        "Can be stacked up to 4 times.",
+        "Additional Effect: Grants Army's Coda",
+        "Can only be executed while in combat."
+      ]
+    },
+    {
+      "name": "Rain of Death",
+      "level": 45,
+      "type": "Ability",
+      "potency": {
+        "base": 100
+      },
+      "description": [
+        "Delivers an attack with a potency of 100 to target and all enemies nearby it.",
+        "Maximum Charges: 3",
+        "Shares a recast timer with Heartbreak Shot."
+      ]
+    },
+    {
+      "name": "Battle Voice",
+      "level": 50,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Increases direct hit rate of self and all nearby party members by 20%.",
+        "Duration: 20s"
+      ]
+    },
+    {
+      "name": "The Wanderer's Minuet",
+      "level": 52,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Grants the Wanderer's Minuet to self and all party members within 50 yalms, increasing critical hit rate by 2%.",
+        "Duration: 45s",
+        "Additional Effect: 80% chance to grant Repertoire",
+        "This effect can trigger repeatedly while singing the Wanderer's Minuet.",
+        "Repertoire Effect: Allows execution of Pitch Perfect",
+        "Can be stacked up to 3 times.",
+        "Additional Effect: Grants Wanderer's Coda",
+        "Can only be executed while in combat."
+      ]
+    },
+    {
+      "name": "Pitch Perfect",
+      "level": 52,
+      "type": "Ability",
+      "potency": {
+        "falloff": {
+          "additional_target_multiplier": 0.5
+        },
+        "stack_potency": {
+          "resource": "Repertoire",
+          "by_count": {
+            "1": 100,
+            "2": 220,
+            "3": 360
+          }
+        }
+      },
+      "description": [
+        "Delivers an attack to the target and all enemies nearby it. Potency varies with number of Repertoire stacks, dealing full damage for the first enemy, and 50% less for all remaining enemies.",
+        "1 Repertoire Stack: 100",
+        "2 Repertoire Stacks: 220",
+        "3 Repertoire Stacks: 360",
+        "Can only be executed when the Wanderer's Minuet is active and you have at least one stack of Repertoire."
+      ]
+    },
+    {
+      "name": "Empyreal Arrow",
+      "level": 54,
+      "type": "Ability",
+      "potency": {
+        "base": 260
+      },
+      "description": [
+        "Delivers an attack with a potency of 260.",
+        "Additional Effect: Grants Repertoire while singing Mage's Ballad, Army's Paeon, or the Wanderer's Minuet"
+      ]
+    },
+    {
+      "name": "Iron Jaws",
+      "level": 56,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 100
+      },
+      "description": [
+        "Delivers an attack with a potency of 100.",
+        "Additional Effect: If the target is suffering from a Caustic Bite or Stormbite effect inflicted by you, the effect timer is reset",
+        "Additional Effect: 35% chance of granting Hawk's Eye",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Sidewinder",
+      "level": 60,
+      "type": "Ability",
+      "potency": {
+        "base": 400
+      },
+      "description": [
+        "Delivers an attack with a potency of 400."
+      ]
+    },
+    {
+      "name": "Troubadour",
+      "level": 62,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Reduces damage taken by self and nearby party members by 15%.",
+        "Duration: 15s",
+        "Effect cannot be stacked with machinist's Tactician or dancer's Shield Samba."
+      ]
+    },
+    {
+      "name": "Caustic Bite",
+      "level": 64,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 150,
+        "damage_over_time": {
+          "potency_per_tick": 20,
+          "duration_seconds": 45
+        }
+      },
+      "description": [
+        "Delivers an attack with a potency of 150.",
+        "Additional Effect: Poison",
+        "Potency: 20",
+        "Duration: 45s",
+        "Additional Effect: 35% chance of granting Hawk's Eye",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Stormbite",
+      "level": 64,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 100,
+        "damage_over_time": {
+          "potency_per_tick": 25,
+          "duration_seconds": 45
+        }
+      },
+      "description": [
+        "Deals wind damage with a potency of 100.",
+        "Additional Effect: Wind damage over time",
+        "Potency: 25",
+        "Duration: 45s",
+        "Additional Effect: 35% chance of granting Hawk's Eye",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Nature's Minne",
+      "level": 66,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Increases HP recovery via healing actions by 15% for self and nearby party members.",
+        "Duration: 15s"
+      ]
+    },
+    {
+      "name": "Refulgent Arrow",
+      "level": 70,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 280
+      },
+      "description": [
+        "Delivers an attack with a potency of 280.",
+        "Can only be executed when under the effect of Hawk's Eye or Barrage."
+      ]
+    },
+    {
+      "name": "Shadowbite",
+      "level": 72,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 200,
+        "barrage_potency": 300
+      },
+      "description": [
+        "Delivers an attack with a potency of 200 to target and all enemies nearby it.",
+        "Barrage Potency: 300",
+        "Can only be executed when under the effect of Hawk's Eye or Barrage."
+      ]
+    },
+    {
+      "name": "Burst Shot",
+      "level": 76,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 220
+      },
+      "description": [
+        "Delivers an attack with a potency of 220.",
+        "Additional Effect: 35% chance of granting Hawk's Eye",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Apex Arrow",
+      "level": 80,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 140,
+        "gauge_scaling": {
+          "gauge": "Soul Voice Gauge",
+          "maximum_potency": 700,
+          "minimum_cost": 20
+        }
+      },
+      "description": [
+        "Delivers an attack with a potency of 140 to all enemies in a straight line before you.",
+        "Soul Voice Gauge Cost: 20",
+        "Potency increases up to 700 as Soul Voice Gauge exceeds minimum cost.",
+        "Additional Effect: Grants Blast Arrow Ready upon execution while Soul Voice Gauge is 80 or higher",
+        "Duration: 10s",
+        "Consumes Soul Voice Gauge upon execution."
+      ]
+    },
+    {
+      "name": "Ladonsbite",
+      "level": 82,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 140
+      },
+      "description": [
+        "Delivers an attack with a potency of 140 to all enemies in a cone before you.",
+        "Additional Effect: 35% chance of granting Hawk's Eye",
+        "Duration: 30s"
+      ]
+    },
+    {
+      "name": "Blast Arrow",
+      "level": 86,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 700,
+        "falloff": {
+          "additional_target_multiplier": 0.5
+        }
+      },
+      "description": [
+        "Delivers an attack to all enemies in a straight line before you with a potency of 700 for the first enemy, and 50% less for all remaining enemies.",
+        "Can only be executed while under the effect of Blast Arrow Ready.",
+        "\u203bThis action cannot be assigned to a hotbar.",
+        "\u203bApex Arrow changes to Blast Arrow when requirements for execution are met."
+      ]
+    },
+    {
+      "name": "Radiant Finale",
+      "level": 90,
+      "type": "Ability",
+      "potency": null,
+      "description": [
+        "Increases damage dealt by self and nearby party members.",
+        "Duration: 20s",
+        "Effectiveness is determined by the number of different Coda active in the Song Gauge.",
+        "1 Coda: 2%",
+        "2 Coda: 4%",
+        "3 Coda: 6%",
+        "Additional Effect: Grants Radiant Encore Ready",
+        "Duration: 30s",
+        "Can only be executed when at least 1 coda is active."
+      ]
+    },
+    {
+      "name": "Heartbreak Shot",
+      "level": 92,
+      "type": "Ability",
+      "potency": {
+        "base": 180
+      },
+      "description": [
+        "Delivers an attack with a potency of 180.",
+        "Maximum Charges: 3",
+        "Shares a recast timer with Rain of Death."
+      ]
+    },
+    {
+      "name": "Resonant Arrow",
+      "level": 96,
+      "type": "Weaponskill",
+      "potency": {
+        "base": 640,
+        "falloff": {
+          "additional_target_multiplier": 0.5
+        }
+      },
+      "description": [
+        "Delivers an attack to target and all enemies nearby it with a potency of 640 for the first enemy, and 50% less for all remaining enemies.",
+        "Can only be executed while under the effect of Resonant Arrow Ready."
+      ]
+    },
+    {
+      "name": "Radiant Encore",
+      "level": 100,
+      "type": "Weaponskill",
+      "potency": {
+        "falloff": {
+          "additional_target_multiplier": 0.5
+        },
+        "stack_potency": {
+          "resource": "Coda",
+          "by_count": {
+            "1": 700,
+            "2": 800,
+            "3": 1100
+          }
+        }
+      },
+      "description": [
+        "Delivers an attack to target and all enemies nearby it.",
+        "Potency is determined by the number of different Coda consumed in the Radiant Finale executed prior, dealing full damage for the first enemy, and 50% less for all remaining enemies.",
+        "1 Coda: 700",
+        "2 Coda: 800",
+        "3 Coda: 1,100",
+        "Can only be executed while under the effect of Radiant Encore Ready."
+      ]
+    }
+  ]
+}

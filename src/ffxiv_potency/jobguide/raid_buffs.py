@@ -8,7 +8,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from .fetch import fetch_job_guide
-from .snapshot import LATEST_KNOWN_PATCH
+from .snapshot import JOBGUIDE_URL_TEMPLATE, LATEST_KNOWN_PATCH
 
 EFFECT_JOBS = {
     "dragoon": ("Battle Litany",),
@@ -16,7 +16,6 @@ EFFECT_JOBS = {
     "dancer": ("Devilment",),
     "scholar": ("Chain Stratagem",),
 }
-GUIDE_URL = "https://eu.finalfantasyxiv.com/jobguide/{job}/"
 RATE_PATTERN = re.compile(
     r"(?:(critical|direct) hit rate|rate at which target takes (critical) hits)[^.%]*? by (\d+)%",
     re.IGNORECASE,
@@ -80,15 +79,18 @@ def update_raid_effects(
         raise ValueError(
             f"only patch {LATEST_KNOWN_PATCH} is supported for now; received {patch!r}"
         )
-    destination = output_root / "raid_buffs" / patch
+    source_directory = output_root / "raid_buffs" / patch
     effects = []
     for job in EFFECT_JOBS:
-        url = GUIDE_URL.format(job=job)
-        source = destination / f"{job}.html"
+        url = JOBGUIDE_URL_TEMPLATE.format(job=job)
+        source = source_directory / f"{job}.html"
         fetch_job_guide(url, source, transport=transport)
         effects.extend(parse_raid_effects(source.read_text(encoding="utf-8"), job))
-    output = destination / "effects.json"
-    output.write_text(
+    output = output_root / "raid_effects" / f"{patch}.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output.with_suffix(".json.tmp")
+    temporary.write_text(
         json.dumps({"patch": patch, "effects": effects}, indent=2) + "\n", encoding="utf-8"
     )
+    temporary.replace(output)
     return output

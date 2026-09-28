@@ -2,7 +2,9 @@
 
 import argparse
 import json
+import os
 import re
+import shutil
 import sys
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -13,20 +15,31 @@ from typing import Self
 import httpx
 from dotenv import load_dotenv
 
-from .fflogs import (
+from .analysis import (
     AnalysisResult,
-    FFLogsError,
     analyze_saved_fight,
+)
+from .analysis.config import reference_path
+from .fflogs import (
+    FFLogsError,
     download_report_events,
     parse_report_url,
     refresh_report_rankings,
-    top_ranked_sources,
 )
-from .fflogs.reference import ReportReference
+from .fflogs.download import refresh_encounter_overkill_events, refresh_targetability_events
+from .fflogs.rankings import accessible_ranked_sources, ranked_source
+from .fflogs.reference import (
+    ReportReference,
+    report_code_from_directory,
+    report_directory_name,
+)
 from .jobguide.raid_buffs import update_raid_effects
 from .jobguide.snapshot import LATEST_KNOWN_PATCH, update_job_guide
 
-SUPPORTED_JOBS = {"mch": "machinist", "machinist": "machinist"}
+SUPPORTED_JOBS = {
+    "mch": "machinist", "machinist": "machinist",
+    "brd": "bard", "bard": "bard",
+}
 CURRENT_FIGHTS = {
     "m9s": 101,
     "m10s": 102,
@@ -82,12 +95,18 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     jobguide = commands.add_parser("jobguide", help="work with official job-guide data")
-    jobguide.add_argument("item", help="job name or abbreviation (MCH), or 'buffs'")
+    jobguide.add_argument("item", help="job name or abbreviation (MCH/BRD), or 'buffs'")
     jobguide.add_argument("--output", type=Path, default=Path("data"), help="output root")
 
+    clear = commands.add_parser("clear", help="remove downloaded data")
+    clear.add_argument("item", choices=("logs",), help="data to remove")
+    clear.add_argument("--output", type=Path, default=Path("data/logs"), help="logs directory")
+    clear.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
+
     fflogs = commands.add_parser("fflogs", help="download one selected FF Logs fight")
-    fflogs.add_argument("url", help="report URL, or job abbreviation such as MCH")
+    fflogs.add_argument("url", help="report URL, or job abbreviation such as MCH/BRD")
     fflogs.add_argument("fight", nargs="?", help="fight abbreviation such as m9s")
+    fflogs.add_argument("rank", nargs="?", type=int, help="analyse leaderboard rank 1–10")
     fflogs.add_argument("--output", type=Path, default=Path("data/logs"), help="output root")
 
     compare = commands.add_parser("compare", help="download and compare FF Logs sources")
@@ -138,21 +157,119 @@ def _format_fight(result: AnalysisResult) -> str:
     return f"{result.fight_name}{suffix}"
 
 
-def _print_analysis(result: AnalysisResult) -> None:
+def _display_player_name(name: str, *, anonymous: bool = False) -> str:
+    anonymous = anonymous or name.casefold() == "anonymous" or re.fullmatch(r"Player \(\d+\)", name) is not None
+    displayed = "Anonymous" if anonymous else name
+    return f"\x1b[3m{displayed}\x1b[23m" if anonymous and sys.stdout.isatty() else displayed
+
+
+def _print_analysis(
+    result: AnalysisResult, *, anonymous: bool = False, rank: int | None = None
+) -> None:
     print()
-    print(f"Player: {result.source_name}")
+    print(f"Player: {_display_player_name(result.source_name, anonymous=anonymous)}")
+    if rank is not None:
+        print(f"Rank: {rank}")
     print(f"Fight: {_format_fight(result)}, {_format_duration(result.duration_seconds)}")
     print(f"nDPS: {result.ndps:,.1f}" if result.ndps is not None else "nDPS: n/a")
     print(f"rDPS: {result.rdps:,.1f}" if result.rdps is not None else "rDPS: n/a")
     print(f"Landed damage events: {result.landed_damage_events}")
-    print(f"Matched potency events: {result.matched_damage_events}")
+    print(f"  Matched action events: {result.matched_damage_events}")
+    auto_hits = sum(attack.hits for attack in result.auto_attacks)
+    print(f"  Matched auto-attacks: {auto_hits}")
+    unmatched = result.landed_damage_events - result.matched_damage_events - auto_hits
+    if unmatched > 0:
+        print(f"  Unmatched damage events: {unmatched}")
     print(f"Landed potency: {_format_potency(result.potency_min, result.potency_max)}")
     print(f"Potency per second: {_format_pps(result.pps_min, result.pps_max)}")
+    visible_estimates = tuple(
+        estimate for estimate in result.potency_estimates
+        if estimate.action != "Radiant Encore"
+    )
+    if visible_estimates:
+        print("Variable potency:")
+        for estimate in visible_estimates:
+            if estimate.apex_uses:
+                uncertain = sum(len(use.plausible_gauges) != 1 for use in estimate.apex_uses)
+                print(f"  Apex Arrow: {len(estimate.apex_uses)} uses, {estimate.estimated_hits} hits, "
+                      f"{uncertain} uses with ambiguous potency")
+                for use in estimate.apex_uses:
+                    if len(use.plausible_gauges) == 1:
+                        note = f"{use.gauge} gauge"
+                    elif use.plausible_gauges:
+                        low, high = use.plausible_gauges[0], use.plausible_gauges[-1]
+                        note = f"best estimate {use.gauge} gauge (plausible {low}–{high} gauge)"
+                    else:
+                        note = f"best estimate {use.gauge} gauge (outside expected damage range)"
+                    hits_label = "hit" if use.hits == 1 else "hits"
+                    potency_label = (
+                        f", {use.potency:,.0f} total potency"
+                        if use.potency is not None else ""
+                    )
+                    print(f"    {_format_timestamp(use.seconds)}: {use.hits} {hits_label}, "
+                          f"{note}{potency_label}")
+                continue
+            ambiguous_label = "hit" if estimate.uncertain_hits == 1 else "hits"
+            line = (
+                f"  {estimate.action}: {estimate.estimated_hits} hits, "
+                f"{estimate.uncertain_hits} {ambiguous_label} with ambiguous potency"
+            )
+            if estimate.uncertain_hits and estimate.action != "Pitch Perfect":
+                line += (
+                    f" (closest alternatives differ by up to "
+                    f"{estimate.uncertainty_potency:,.0f} potency in total)"
+                )
+            print(line)
+            for hit in estimate.pitch_uncertain_hits:
+                if hit.outside_expected:
+                    note = f"closest fit: {hit.best_fit}; outside expected damage"
+                elif len(hit.plausible_fits) > 1:
+                    note = "plausible: " + " or ".join(hit.plausible_fits)
+                else:
+                    note = f"likely {hit.best_fit}; reference damage is uncertain"
+                if hit.distance_from_bound_percent is not None:
+                    position = "outside" if hit.outside_expected else "inside"
+                    note += (f"; {hit.distance_from_bound_percent:.2f}% "
+                             f"{position} closest bound")
+                print(f"    {_format_timestamp(hit.seconds)}: {note}")
+    if result.reduced_damage_hits:
+        print("\nReduced damage hits:")
+        for hit in sorted(result.reduced_damage_hits, key=lambda hit: hit.seconds):
+            percentage = 100 * hit.damage / (hit.damage + hit.overkill)
+            precision = 4 if percentage < 0.01 else 2
+            print(
+                f"  {_format_timestamp(hit.seconds)} {hit.action}"
+                f"{' on ' + hit.target if hit.target else ''}: "
+                f"{hit.damage:,}/{hit.damage + hit.overkill:,} damage "
+                f"({percentage:.{precision}f}% potency counted)"
+            )
     if result.ghosted:
         print("\nGhosted damaging casts:")
         events = sorted((time, name) for name, times in result.ghosted_times for time in times)
+        targets = {
+            (time, name): target
+            for name, times in result.ghosted_targets for time, target in times
+        }
+        target_low_hp = {
+            (time, name): hp
+            for name, times in result.ghosted_target_low_hp
+            for time, hp in times
+        }
+        endings = {
+            (time, name): reason
+            for name, times in result.ghosted_ending_times
+            for time, reason in times
+        }
         for time, name in events:
-            print(f"  {_format_timestamp(time)} {name}")
+            hp = target_low_hp.get((time, name))
+            note = (
+                f" (target at {hp} HP)"
+                if hp is not None
+                else f" ({endings[(time, name)]})" if (time, name) in endings else ""
+            )
+            target = targets.get((time, name))
+            print(f"  {_format_timestamp(time)} {name}"
+                  f"{' on ' + target if target else ''}{note}")
     print("\nPotions:")
     print(f"  Uses: {result.potion.uses}")
     for index, window in enumerate(result.potion.windows, 1):
@@ -198,6 +315,7 @@ def _print_analysis(result: AnalysisResult) -> None:
         f"{_format_rate_comparison(result.adjusted_luck_score, result.luck_baseline)}"
     )
     print("\nActions:")
+    dot_actions = {dot.name for dot in result.bard_dots}
     for action in result.actions:
         potency = _format_potency(action.potency_min, action.potency_max)
         uses = (
@@ -205,8 +323,37 @@ def _print_analysis(result: AnalysisResult) -> None:
             if action.uses is not None
             else ""
         )
-        hits = f"{action.hits} {'hit' if action.hits == 1 else 'hits'}"
+        hits = (
+            f"{action.hits} hits/ticks" if action.name in dot_actions
+            else f"{action.hits} {'hit' if action.hits == 1 else 'hits'}"
+        )
         print(f"  {action.name}: {uses}{hits}, {potency} total potency")
+    if result.bard_songs:
+        print("\nSongs:")
+        averages = dict(result.bard_song_durations)
+        for song, count in result.bard_songs:
+            average = averages.get(song)
+            duration = f", {average:.1f}s average duration" if average is not None else ""
+            print(f"  {song}: {count} uses{duration}")
+    if result.bard_finales:
+        print("\nRadiant Finale (Coda consumed):")
+        for finale in result.bard_finales:
+            hits = f"{finale.encore_hits} {'hit' if finale.encore_hits == 1 else 'hits'}"
+            potency = _format_potency(finale.encore_potency_min, finale.encore_potency_max)
+            print(
+                f"  {_format_timestamp(finale.timestamp_seconds)} {finale.coda} Coda, "
+                f"Radiant Encore: {hits} ({potency} potency)"
+            )
+    if result.bard_dots:
+        print("\nDamage over time:")
+        for dot in result.bard_dots:
+            if dot.ticks:
+                print(
+                    f"  {dot.name}: {dot.landed_uses} application hits, "
+                    f"{dot.ticks} landed ticks, "
+                    f"{dot.direct_potency:,.0f} application potency + "
+                    f"{dot.tick_potency:,.0f} tick potency"
+                )
     if result.auto_attacks:
         print("\nAuto-attacks:")
         for auto_attack in result.auto_attacks:
@@ -261,9 +408,24 @@ def _print_comparison(results: Sequence[AnalysisResult]) -> None:
     print()
 
 
+def _comparison_player_field(name: str, directory: Path) -> str:
+    reference = _reference_from_directory(directory)
+    anonymous = (
+        (reference is not None and reference.report_code.startswith("a:"))
+        or name.casefold() == "anonymous"
+        or re.fullmatch(r"Player \(\d+\)", name) is not None
+    )
+    displayed = ("Anonymous" if anonymous else name)[:24]
+    styled = _display_player_name(displayed, anonymous=anonymous)
+    return styled + " " * (24 - len(displayed))
+
+
 def _compare_directories(
-    directories: Sequence[Path], override: Path | None, progress: _Progress | None = None
+    directories: Sequence[Path], override: Path | None, progress: _Progress | None = None,
+    *, rank_positions: Sequence[int] | None = None,
 ) -> None:
+    if rank_positions is not None and len(rank_positions) != len(directories):
+        raise ValueError("ranking positions must match the compared fights")
     jobs = [_source_job(directory) for directory in directories]
     if len(set(jobs)) != 1:
         raise ValueError(f"comparison requires the same job; received: {', '.join(jobs)}")
@@ -288,19 +450,22 @@ def _compare_directories(
         progress.clear()
     _print_comparison(results)
     print(f"Fight: {_format_fight(results[0])}")
+    rank_header = f"{'Rank':>4} " if rank_positions is not None else ""
     print(
-        f"{'Player':<24} {'Duration':>9} {'rDPS':>10} {'nDPS':>10} "
+        f"{rank_header}{'Player':<24} {'Duration':>9} {'rDPS':>10} {'nDPS':>10} "
         f"{'Potency':>12} {'PPS':>9} "
         f"{'Luck':>8} {'aLuck':>8}"
     )
-    for result in results:
+    for index, result in enumerate(results):
         potency = _format_potency(result.potency_min, result.potency_max)
         pps = _format_pps(result.pps_min, result.pps_max)
         duration = _format_duration(result.duration_seconds)
         ndps = f"{result.ndps:,.1f}" if result.ndps is not None else "n/a"
         rdps = f"{result.rdps:,.1f}" if result.rdps is not None else "n/a"
+        rank = f"{rank_positions[index]:>4} " if rank_positions is not None else ""
+        player = _comparison_player_field(result.source_name, directories[index])
         print(
-            f"{result.source_name[:24]:<24} {duration:>9} {rdps:>10} {ndps:>10} {potency:>12} "
+            f"{rank}{player} {duration:>9} {rdps:>10} {ndps:>10} {potency:>12} "
             f"{pps:>9} {result.luck_score:>8.2%} {result.adjusted_luck_score:>8.2%}"
         )
     print()
@@ -347,8 +512,10 @@ def _source_job(directory: Path) -> str:
 
 def _actions_for_job(job: str, override: Path | None) -> Path:
     if job not in SUPPORTED_JOBS.values():
-        raise ValueError(f"job {job!r} is not supported yet; currently only machinist is supported")
+        raise ValueError(f"job {job!r} is not supported yet; currently only machinist and bard are supported")
     path = override or Path("data") / job / LATEST_KNOWN_PATCH / "actions.json"
+    if override is None and not path.is_file():
+        path = reference_path(job, LATEST_KNOWN_PATCH, "actions.json")
     _require_actions(path, job)
     return path
 
@@ -356,7 +523,7 @@ def _actions_for_job(job: str, override: Path | None) -> Path:
 def _saved_directory(output: Path, reference: ReportReference) -> Path:
     return (
         output
-        / reference.report_code
+        / report_directory_name(reference.report_code)
         / f"fight-{reference.fight_id}"
         / f"source-{reference.source_id}"
     )
@@ -366,8 +533,8 @@ def _reference_from_directory(directory: Path) -> ReportReference | None:
     """Recover an FF Logs reference from the downloader's canonical path."""
     fight_match = _FIGHT_DIRECTORY.fullmatch(directory.parent.name)
     source_match = _SOURCE_DIRECTORY.fullmatch(directory.name)
-    report_code = directory.parent.parent.name
-    if fight_match is None or source_match is None or not report_code.isalnum():
+    report_code = report_code_from_directory(directory.parent.parent.name)
+    if fight_match is None or source_match is None or report_code is None:
         return None
     return ReportReference(
         report_code=report_code,
@@ -376,7 +543,9 @@ def _reference_from_directory(directory: Path) -> ReportReference | None:
     )
 
 
-def _resolve_analysis_directory(source: str, output: Path, *, announce: bool = True) -> Path:
+def _resolve_analysis_directory(
+    source: str, output: Path, *, announce: bool = True, include_targetability: bool = False
+) -> Path:
     if source.startswith("https://"):
         reference = parse_report_url(source)
         directory = _saved_directory(output, reference)
@@ -396,6 +565,14 @@ def _resolve_analysis_directory(source: str, output: Path, *, announce: bool = T
             and "rdps" in cached_rankings
         ):
             refresh_report_rankings(reference, directory)
+        if (include_targetability and reference is not None
+                and os.environ.get("FFLOGS_CLIENT_ID") and os.environ.get("FFLOGS_CLIENT_SECRET")
+                and not (directory / "targetability-events.json").is_file()):
+            refresh_targetability_events(reference, directory)
+        if (include_targetability and reference is not None
+                and os.environ.get("FFLOGS_CLIENT_ID") and os.environ.get("FFLOGS_CLIENT_SECRET")
+                and not (directory / "encounter-overkill-events.json").is_file()):
+            refresh_encounter_overkill_events(reference, directory)
         return directory
     if reference is None:
         raise ValueError(
@@ -410,7 +587,8 @@ def _resolve_analysis_directory(source: str, output: Path, *, announce: bool = T
 
 
 def _download_and_compare(
-    urls: Sequence[str], output: Path, actions: Path | None, progress: _Progress
+    urls: Sequence[str], output: Path, actions: Path | None, progress: _Progress,
+    *, rank_positions: Sequence[int] | None = None,
 ) -> None:
     # A source may appear more than once in a comparison; only one worker may
     # write its files, while the result still appears in each requested position.
@@ -429,9 +607,15 @@ def _download_and_compare(
             progress.update("Downloading", completed, len(urls))
     directories = [directories_by_url[url] for url in urls]
     if progress.enabled:
-        _compare_directories(directories, actions, progress)
+        if rank_positions is not None:
+            _compare_directories(directories, actions, progress, rank_positions=rank_positions)
+        else:
+            _compare_directories(directories, actions, progress)
     else:
-        _compare_directories(directories, actions)
+        if rank_positions is not None:
+            _compare_directories(directories, actions, rank_positions=rank_positions)
+        else:
+            _compare_directories(directories, actions)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -439,6 +623,31 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     try:
+        if args.command == "clear":
+            directory = args.output
+            if directory.is_symlink():
+                raise ValueError(f"logs directory must not be a symbolic link: {directory}")
+            if not directory.exists():
+                print(f"No saved logs in {directory}.")
+                return 0
+            if not directory.is_dir():
+                raise ValueError(f"logs path is not a directory: {directory}")
+            if not args.yes:
+                try:
+                    answer = input(f"Delete all saved logs in {directory}? [y/N] ")
+                except EOFError:
+                    answer = ""
+                if answer.strip().casefold() not in {"y", "yes"}:
+                    print("Cancelled.")
+                    return 0
+            for item in directory.iterdir():
+                if item.is_dir() and not item.is_symlink():
+                    shutil.rmtree(item)
+                else:
+                    item.unlink()
+            print(f"Cleared saved logs in {directory}.")
+            return 0
+
         if args.command == "compare":
             if not 2 <= len(args.urls) <= 10:
                 raise ValueError("compare requires two to ten FF Logs URLs")
@@ -450,14 +659,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             with _Progress() as progress:
                 progress.update("Downloading", 0, 1)
                 directory = _resolve_analysis_directory(
-                    args.source, args.output, announce=not progress.enabled
+                    args.source, args.output, announce=not progress.enabled,
+                    include_targetability=True,
                 )
                 progress.update("Downloading", 1, 1)
-                actions_path = _actions_for_job(_source_job(directory), args.actions)
+                job = _source_job(directory)
+                actions_path = _actions_for_job(job, args.actions)
                 progress.update("Calculating", 0, 1)
                 result = analyze_saved_fight(directory, actions_path)
                 progress.update("Calculating", 1, 1)
-            _print_analysis(result)
+            reference = _reference_from_directory(directory)
+            _print_analysis(
+                result,
+                anonymous=reference is not None and reference.report_code.startswith("a:"),
+            )
             return 0
 
         if args.command == "fflogs":
@@ -465,25 +680,59 @@ def main(argv: Sequence[str] | None = None) -> int:
                 job = SUPPORTED_JOBS.get(args.url.casefold())
                 if job is None:
                     raise ValueError(
-                        f"unsupported job {args.url!r}; currently only MCH is supported"
+                        f"unsupported job {args.url!r}; use MCH or BRD"
                     )
                 encounter_id = CURRENT_FIGHTS.get(args.fight.casefold())
                 if encounter_id is None:
                     raise ValueError(
                         f"unknown fight {args.fight!r}; choose: {', '.join(CURRENT_FIGHTS)}"
                     )
+                if args.rank is not None:
+                    if not 1 <= args.rank <= 10:
+                        raise ValueError("rank must be between 1 and 10")
+                    with _Progress() as progress:
+                        progress.message("Processing...")
+                        reference = ranked_source(encounter_id, job, args.rank)
+                        url = (
+                            f"https://www.fflogs.com/reports/{reference.report_code}"
+                            f"?fight={reference.fight_id}&source={reference.source_id}"
+                        )
+                        progress.update("Downloading", 0, 1)
+                        directory = _resolve_analysis_directory(
+                            url, args.output, announce=not progress.enabled,
+                            include_targetability=True,
+                        )
+                        progress.update("Downloading", 1, 1)
+                        actions_path = _actions_for_job(job, None)
+                        progress.update("Calculating", 0, 1)
+                        result = analyze_saved_fight(directory, actions_path)
+                        progress.update("Calculating", 1, 1)
+                    _print_analysis(
+                        result, rank=args.rank, anonymous=reference.report_code.startswith("a:"),
+                    )
+                    return 0
                 with _Progress() as progress:
                     progress.message("Processing...")
-                    references = top_ranked_sources(encounter_id, job)
+                    ranked, skipped = accessible_ranked_sources(encounter_id, job)
                     urls = [
                         (
                             f"https://www.fflogs.com/reports/{reference.report_code}"
                             f"?fight={reference.fight_id}&source={reference.source_id}"
                         )
-                        for reference in references
+                        for _, reference in ranked
                     ]
-                    _download_and_compare(urls, args.output, None, progress)
+                    _download_and_compare(
+                        urls, args.output, None, progress,
+                        rank_positions=tuple(rank for rank, _ in ranked),
+                    )
+                if skipped:
+                    print("Skipped inaccessible ranks: " + ", ".join(
+                        str(rank) for rank, _ in skipped
+                    ))
+                print()
                 return 0
+            if args.rank is not None:
+                raise ValueError("a rank requires a job and fight abbreviation")
             reference = parse_report_url(args.url)
             download = download_report_events(reference, args.output)
             print(f"Saved fight data: {download.directory}")
@@ -498,7 +747,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         job = SUPPORTED_JOBS.get(args.item.casefold())
         if job is None:
-            raise ValueError(f"unsupported job {args.item!r}; use 'machinist', 'MCH', or 'buffs'")
+            raise ValueError(f"unsupported job {args.item!r}; use MCH, BRD, or buffs")
         result = update_job_guide(
             job=job,
             patch=LATEST_KNOWN_PATCH,

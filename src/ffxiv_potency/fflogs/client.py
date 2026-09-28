@@ -1,5 +1,6 @@
 """Small authenticated client for the FF Logs v2 GraphQL API."""
 
+import os
 from typing import Any, Self
 
 import httpx
@@ -13,6 +14,21 @@ class FFLogsError(RuntimeError):
 
 
 class FFLogsClient:
+    @classmethod
+    def from_environment(
+        cls,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        *,
+        transport: httpx.BaseTransport | None = None,
+    ) -> Self:
+        """Use explicit credentials or fall back to FF Logs environment settings."""
+        return cls(
+            client_id or os.environ.get("FFLOGS_CLIENT_ID", ""),
+            client_secret or os.environ.get("FFLOGS_CLIENT_SECRET", ""),
+            transport=transport,
+        )
+
     def __init__(
         self,
         client_id: str,

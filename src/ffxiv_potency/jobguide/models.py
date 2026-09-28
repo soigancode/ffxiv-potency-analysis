@@ -59,6 +59,24 @@ class DamageOverTime:
 
 
 @dataclass(frozen=True, slots=True)
+class StackPotency:
+    """Exact potency for each number of consumed stacks or coda."""
+
+    resource: str
+    values: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        if not self.resource or not self.values or any(value <= 0 for value in self.values):
+            raise ValueError("stack potency needs a resource and positive values")
+
+    def to_dict(self) -> dict[str, str | dict[str, int]]:
+        return {
+            "resource": self.resource,
+            "by_count": {str(count): value for count, value in enumerate(self.values, 1)},
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class GaugeScaling:
     """Maximum potency reached by spending more of a named gauge."""
 
@@ -155,11 +173,17 @@ class Potency:
     gauge_scaling: GaugeScaling | None = None
     triggered: TriggeredPotency | None = None
     modifier: PotencyModifier | None = None
+    stack_potency: StackPotency | None = None
+    barrage_potency: int | None = None
 
     def __post_init__(self) -> None:
         if self.base is not None and self.base <= 0:
             raise ValueError("base potency must be positive")
-        if not any((self.base, self.damage_over_time, self.triggered, self.modifier)):
+        if self.barrage_potency is not None and self.barrage_potency <= 0:
+            raise ValueError("Barrage potency must be positive")
+        if not any(
+            (self.base, self.damage_over_time, self.triggered, self.modifier, self.stack_potency)
+        ):
             raise ValueError("at least one potency rule is required")
 
     def to_dict(self) -> dict[str, Any]:
@@ -178,6 +202,10 @@ class Potency:
             result["triggered"] = self.triggered.to_dict()
         if self.modifier is not None:
             result["modifier"] = self.modifier.to_dict()
+        if self.stack_potency is not None:
+            result["stack_potency"] = self.stack_potency.to_dict()
+        if self.barrage_potency is not None:
+            result["barrage_potency"] = self.barrage_potency
         return result
 
 

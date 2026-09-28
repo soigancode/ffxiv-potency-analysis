@@ -1,0 +1,13 @@
+{
+  "label": "7.55 Relic BiS",
+  "patch": "7.55",
+  "level": 100,
+  "weapon_damage": 158,
+  "weapon_delay_seconds": 2.64,
+  "party_dexterity": 6838,
+  "critical_hit": 3585,
+  "direct_hit": 1877,
+  "determination": 2765,
+  "skill_speed": 420,
+  "expected_damage_per_100_potency": 12434.63
+}
