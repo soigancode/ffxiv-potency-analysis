@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .models import Action, Trait
 from .parse import parse_job_actions, parse_job_traits
+from .schema import ACTION_SCHEMA_VERSION
 
 
 def export_actions(
@@ -33,7 +34,7 @@ def export_actions(
         source_metadata["sha256"] = source_sha256
 
     document = {
-        "schema_version": 3,
+        "schema_version": ACTION_SCHEMA_VERSION,
         "job": job,
         "patch": patch,
         "source": source_metadata,

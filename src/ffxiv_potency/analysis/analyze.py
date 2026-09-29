@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..patches import LATEST_KNOWN_PATCH
+from ..jobguide.schema import ACTION_SCHEMA_VERSION
 from .auto_attacks import _is_auto_attack, _summarize_auto_attacks
 from .brd.barrage import _barrage_shadowbite_packets
 from .brd.buffs import _brd_self_multiplier, brd_self_buff_windows
@@ -102,7 +103,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     encounter_overkills = _load_json(overkill_path, list) if overkill_path.is_file() else []
     action_document = _load_json(actions_path, dict)
     schema_version = action_document.get("schema_version")
-    if schema_version is not None and schema_version != 3:
+    if schema_version is not None and schema_version != ACTION_SCHEMA_VERSION:
         raise AnalysisError(
             f"unsupported actions schema version {schema_version!r}; update the job-guide data"
         )

@@ -688,6 +688,16 @@ def test_cli_uses_installed_actions_when_no_checkout_snapshot(monkeypatch, tmp_p
     assert cli._actions_for_job("machinist", None).is_file()
 
 
+def test_cli_identifies_outdated_actions_and_reinstall_step(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+    actions = tmp_path / "data/machinist/7.55/actions.json"
+    actions.parent.mkdir(parents=True)
+    actions.write_text('{"job":"machinist","schema_version":2}', encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"schema version 2.*reinstall the current project"):
+        cli._actions_for_job("machinist", None)
+
+
 def test_cli_selects_actions_from_detected_job(monkeypatch, tmp_path: Path, capsys) -> None:
     monkeypatch.chdir(tmp_path)
     directory = tmp_path / "data/logs/abc/fight-1/source-2"

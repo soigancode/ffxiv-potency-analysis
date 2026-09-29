@@ -1,10 +1,10 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "job": "bard",
   "patch": "7.55",
   "source": {
     "url": "https://eu.finalfantasyxiv.com/jobguide/bard/",
-    "retrieved_at": "2026-09-29T06:11:37.791308Z",
+    "retrieved_at": "2026-09-29T07:26:26.630922Z",
     "sha256": "07d5d1a9cfe942c2ed0a67f11e47b9126f16f4f3e3357925864c2627813b7a78"
   },
   "actions": [

@@ -1,10 +1,10 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "job": "machinist",
   "patch": "7.55",
   "source": {
     "url": "https://eu.finalfantasyxiv.com/jobguide/machinist/",
-    "retrieved_at": "2026-09-29T06:11:38.577987Z",
+    "retrieved_at": "2026-09-29T07:26:27.459421Z",
     "sha256": "7ec2dd51e5286fe567b18f045819766740556057fb4982757cf04a8c14e3bfc3"
   },
   "actions": [

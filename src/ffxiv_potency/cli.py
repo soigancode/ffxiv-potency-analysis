@@ -49,6 +49,7 @@ from .fflogs.reference import (
     report_directory_name,
 )
 from .jobguide.raid_buffs import update_raid_effects
+from .jobguide.schema import ACTION_SCHEMA_VERSION
 from .jobguide.snapshot import LATEST_KNOWN_PATCH, update_job_guide
 
 SUPPORTED_JOBS = {
@@ -594,6 +595,13 @@ def _require_actions(path: Path, job: str) -> None:
     snapshot_job = document.get("job") if isinstance(document, dict) else None
     if not isinstance(snapshot_job, str) or snapshot_job.casefold() != job:
         raise ValueError(f"actions snapshot {path} does not match the selected job {job!r}")
+    version = document.get("schema_version")
+    if version is not None and version != ACTION_SCHEMA_VERSION:
+        raise ValueError(
+            f"actions snapshot {path} has schema version {version!r}, but this installation "
+            f"requires version {ACTION_SCHEMA_VERSION}; reinstall the current project in "
+            f"your active environment and run 'ffxiv-potency jobguide {job}' again"
+        )
 
 
 def _source_job(directory: Path) -> str:
