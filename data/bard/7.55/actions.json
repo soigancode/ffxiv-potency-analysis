@@ -4,7 +4,7 @@
   "patch": "7.55",
   "source": {
     "url": "https://eu.finalfantasyxiv.com/jobguide/bard/",
-    "retrieved_at": "2026-09-28T22:26:24.771961Z",
+    "retrieved_at": "2026-09-29T06:11:37.791308Z",
     "sha256": "07d5d1a9cfe942c2ed0a67f11e47b9126f16f4f3e3357925864c2627813b7a78"
   },
   "actions": [
@@ -103,7 +103,9 @@
       "type": "Weaponskill",
       "potency": {
         "base": 140,
-        "barrage_potency": 220
+        "conditional_potencies": {
+          "Barrage": 220
+        }
       },
       "description": [
         "Delivers an attack with a potency of 140 to target and all enemies nearby it.",
@@ -362,7 +364,9 @@
       "type": "Weaponskill",
       "potency": {
         "base": 200,
-        "barrage_potency": 300
+        "conditional_potencies": {
+          "Barrage": 300
+        }
       },
       "description": [
         "Delivers an attack with a potency of 200 to target and all enemies nearby it.",

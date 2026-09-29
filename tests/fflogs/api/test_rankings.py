@@ -6,7 +6,66 @@ import httpx
 import pytest
 
 from ffxiv_potency.fflogs import FFLogsError, ReportReference, top_ranked_sources
-from ffxiv_potency.fflogs.rankings import accessible_ranked_sources, ranked_source
+from ffxiv_potency.fflogs.rankings import (
+    accessible_ranked_sources,
+    ranked_source,
+    ranked_sources_in_range,
+    validate_rank_range,
+)
+
+
+def test_rank_range_crosses_pages_without_resolving_earlier_reports() -> None:
+    pages: list[int] = []
+    reports: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/token":
+            return httpx.Response(200, json={"access_token": "token"})
+        body = json.loads(request.content)
+        if "EncounterRankings" in body["query"]:
+            page = body["variables"]["page"]
+            pages.append(page)
+            rows = [
+                {"name": f"Player {rank}", "report": {
+                    "code": f"report{rank}", "fightID": 9,
+                }}
+                for rank in range((page - 1) * 100 + 1, page * 100 + 1)
+            ]
+            if page == 51:
+                rows[0]["report"] = None  # rank 5001 is inaccessible
+            return httpx.Response(200, json={"data": {"worldData": {"encounter": {
+                "id": 103, "characterRankings": {"rankings": rows},
+            }}}})
+        code = body["variables"]["code"]
+        reports.append(code)
+        rank = int(code.removeprefix("report"))
+        return httpx.Response(200, json={"data": {"reportData": {"report": {
+            "fights": [{"id": 9, "encounterID": 103, "friendlyPlayers": [2]}],
+            "masterData": {"actors": [{
+                "id": 2, "name": f"Player {rank}", "type": "Player",
+                "subType": "Machinist",
+            }]},
+        }}}})
+
+    selected, skipped = ranked_sources_in_range(
+        103, "machinist", 5000, 5024, client_id="id", client_secret="secret",
+        transport=httpx.MockTransport(handler),
+    )
+    assert pages == [1, 50, 51]
+    assert reports == ["report5000", *(f"report{rank}" for rank in range(5002, 5025))]
+    assert selected[0] == (5000, ReportReference("report5000", 9, 2))
+    assert selected[-1] == (5024, ReportReference("report5024", 9, 2))
+    assert len(selected) == 24
+    assert [rank for rank, _ in skipped] == [5001]
+
+
+def test_rank_range_requires_increasing_positions() -> None:
+    validate_rank_range(20, 21)
+    validate_rank_range(20, 44)
+    with pytest.raises(ValueError, match="increasing positive"):
+        ranked_sources_in_range(103, "machinist", 5000, 5000)
+    with pytest.raises(ValueError, match="at most 25"):
+        ranked_sources_in_range(103, "machinist", 5000, 5025)
 
 
 def test_one_rank_resolves_only_its_report() -> None:
@@ -87,8 +146,10 @@ def test_current_job_rankings_resolve_report_source_ids_in_order() -> None:
         requests.append(body)
         if "EncounterRankings" in body["query"]:
             assert "metric: rdps" in body["query"]
-            assert "partition:" not in body["query"]  # FF Logs defaults to the latest.
-            assert body["variables"] == {"encounterID": 101, "specName": "Machinist"}
+            assert "partition: $partition" in body["query"]
+            assert body["variables"] == {
+                "encounterID": 101, "specName": "Machinist", "partition": 7,
+            }
             return httpx.Response(
                 200,
                 json={

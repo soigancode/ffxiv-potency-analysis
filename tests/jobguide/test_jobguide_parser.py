@@ -9,7 +9,7 @@ FIXTURES = Path(__file__).parents[1] / "fixtures/jobguide"
 
 
 def load_full_guide() -> str:
-    return (FIXTURES / "machinist_full_7_5.html").read_text(encoding="utf-8")
+    return (FIXTURES / "mch_full_7_5.html").read_text(encoding="utf-8")
 
 
 def replace_action_text(action: str, original: str, replacement: str) -> str:

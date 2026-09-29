@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from .brd.dots import BrdDotActionSummary
 from .brd.songs import BrdFinaleSummary
 from .mch.wildfire import MchWildfireSummary
+from .penalties import DamagePenaltySummary, StatusWindow
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,6 +177,9 @@ class AnalysisResult:
     brd_dots: tuple[BrdDotActionSummary, ...] = ()
     food: ConsumableIdentity | None = None
     food_missing_windows: tuple[tuple[float, float], ...] = ()
+    damage_penalties: tuple[DamagePenaltySummary, ...] = ()
+    kill: bool | None = None
+    status_windows: tuple[StatusWindow, ...] = ()
 
     @property
     def pps_min(self) -> float:

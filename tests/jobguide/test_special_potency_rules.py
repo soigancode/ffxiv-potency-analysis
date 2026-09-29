@@ -6,7 +6,7 @@ FIXTURES = Path(__file__).parents[1] / "fixtures/jobguide"
 
 
 def load_actions() -> dict[str, Action]:
-    html = (FIXTURES / "machinist_full_7_5.html").read_text(encoding="utf-8")
+    html = (FIXTURES / "mch_full_7_5.html").read_text(encoding="utf-8")
     report = inspect_job_actions(html)
     return {action.name: action for action in report.actions}
 

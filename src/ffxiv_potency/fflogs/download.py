@@ -51,6 +51,12 @@ query ReportRankings($code: String!, $fightIDs: [Int]) {
 }
 """
 
+_REPORT_DATE_QUERY = """
+query ReportDate($code: String!) {
+  reportData { report(code: $code) { startTime } }
+}
+"""
+
 _EVENT_QUERY = """
 query ReportEvents($code: String!, $fightIDs: [Int], $sourceID: Int, $targetID: Int, $startTime: Float, $includeResources: Boolean) {
   reportData {
@@ -102,6 +108,25 @@ query Targetability($code: String!, $fightIDs: [Int], $startTime: Float, $filter
 }
 """
 
+_ACTOR_EVENTS_QUERY = """
+query ActorStatusEvents($code: String!, $fightIDs: [Int], $startTime: Float, $filter: String!, $abilityID: Float) {
+  reportData {
+    report(code: $code) {
+      events(fightIDs: $fightIDs, startTime: $startTime, abilityID: $abilityID,
+             filterExpression: $filter, limit: 10000) {
+        data
+        nextPageTimestamp
+      }
+    }
+  }
+}
+"""
+
+_DEBUFF_TYPES = {"applydebuff", "refreshdebuff", "removedebuff",
+                 "applydebuffstack", "removedebuffstack"}
+_LIFE_TYPES = {"death", "resurrect"}
+_TRANSCENDENT_BUFF_ID = 1000418
+
 
 class _GraphQLClient(Protocol):
     def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]: ...
@@ -121,6 +146,8 @@ class DownloadResult:
     debuff_events: Path | None = None
     targetability_events: Path | None = None
     encounter_overkill_events: Path | None = None
+    life_events: Path | None = None
+    revival_buff_events: Path | None = None
 
 
 def _write_json(path: Path, value: Any) -> Path:
@@ -166,6 +193,25 @@ def refresh_report_rankings(
         directory / "rankings.json",
         _saved_rankings(report.get("rdpsRankings"), report.get("ndpsRankings")),
     )
+
+
+def refresh_report_date(
+    reference: ReportReference, directory: Path, *,
+    client_id: str | None = None, client_secret: str | None = None,
+    transport: httpx.BaseTransport | None = None,
+) -> Path:
+    """Add the report's absolute start time to an older cached fight."""
+    with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        report = _report_from(client.graphql(
+            _REPORT_DATE_QUERY, {"code": reference.report_code},
+        ))
+    started = report.get("startTime")
+    if not isinstance(started, (int, float)):
+        raise FFLogsError("report has no valid start time")
+    path = directory / "fight.json"
+    fight = json.loads(path.read_text(encoding="utf-8"))
+    fight["reportStartTime"] = started
+    return _write_json(path, fight)
 
 
 def refresh_targetability_events(
@@ -236,6 +282,77 @@ def _download_encounter_overkills(
         if not isinstance(next_timestamp, (int, float)) or next_timestamp == start_time:
             raise FFLogsError("invalid encounter overkill pagination timestamp")
         start_time = float(next_timestamp)
+
+
+def _download_actor_events(
+    client: _GraphQLClient, reference: ReportReference,
+    kinds: set[str], filter_expression: str, *, ability_id: int | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch raw status changes; the Debuffs table is source-oriented in some reports."""
+    events: list[dict[str, Any]] = []
+    start_time: float | None = None
+    while True:
+        report = _report_from(client.graphql(_ACTOR_EVENTS_QUERY, {
+            "code": reference.report_code,
+            "fightIDs": [reference.fight_id],
+            "startTime": start_time,
+            "filter": filter_expression,
+            "abilityID": float(ability_id) if ability_id is not None else None,
+        }))
+        page = report.get("events")
+        if not isinstance(page, dict) or not isinstance(page.get("data"), list):
+            raise FFLogsError("invalid actor status event response")
+        events.extend(
+            event for event in page["data"]
+            if isinstance(event, dict) and event.get("type") in kinds
+            and event.get("targetID") == reference.source_id
+            and (ability_id is None or event.get("abilityGameID") == ability_id)
+        )
+        next_timestamp = page.get("nextPageTimestamp")
+        if next_timestamp is None:
+            return events
+        if not isinstance(next_timestamp, (int, float)) or next_timestamp == start_time:
+            raise FFLogsError("invalid actor status pagination timestamp")
+        start_time = float(next_timestamp)
+
+
+def refresh_player_status_events(
+    reference: ReportReference, directory: Path, *,
+    client_id: str | None = None, client_secret: str | None = None,
+    transport: httpx.BaseTransport | None = None,
+) -> None:
+    """Backfill raw debuff and life events for fights saved with the old query."""
+    with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        debuffs = _download_actor_events(
+            client, reference, _DEBUFF_TYPES,
+            'type="applydebuff" or type="refreshdebuff" or type="removedebuff" '
+            'or type="applydebuffstack" or type="removedebuffstack"',
+        )
+        life = _download_actor_events(
+            client, reference, _LIFE_TYPES, 'type="death" or type="resurrect"',
+        )
+    _write_json(directory / "debuff-events.json", debuffs)
+    _write_json(directory / "life-events.json", life)
+
+
+def refresh_revival_buff_events(
+    reference: ReportReference, directory: Path, *,
+    client_id: str | None = None, client_secret: str | None = None,
+    transport: httpx.BaseTransport | None = None,
+) -> Path:
+    """Fetch incoming Transcendent applications, including healer LB3 revivals."""
+    life_path = directory / "life-events.json"
+    life = json.loads(life_path.read_text(encoding="utf-8")) if life_path.is_file() else []
+    if not any(isinstance(event, dict) and event.get("type") == "death"
+               and event.get("targetID") == reference.source_id for event in life):
+        return _write_json(directory / "revival-buff-events.json", [])
+    with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        events = _download_actor_events(
+            client, reference, {"applybuff", "refreshbuff"},
+            'type="applybuff" or type="refreshbuff"',
+            ability_id=_TRANSCENDENT_BUFF_ID,
+        )
+    return _write_json(directory / "revival-buff-events.json", events)
 
 
 def refresh_encounter_overkill_events(
@@ -320,16 +437,36 @@ def download_report_events(
         damage_events = _download_events(client, reference, "DamageDone")
         cast_events = _download_events(client, reference, "Casts")
         buff_events = _download_events(client, reference, "Buffs")
-        debuff_events = _download_events(client, reference, "Debuffs")
+        # Debuffs as a data type can select effects *done by* the player. Raw
+        # event types followed by an explicit target check capture incoming
+        # Weakness, Brink of Death, and encounter debuffs as well.
+        debuff_events = _download_actor_events(
+            client, reference, _DEBUFF_TYPES,
+            'type="applydebuff" or type="refreshdebuff" or type="removedebuff" '
+            'or type="applydebuffstack" or type="removedebuffstack"',
+        )
+        life_events = _download_actor_events(
+            client, reference, _LIFE_TYPES, 'type="death" or type="resurrect"',
+        )
+        revival_buff_events = (
+            _download_actor_events(
+                client, reference, {"applybuff", "refreshbuff"},
+                'type="applybuff" or type="refreshbuff"',
+                ability_id=_TRANSCENDENT_BUFF_ID,
+            ) if any(event.get("type") == "death" for event in life_events) else []
+        )
         targetability_events = _download_targetability_events(client, reference)
         encounter_overkills = _download_encounter_overkills(client, reference)
 
-    fight_path = _write_json(directory / "fight.json", fights[0])
+    fight = {**fights[0], "reportStartTime": report.get("startTime")}
+    fight_path = _write_json(directory / "fight.json", fight)
     master_path = _write_json(directory / "master-data.json", master_data)
     damage_path = _write_json(directory / "damage-events.json", damage_events)
     cast_path = _write_json(directory / "cast-events.json", cast_events)
     buff_path = _write_json(directory / "buff-events.json", buff_events)
     debuff_path = _write_json(directory / "debuff-events.json", debuff_events)
+    life_path = _write_json(directory / "life-events.json", life_events)
+    revival_buff_path = _write_json(directory / "revival-buff-events.json", revival_buff_events)
     targetability_path = _write_json(directory / "targetability-events.json", targetability_events)
     overkill_path = _write_json(directory / "encounter-overkill-events.json", encounter_overkills)
     rankings_path = _write_json(directory / "rankings.json", _saved_rankings(rdps, ndps))
@@ -344,6 +481,8 @@ def download_report_events(
         cast_event_count=len(cast_events),
         buff_events=buff_path,
         debuff_events=debuff_path,
+        life_events=life_path,
+        revival_buff_events=revival_buff_path,
         targetability_events=targetability_path,
         encounter_overkill_events=overkill_path,
     )

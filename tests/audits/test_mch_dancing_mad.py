@@ -17,7 +17,7 @@ from ffxiv_potency.analysis import analyze_saved_fight
 def test_dancing_mad_potion_windows_and_phase_regression(
     tmp_path: Path, mch_actions: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    extract_fight("dancing_mad_ultimate.zip", "GaAKTpkz4dLq6Qrb/fight-14/source-14/")
+    extract_fight("mch_dancing_mad_ultimate.zip", "GaAKTpkz4dLq6Qrb/fight-14/source-14/")
     result = analyze_saved_fight(tmp_path, mch_actions)
 
     assert result.encounter_id == 1085

@@ -20,9 +20,13 @@ def test_barrage_shadowbite_uses_buff_window_including_removal_at_cast() -> None
 
     packets = _barrage_shadowbite_packets(casts, buffs, names, 4)
     assert packets == {(11, 2)}
-    action = {"name": "Shadowbite", "potency": {"base": 200, "barrage_potency": 300}}
+    action = {
+        "name": "Shadowbite",
+        "potency": {"base": 200, "conditional_potencies": {"Barrage": 300}},
+    }
     event = {"packetID": 11, "abilityGameID": 2}
     assert _direct_potency(
-        action, event, is_primary_target=True, base_potency_override=300
+        action, event, is_primary_target=True,
+        base_potency_override=action["potency"]["conditional_potencies"]["Barrage"],
     ) == (300, 300)
     assert _direct_potency(action, event, is_primary_target=True) == (200, 200)

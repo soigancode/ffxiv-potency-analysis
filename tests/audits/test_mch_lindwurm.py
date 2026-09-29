@@ -19,7 +19,7 @@ from ffxiv_potency.analysis import analyze_saved_fight
 def test_real_lindwurm_final_queen_lands_bunker_but_not_collider(
     tmp_path: Path, mch_actions: Path, load_audit, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    load_audit("lindwurm_audit.json", "lindwurm")
+    load_audit("mch_lindwurm_audit.json", "lindwurm")
     result = analyze_saved_fight(tmp_path, mch_actions)
 
     (queen,) = result.pet_deployments
@@ -38,7 +38,7 @@ def test_real_lindwurm_final_queen_lands_bunker_but_not_collider(
 def test_queen_overdrive_marks_its_deployment(
     tmp_path: Path, mch_actions: Path, load_audit, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    source = load_audit("lindwurm_audit.json", "lindwurm")
+    source = load_audit("mch_lindwurm_audit.json", "lindwurm")
     source["master_data"]["abilities"].append({"gameID": 9001, "name": "Queen Overdrive"})
     source["cast_events"].append(
         {
@@ -64,7 +64,7 @@ def test_queen_overdrive_marks_its_deployment(
 def test_real_lindwurm_ii_queen_lands_both_finishers(
     tmp_path: Path, mch_actions: Path, load_audit
 ) -> None:
-    load_audit("lindwurm_audit.json", "lindwurm_ii_potted")
+    load_audit("mch_lindwurm_audit.json", "lindwurm_ii_potted")
     result = analyze_saved_fight(tmp_path, mch_actions)
 
     (queen,) = result.pet_deployments
@@ -81,7 +81,7 @@ def test_real_lindwurm_ii_queen_lands_both_finishers(
 def test_real_lindwurm_ii_queen_caps_battery_and_uses_roller_dash(
     tmp_path: Path, mch_actions: Path, load_audit
 ) -> None:
-    load_audit("lindwurm_audit.json", "lindwurm_ii_max_battery")
+    load_audit("mch_lindwurm_audit.json", "lindwurm_ii_max_battery")
     result = analyze_saved_fight(tmp_path, mch_actions)
 
     (queen,) = result.pet_deployments
@@ -100,7 +100,7 @@ def test_queen_without_either_finisher_reports_both(
 ) -> None:
     # A controlled variant of the real interrupted deployment: Bunker also
     # fails to land, as could happen if the fight ended a little earlier.
-    source = load_audit("lindwurm_audit.json", "lindwurm")
+    source = load_audit("mch_lindwurm_audit.json", "lindwurm")
     bunker_id = next(
         item["gameID"]
         for item in source["master_data"]["abilities"]

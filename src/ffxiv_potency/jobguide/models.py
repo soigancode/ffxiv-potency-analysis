@@ -163,6 +163,18 @@ class PotencyModifier:
 
 
 @dataclass(frozen=True, slots=True)
+class ConditionalPotency:
+    """An action's potency under a named condition from the job guide."""
+
+    condition: str
+    potency: int
+
+    def __post_init__(self) -> None:
+        if not self.condition or self.potency <= 0:
+            raise ValueError("conditional potency needs a condition and positive potency")
+
+
+@dataclass(frozen=True, slots=True)
 class GaugeGain:
     """Gauge granted when an action lands, optionally only as a combo bonus."""
 
@@ -194,13 +206,14 @@ class Potency:
     triggered: TriggeredPotency | None = None
     modifier: PotencyModifier | None = None
     stack_potency: StackPotency | None = None
-    barrage_potency: int | None = None
+    conditional_potencies: tuple[ConditionalPotency, ...] = ()
 
     def __post_init__(self) -> None:
         if self.base is not None and self.base <= 0:
             raise ValueError("base potency must be positive")
-        if self.barrage_potency is not None and self.barrage_potency <= 0:
-            raise ValueError("Barrage potency must be positive")
+        conditions = [entry.condition for entry in self.conditional_potencies]
+        if len(conditions) != len(set(conditions)):
+            raise ValueError("conditional potency conditions must be unique")
         if not any(
             (self.base, self.damage_over_time, self.triggered, self.modifier, self.stack_potency)
         ):
@@ -224,8 +237,10 @@ class Potency:
             result["modifier"] = self.modifier.to_dict()
         if self.stack_potency is not None:
             result["stack_potency"] = self.stack_potency.to_dict()
-        if self.barrage_potency is not None:
-            result["barrage_potency"] = self.barrage_potency
+        if self.conditional_potencies:
+            result["conditional_potencies"] = {
+                entry.condition: entry.potency for entry in self.conditional_potencies
+            }
         return result
 
 

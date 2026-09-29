@@ -10,11 +10,11 @@ from ffxiv_potency.analysis import analyze_saved_fight
 @pytest.mark.parametrize(
     ("archive_name", "prefix", "encounter", "landed", "autos", "queens", "potions"),
     [
-        ("vamp_fatale_full.zip", "DFm9brj421X6T73k/fight-1/source-2/", 101, 626, 186, 12, 2),
-        ("red_hot_deep_blue_full.zip", "R86rXnMqjHTDJz3A/fight-4/source-11/", 102, 695, 197, 11, 2),
-        ("tyrant_full.zip", "zYLAW7KTBk8P4XxG/fight-9/source-18/", 103, 771, 243, 14, 3),
-        ("lindwurm_full.zip", "kmCB1yh4GDxYJMtf/fight-24/source-1107/", 104, 480, 147, 10, 2),
-        ("lindwurm_full.zip", "BrmtPJ2XfaY6kGTC/fight-7/source-559/", 105, 632, 201, 10, 2),
+        ("mch_vamp_fatale_full.zip", "DFm9brj421X6T73k/fight-1/source-2/", 101, 626, 186, 12, 2),
+        ("mch_red_hot_deep_blue_full.zip", "R86rXnMqjHTDJz3A/fight-4/source-11/", 102, 695, 197, 11, 2),
+        ("mch_tyrant_full.zip", "zYLAW7KTBk8P4XxG/fight-9/source-18/", 103, 771, 243, 14, 3),
+        ("mch_lindwurm_full.zip", "kmCB1yh4GDxYJMtf/fight-24/source-1107/", 104, 480, 147, 10, 2),
+        ("mch_lindwurm_full.zip", "BrmtPJ2XfaY6kGTC/fight-7/source-559/", 105, 632, 201, 10, 2),
     ],
 )
 def test_full_savage_log_coverage(

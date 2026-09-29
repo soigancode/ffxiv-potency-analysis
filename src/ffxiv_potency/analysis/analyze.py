@@ -35,6 +35,14 @@ from .models import (
     PotionSummary,
     ReducedDamageHit,
 )
+from .penalties import (
+    load_damage_penalties,
+    penalty_multiplier,
+    revival_multiplier,
+    summarize_damage_penalties,
+    summarize_revival_penalties,
+    summarize_status_windows,
+)
 from .pets import _deployment_for_event, _reconstruct_pet_deployments
 from .potency import _direct_potency, _is_channeled_action
 from .potion import _potion_windows
@@ -80,6 +88,12 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     casts = _load_json(directory / "cast-events.json", list)
     buffs_path = directory / "buff-events.json"
     buffs = _load_json(buffs_path, list) if buffs_path.is_file() else []
+    debuffs_path = directory / "debuff-events.json"
+    debuffs = _load_json(debuffs_path, list) if debuffs_path.is_file() else []
+    life_path = directory / "life-events.json"
+    life = _load_json(life_path, list) if life_path.is_file() else []
+    revival_buffs_path = directory / "revival-buff-events.json"
+    revival_buffs = _load_json(revival_buffs_path, list) if revival_buffs_path.is_file() else []
     targetability_path = directory / "targetability-events.json"
     targetability_events = (
         _load_json(targetability_path, list) if targetability_path.is_file() else []
@@ -87,6 +101,11 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     overkill_path = directory / "encounter-overkill-events.json"
     encounter_overkills = _load_json(overkill_path, list) if overkill_path.is_file() else []
     action_document = _load_json(actions_path, dict)
+    schema_version = action_document.get("schema_version")
+    if schema_version is not None and schema_version != 3:
+        raise AnalysisError(
+            f"unsupported actions schema version {schema_version!r}; update the job-guide data"
+        )
     snapshot_patch = action_document.get("patch")
     if snapshot_patch is not None and snapshot_patch != LATEST_KNOWN_PATCH:
         raise AnalysisError(
@@ -129,6 +148,8 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         raise AnalysisError(f"{actions_path} is missing job")
     pet_profiles = _load_pet_profiles(job)
     combat_profile = _load_combat_profile(job, action_document)
+    encounter_id = fight.get("encounterID")
+    penalty_rules = load_damage_penalties(encounter_id if isinstance(encounter_id, int) else None)
     raid_effects = _load_raid_effects(actions_path)
 
     # FF Logs emits zero-amount damage rows for immune targets (hitType 10),
@@ -175,10 +196,21 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     auto_attack_events: list[dict[str, Any]] = []
     matched_events = 0
     potted_min = potted_max = potion_gain_min = potion_gain_max = 0.0
+    damage_down_losses: dict[int, list[float]] = defaultdict(lambda: [0.0, 0.0])
     luck_weighted_bonus = luck_weighted_maximum = luck_weighted_raid_adjustment = 0.0
     luck_weighted_expected = critical_rate_sum = direct_rate_sum = cdh_rate_sum = 0.0
     eligible_hit_count = 0
     missing_food: tuple[tuple[float, float], ...] = ()
+
+    def record_damage_down_loss(
+        event: dict[str, Any], penalized_min: float, penalized_max: float,
+    ) -> None:
+        """Compare each landed hit to itself with Damage Down removed."""
+        for status_id, (_, multiplier) in penalty_rules.items():
+            if multiplier < 1 and _has_buff(event, status_id):
+                fraction_lost = 1 / multiplier - 1
+                damage_down_losses[status_id][0] += penalized_min * fraction_lost
+                damage_down_losses[status_id][1] += penalized_max * fraction_lost
 
     def record_luck(event: dict[str, Any], potency_weight: float) -> None:
         """Accumulate the same weighted outcome for actions, pets, and auto-attacks."""
@@ -258,7 +290,13 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         float(start),
         float(end),
         source_id,
-        snapshot_extension_ms=45000 if job.casefold() == "bard" else 0,
+        # BRD DoTs and MCH Wildfire retain the potion present when applied.
+        # Their later damage must not be mistaken for another potion use.
+        snapshot_extension_ms=(
+            45000 if job.casefold() == "bard"
+            else 12000 if job.casefold() == "machinist"
+            else 0
+        ),
     )
     brd_self_windows = (
         brd_self_buff_windows(sorted_casts, buffs, ability_names, source_id)
@@ -312,11 +350,17 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             candidate_action = actions.get(candidate_name, {})
             candidate_potency = candidate_action.get("potency")
             action_type = candidate_action.get("type", "")
+            description = candidate_action.get("description", [])
+            hits_multiple_targets = isinstance(description, list) and any(
+                isinstance(line, str) and "all enemies" in line.casefold()
+                for line in description
+            )
             is_single_target_weaponskill = (
                 isinstance(action_type, str)
                 and "weaponskill" in action_type.lower()
                 and isinstance(candidate_potency, dict)
                 and candidate_potency.get("falloff") is None
+                and not hits_multiple_targets
             )
             if not is_single_target_weaponskill:
                 continue
@@ -337,6 +381,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             unfed_critical_multiplier=combat_profile.unfed_critical_damage_multiplier,
             unfed_determination_ratio=combat_profile.unfed_determination_ratio,
             food_missing=missing_food,
+            combat_profile=combat_profile,
         )
         if job.casefold() == "bard"
         else ({}, ())
@@ -393,8 +438,10 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 gauge_minimum=profile.gauge_minimum if profile is not None else None,
                 gauge_maximum=profile.gauge_maximum if profile is not None else None,
                 base_potency_override=(
-                    potency.get("barrage_potency")
-                    if key in brd_barrage_shadowbites and isinstance(potency, dict)
+                    potency["conditional_potencies"].get("Barrage")
+                    if key in brd_barrage_shadowbites
+                    and isinstance(potency, dict)
+                    and isinstance(potency.get("conditional_potencies"), dict)
                     else None
                 ),
                 )
@@ -437,6 +484,16 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 {"buffs": brd_tick.snapshot_buffs} if brd_tick is not None else event,
                 combat_profile.potion_buff_id,
             )
+        penalty = penalty_multiplier(event, penalty_rules)
+        unpotted_values = tuple(value * penalty for value in values)
+        if source_actor is None:
+            penalty *= revival_multiplier(event, combat_profile, potted=potted)
+            unpotted_values = tuple(
+                value * revival_multiplier(event, combat_profile, potted=False)
+                for value in unpotted_values
+            )
+        values = values[0] * penalty, values[1] * penalty
+
         if potted:
             potion_multiplier = (
                 combat_profile.pet_potion_multipliers.get(
@@ -445,11 +502,16 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 if isinstance(source_actor, str)
                 else combat_profile.player_potion_multiplier
             )
-            potted_min += values[0]
-            potted_max += values[1]
-            potion_gain_min += values[0] * (potion_multiplier - 1)
-            potion_gain_max += values[1] * (potion_multiplier - 1)
+            potted_min += unpotted_values[0]
+            potted_max += unpotted_values[1]
+            potion_gain_min += values[0] * potion_multiplier - unpotted_values[0]
+            potion_gain_max += values[1] * potion_multiplier - unpotted_values[1]
             values = values[0] * potion_multiplier, values[1] * potion_multiplier
+
+        record_damage_down_loss(event, *values)
+
+        if name == "Wildfire" and wildfire is not None and event.get("tick"):
+            wildfire.set_landed_potency(event, sum(values) / 2)
 
         if name == "Apex Arrow":
             apex_potency_by_packet[(event.get("packetID"), event.get("abilityGameID"))] += (
@@ -527,7 +589,20 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             clusters[-1].append(event_time)
         for cluster in clusters:
             first, later = cluster[0], cluster[-1]
-            if later - first < 2000:
+            # A shorter run of overkill can still be an HP lock when the
+            # boss remains castable well after the first overkill. A defeat
+            # may leave one lingering DoT tick, so require three distinct
+            # overkill times and a later targeted player cast.
+            short_lock_evidence = (
+                later - first >= 1000 and len(cluster) >= 3
+                and any(
+                    cast.get("targetID") == target_id
+                    and isinstance(cast.get("timestamp"), (int, float))
+                    and first + 1500 <= cast["timestamp"] <= later + 2500
+                    for cast in casts
+                )
+            )
+            if later - first < 2000 and not short_lock_evidence:
                 continue
             disappear = min(
                 (
@@ -539,6 +614,25 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 default=later + 4000,
             )
             phase_lock_windows[target_id].append((first - 1000, disappear))
+
+    # FF Logs can record the death event about two seconds after the lethal
+    # damage. Match both records so an earlier, survived overkill does not
+    # incorrectly label a cast as interrupted by death.
+    lethal_player_hits = [
+        hit
+        for hit in encounter_overkills
+        if hit.get("targetID") == source_id
+        and isinstance(hit.get("timestamp"), (int, float))
+        and any(
+            death.get("type") == "death"
+            and death.get("targetID") == source_id
+            and death.get("killerID") == hit.get("sourceID")
+            and death.get("killingAbilityGameID") == hit.get("abilityGameID")
+            and isinstance(death.get("timestamp"), (int, float))
+            and 0 <= death["timestamp"] - hit["timestamp"] <= 2500
+            for death in life
+        )
+    ]
 
     def record_ghost(name: str, cast: dict[str, Any]) -> None:
         ghosted[name] += 1
@@ -606,6 +700,11 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 ghosted_ending_times[name].append(
                     (seconds, "target became untargetable before hit landed")
                 )
+            elif any(
+                timestamp <= hit["timestamp"] <= timestamp + 2000
+                for hit in lethal_player_hits
+            ):
+                ghosted_ending_times[name].append((seconds, "player defeated before hit landed"))
             elif low_hp is not None:
                 ghosted_target_low_hp[name].append((seconds, low_hp))
             elif any(
@@ -618,6 +717,19 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 for event in boss_events[target_id]
             ):
                 ghosted_ending_times[name].append((seconds, "target defeated before hit landed"))
+            elif any(
+                event.get("type") == "damage" and event.get("tick")
+                and event.get("amount") == 0
+                for event in following
+            ) and not any(
+                event.get("type") == "damage"
+                and isinstance(event.get("amount"), (int, float))
+                and event["amount"] > 0
+                for event in following
+            ):
+                ghosted_ending_times[name].append(
+                    (seconds, "target stopped taking damage before hit landed")
+                )
             elif end - timestamp <= 1500:
                 ghosted_ending_times[name].append((seconds, "fight ending"))
 
@@ -653,27 +765,31 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         if cast.get("packetID") is not None and packet not in landed_packets:
             record_ghost(name, cast)
 
+    def landed_uses(name: str) -> int:
+        if name in channel_casts:
+            return len(channel_casts[name])
+        potency = actions[name].get("potency")
+        if isinstance(potency, dict) and isinstance(potency.get("damage_over_time"), dict):
+            return len({
+                (hit.get("packetID"), hit.get("abilityGameID"))
+                for hit in landed
+                if not hit.get("tick") and _event_name(hit, ability_names) == name
+            })
+        return len(use_keys[name])
+
     summaries = tuple(
         ActionSummary(
             name,
             int(values[0]),
             values[1],
             values[2],
-            uses=(
-                len({
-                    (hit.get("packetID"), hit.get("abilityGameID"))
-                    for hit in landed
-                    if not hit.get("tick") and _event_name(hit, ability_names) == name
-                })
-                if job.casefold() == "bard" and name in {"Caustic Bite", "Stormbite"}
-                else len(channel_casts[name]) if name in channel_casts else len(use_keys[name])
-            ),
+            uses=landed_uses(name),
         )
         for name, values in sorted(totals.items(), key=lambda item: (-item[1][1], item[0]))
     )
     if auto_attack_events:
         auto_attacks, auto_potted, auto_gain = _summarize_auto_attacks(
-            auto_attack_events, job, combat_profile, brd_self_windows
+            auto_attack_events, job, combat_profile, brd_self_windows, penalty_rules
         )
         potted_min += auto_potted
         potted_max += auto_potted
@@ -695,6 +811,9 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 )
             if _has_buff(event, combat_profile.potion_buff_id):
                 potency_weight *= combat_profile.player_potion_multiplier
+            potency_weight *= penalty_multiplier(event, penalty_rules)
+            potency_weight *= revival_multiplier(event, combat_profile)
+            record_damage_down_loss(event, potency_weight, potency_weight)
             record_luck(event, potency_weight)
     gear_baseline = (
         luck_weighted_expected / luck_weighted_maximum if luck_weighted_maximum else 0.0
@@ -748,11 +867,14 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         summarize_brd_dots(
             sorted_casts, raw_damage, buffs, ability_names, actions, source_id,
             potion_multiplier=combat_profile.player_potion_multiplier,
+            damage_penalties=penalty_rules,
+            combat_profile=combat_profile,
         )
         if job.casefold() == "bard" and source_id is not None else ()
     )
     return AnalysisResult(
         fight_name=str(fight.get("name", "Unknown fight")),
+        kill=fight.get("kill") if isinstance(fight.get("kill"), bool) else None,
         encounter_id=fight.get("encounterID")
         if isinstance(fight.get("encounterID"), int)
         else None,
@@ -791,6 +913,16 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             item=potion_item,
         ),
         food=food,
+        damage_penalties=(
+            *summarize_damage_penalties(
+                landed, penalty_rules, float(start), damage_down_losses,
+            ),
+            *summarize_revival_penalties(landed, ability_names, float(start), combat_profile),
+        ),
+        status_windows=summarize_status_windows(
+            debuffs, life, ability_names, source_id, float(start), float(end), sorted_casts,
+            revival_buffs,
+        ),
         food_missing_windows=tuple(
             ((begin - start) / 1000, (finish - start) / 1000)
             for begin, finish in missing_food

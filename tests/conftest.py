@@ -20,6 +20,9 @@ _LOG_FILES = {
     "cast_events": "cast-events.json",
     "damage_events": "damage-events.json",
     "buff_events": "buff-events.json",
+    "debuff_events": "debuff-events.json",
+    "life_events": "life-events.json",
+    "revival_buff_events": "revival-buff-events.json",
     "rankings": "rankings.json",
     "targetability_events": "targetability-events.json",
     "encounter_overkill_events": "encounter-overkill-events.json",
@@ -29,7 +32,7 @@ _REQUIRED_FILES = {"fight.json", "master-data.json", "cast-events.json", "damage
 
 @pytest.fixture(scope="session")
 def mch_action_json() -> str:
-    html = (JOBGUIDE_FIXTURES / "machinist_full_7_5.html").read_text(encoding="utf-8")
+    html = (JOBGUIDE_FIXTURES / "mch_full_7_5.html").read_text(encoding="utf-8")
     return json.dumps(
         {
             "job": "machinist",

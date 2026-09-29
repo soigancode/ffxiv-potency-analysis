@@ -16,18 +16,33 @@ import httpx
 from dotenv import load_dotenv
 
 from .analysis import (
+    AnalysisError,
     AnalysisResult,
     analyze_saved_fight,
 )
 from .analysis.config import reference_path
+from .analysis.penalties import DamagePenaltySummary
 from .fflogs import (
+    FFLogsClient,
     FFLogsError,
     download_report_events,
     parse_report_url,
     refresh_report_rankings,
 )
-from .fflogs.download import refresh_encounter_overkill_events, refresh_targetability_events
-from .fflogs.rankings import accessible_ranked_sources, ranked_source
+from .fflogs.download import (
+    refresh_encounter_overkill_events,
+    refresh_player_status_events,
+    refresh_report_date,
+    refresh_revival_buff_events,
+    refresh_targetability_events,
+)
+from .fflogs.partitions import require_current_patch
+from .fflogs.rankings import (
+    accessible_ranked_sources,
+    ranked_source,
+    ranked_sources_in_range,
+    validate_rank_range,
+)
 from .fflogs.reference import (
     ReportReference,
     report_code_from_directory,
@@ -52,6 +67,7 @@ CURRENT_FIGHTS = {
 _SAVED_FIGHT_FILES = ("fight.json", "master-data.json", "damage-events.json", "cast-events.json")
 _FIGHT_DIRECTORY = re.compile(r"fight-(\d+)")
 _SOURCE_DIRECTORY = re.compile(r"source-(\d+)")
+_RANK_RANGE = re.compile(r"(\d+)-(\d+)")
 
 
 class _Progress(AbstractContextManager["_Progress"]):
@@ -104,9 +120,9 @@ def build_parser() -> argparse.ArgumentParser:
     clear.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
 
     fflogs = commands.add_parser("fflogs", help="download one selected FF Logs fight")
-    fflogs.add_argument("url", help="report URL, or job abbreviation such as BRD/MCH")
+    fflogs.add_argument("url", help="'limit', a report URL, or a job such as BRD/MCH")
     fflogs.add_argument("fight", nargs="?", help="fight abbreviation such as m9s")
-    fflogs.add_argument("rank", nargs="?", type=int, help="analyse leaderboard rank 1–10")
+    fflogs.add_argument("rank", nargs="?", help="analyse one rank or compare an inclusive range, e.g. 5000-5500")
     fflogs.add_argument("--output", type=Path, default=Path("data/logs"), help="output root")
 
     compare = commands.add_parser("compare", help="download and compare FF Logs sources")
@@ -163,6 +179,28 @@ def _display_player_name(name: str, *, anonymous: bool = False) -> str:
     return f"\x1b[3m{displayed}\x1b[23m" if anonymous and sys.stdout.isatty() else displayed
 
 
+def _penalty_detail(penalty: DamagePenaltySummary) -> str:
+    if penalty.main_stat_reduction is not None and penalty.multiplier is not None:
+        return (
+            f"main stat -{penalty.main_stat_reduction}%; "
+            f"~{(1 - penalty.multiplier) * 100:.1f}% potency reduction"
+        )
+    return (
+        f"{(1 - penalty.multiplier) * 100:.0f}% reduction"
+        if penalty.multiplier is not None else "effect unknown"
+    )
+
+
+def _penalty_impact(penalty: DamagePenaltySummary) -> str:
+    detail = f"{penalty.affected_hits} landed hits affected"
+    if penalty.lost_potency_min is not None and penalty.lost_potency_max is not None:
+        detail += (
+            f"; {_format_potency(penalty.lost_potency_min, penalty.lost_potency_max)} "
+            "potency lost"
+        )
+    return detail
+
+
 def _print_analysis(
     result: AnalysisResult, *, anonymous: bool = False, rank: int | None = None
 ) -> None:
@@ -170,7 +208,8 @@ def _print_analysis(
     print(f"Player: {_display_player_name(result.source_name, anonymous=anonymous)}")
     if rank is not None:
         print(f"Rank: {rank}")
-    print(f"Fight: {_format_fight(result)}, {_format_duration(result.duration_seconds)}")
+    wipe = " (wipe)" if result.kill is False else ""
+    print(f"Fight: {_format_fight(result)}, {_format_duration(result.duration_seconds)}{wipe}")
     if result.food is not None:
         note = "" if result.food.recorded else " (configured; not identified in fight events)"
         print(f"Food: {result.food.name}{note}")
@@ -187,12 +226,61 @@ def _print_analysis(
         print(f"  Unmatched damage events: {unmatched}")
     print(f"Landed potency: {_format_potency(result.potency_min, result.potency_max)}")
     print(f"Potency per second: {_format_pps(result.pps_min, result.pps_max)}")
+    if result.status_windows or result.damage_penalties:
+        print("\nDamage penalties:")
+        printed_counts: set[str] = set()
+        window_counts = {
+            name: sum(window.name == name for window in result.status_windows)
+            for name in {window.name for window in result.status_windows}
+        }
+        for penalty in result.damage_penalties:
+            if penalty.main_stat_reduction is not None and penalty.multiplier is not None:
+                strength = (
+                    f" (main stat -{penalty.main_stat_reduction}%; "
+                    f"~{(1 - penalty.multiplier) * 100:.1f}% potency reduction)"
+                )
+            else:
+                strength = (
+                    f" ({(1 - penalty.multiplier) * 100:.0f}% reduction)"
+                    if penalty.multiplier is not None else ""
+                )
+            windows = tuple(w for w in result.status_windows if w.name == penalty.name)
+            if not windows:
+                print(
+                    f"  {penalty.name}{strength}: first landed hit "
+                    f"{_format_timestamp(penalty.first_observed_seconds)}, last landed hit "
+                    f"{_format_timestamp(penalty.last_observed_seconds)} "
+                    f"({_penalty_impact(penalty)}; exact application/removal not recorded)"
+                )
+        for window in result.status_windows:
+            note = window.end_reason
+            if window.refresh_seconds:
+                times = ", ".join(_format_timestamp(at) for at in window.refresh_seconds)
+                note = f"refreshed at {times}; {note}"
+            print(
+                f"  {window.name}: {_format_timestamp(window.start_seconds)}–"
+                f"{_format_timestamp(window.end_seconds)} ({note})"
+            )
+            if window.name not in printed_counts and window_counts[window.name] == 1:
+                for penalty in result.damage_penalties:
+                    if penalty.name == window.name:
+                        print(f"    {_penalty_detail(penalty)}; {_penalty_impact(penalty)}")
+                        printed_counts.add(window.name)
+                        break
+        for penalty in result.damage_penalties:
+            count = window_counts.get(penalty.name, 0)
+            if count <= 1:
+                continue
+            print(
+                f"  {penalty.name} total ({count} windows): "
+                f"{_penalty_detail(penalty)}; {_penalty_impact(penalty)}"
+            )
     visible_estimates = tuple(
         estimate for estimate in result.brd_potency_estimates
         if estimate.action != "Radiant Encore"
     )
     if visible_estimates:
-        print("Variable potency:")
+        print("\nVariable potency:")
         for estimate in visible_estimates:
             if estimate.apex_uses:
                 uncertain = sum(len(use.plausible_gauges) != 1 for use in estimate.apex_uses)
@@ -430,8 +518,8 @@ def _comparison_player_field(name: str, directory: Path) -> str:
 
 def _compare_directories(
     directories: Sequence[Path], override: Path | None, progress: _Progress | None = None,
-    *, rank_positions: Sequence[int] | None = None,
-) -> None:
+    *, rank_positions: Sequence[int] | None = None, skip_analysis_errors: bool = False,
+) -> tuple[tuple[int, str], ...]:
     if rank_positions is not None and len(rank_positions) != len(directories):
         raise ValueError("ranking positions must match the compared fights")
     jobs = [_source_job(directory) for directory in directories]
@@ -439,12 +527,28 @@ def _compare_directories(
         raise ValueError(f"comparison requires the same job; received: {', '.join(jobs)}")
     actions_path = _actions_for_job(jobs[0], override)
     results = []
+    compared_directories = []
+    compared_ranks = []
+    skipped: list[tuple[int, str]] = []
     if progress is not None:
         progress.update("Calculating", 0, len(directories))
     for index, directory in enumerate(directories, 1):
-        results.append(analyze_saved_fight(directory, actions_path))
+        try:
+            _verify_supported_fight(directory)
+            result = analyze_saved_fight(directory, actions_path)
+        except AnalysisError as exc:
+            if not skip_analysis_errors or rank_positions is None:
+                raise
+            skipped.append((rank_positions[index - 1], str(exc)))
+        else:
+            results.append(result)
+            compared_directories.append(directory)
+            if rank_positions is not None:
+                compared_ranks.append(rank_positions[index - 1])
         if progress is not None:
             progress.update("Calculating", index, len(directories))
+    if not results:
+        raise ValueError("none of the selected fights could be analyzed")
     encounters = {
         ("id", result.encounter_id)
         if result.encounter_id is not None
@@ -470,13 +574,14 @@ def _compare_directories(
         duration = _format_duration(result.duration_seconds)
         ndps = f"{result.ndps:,.1f}" if result.ndps is not None else "n/a"
         rdps = f"{result.rdps:,.1f}" if result.rdps is not None else "n/a"
-        rank = f"{rank_positions[index]:>4} " if rank_positions is not None else ""
-        player = _comparison_player_field(result.source_name, directories[index])
+        rank = f"{compared_ranks[index]:>4} " if rank_positions is not None else ""
+        player = _comparison_player_field(result.source_name, compared_directories[index])
         print(
             f"{rank}{player} {duration:>9} {rdps:>10} {ndps:>10} {potency:>12} "
             f"{pps:>9} {result.luck_score:>8.2%} {result.adjusted_luck_score:>8.2%}"
         )
     print()
+    return tuple(skipped)
 
 
 def _require_actions(path: Path, job: str) -> None:
@@ -516,6 +621,24 @@ def _source_job(directory: Path) -> str:
         raise ValueError(f"source {source_id} has no job in {directory}")
     normalized = subtype.casefold().replace(" ", "")
     return SUPPORTED_JOBS.get(normalized, normalized)
+
+
+def _verify_supported_fight(directory: Path) -> None:
+    fight = json.loads((directory / "fight.json").read_text(encoding="utf-8"))
+    rankings_path = directory / "rankings.json"
+    rankings = (json.loads(rankings_path.read_text(encoding="utf-8"))
+                if rankings_path.is_file() else {})
+    try:
+        require_current_patch(fight, rankings)
+    except ValueError as exc:
+        reference = _reference_from_directory(directory)
+        if (not str(exc).startswith("cannot identify") or reference is None
+                or not os.environ.get("FFLOGS_CLIENT_ID")
+                or not os.environ.get("FFLOGS_CLIENT_SECRET")):
+            raise
+        refresh_report_date(reference, directory)
+        fight = json.loads((directory / "fight.json").read_text(encoding="utf-8"))
+        require_current_patch(fight, rankings)
 
 
 def _actions_for_job(job: str, override: Path | None) -> Path:
@@ -581,6 +704,14 @@ def _resolve_analysis_directory(
                 and os.environ.get("FFLOGS_CLIENT_ID") and os.environ.get("FFLOGS_CLIENT_SECRET")
                 and not (directory / "encounter-overkill-events.json").is_file()):
             refresh_encounter_overkill_events(reference, directory)
+        if (reference is not None
+                and os.environ.get("FFLOGS_CLIENT_ID") and os.environ.get("FFLOGS_CLIENT_SECRET")
+                and not (directory / "life-events.json").is_file()):
+            refresh_player_status_events(reference, directory)
+        if (reference is not None
+                and os.environ.get("FFLOGS_CLIENT_ID") and os.environ.get("FFLOGS_CLIENT_SECRET")
+                and not (directory / "revival-buff-events.json").is_file()):
+            refresh_revival_buff_events(reference, directory)
         return directory
     if reference is None:
         raise ValueError(
@@ -596,12 +727,13 @@ def _resolve_analysis_directory(
 
 def _download_and_compare(
     urls: Sequence[str], output: Path, actions: Path | None, progress: _Progress,
-    *, rank_positions: Sequence[int] | None = None,
-) -> None:
+    *, rank_positions: Sequence[int] | None = None, skip_analysis_errors: bool = False,
+) -> tuple[tuple[int, str], ...]:
     # A source may appear more than once in a comparison; only one worker may
     # write its files, while the result still appears in each requested position.
     unique_urls = list(dict.fromkeys(urls))
     directories_by_url: dict[str, Path] = {}
+    failures_by_url: dict[str, str] = {}
     progress.update("Downloading", 0, len(urls))
     with ThreadPoolExecutor(max_workers=min(3, len(unique_urls))) as executor:
         pending = {
@@ -610,20 +742,45 @@ def _download_and_compare(
         }
         for finished in as_completed(pending):
             url = pending[finished]
-            directories_by_url[url] = finished.result()
-            completed = sum(url in directories_by_url for url in urls)
+            try:
+                directories_by_url[url] = finished.result()
+            except FFLogsError as exc:
+                if not skip_analysis_errors or rank_positions is None:
+                    raise
+                failures_by_url[url] = str(exc)
+            completed = sum(url in directories_by_url or url in failures_by_url for url in urls)
             progress.update("Downloading", completed, len(urls))
-    directories = [directories_by_url[url] for url in urls]
+    skipped = tuple(
+        (rank_positions[index], failures_by_url[url])
+        for index, url in enumerate(urls) if url in failures_by_url
+    ) if rank_positions is not None else ()
+    directories = [directories_by_url[url] for url in urls if url in directories_by_url]
+    compared_ranks = tuple(
+        rank_positions[index] for index, url in enumerate(urls) if url in directories_by_url
+    ) if rank_positions is not None else None
+    if not directories:
+        raise FFLogsError("none of the selected ranked fights could be downloaded")
     if progress.enabled:
-        if rank_positions is not None:
-            _compare_directories(directories, actions, progress, rank_positions=rank_positions)
-        else:
+        if compared_ranks is None:
             _compare_directories(directories, actions, progress)
-    else:
-        if rank_positions is not None:
-            _compare_directories(directories, actions, rank_positions=rank_positions)
+        elif skip_analysis_errors:
+            return skipped + _compare_directories(
+                directories, actions, progress, rank_positions=compared_ranks,
+                skip_analysis_errors=True,
+            )
         else:
+            _compare_directories(directories, actions, progress, rank_positions=compared_ranks)
+    else:
+        if compared_ranks is None:
             _compare_directories(directories, actions)
+        elif skip_analysis_errors:
+            return skipped + _compare_directories(
+                directories, actions, rank_positions=compared_ranks,
+                skip_analysis_errors=True,
+            )
+        else:
+            _compare_directories(directories, actions, rank_positions=compared_ranks)
+    return ()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -673,6 +830,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 progress.update("Downloading", 1, 1)
                 job = _source_job(directory)
                 actions_path = _actions_for_job(job, args.actions)
+                _verify_supported_fight(directory)
                 progress.update("Calculating", 0, 1)
                 result = analyze_saved_fight(directory, actions_path)
                 progress.update("Calculating", 1, 1)
@@ -684,6 +842,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
 
         if args.command == "fflogs":
+            if args.url.casefold() == "limit":
+                if args.fight is not None or args.rank is not None:
+                    raise ValueError("fflogs limit takes no fight or rank")
+                with FFLogsClient.from_environment() as client:
+                    usage = client.rate_limit()
+                print("FF Logs API usage:")
+                print(f"  Spent this hour: {usage.points_spent:,.2f} / "
+                      f"{usage.limit_per_hour:,} points")
+                print(f"  Resets in: {_format_duration(usage.resets_in_seconds)}")
+                return 0
             if args.fight is not None:
                 job = SUPPORTED_JOBS.get(args.url.casefold())
                 if job is None:
@@ -695,12 +863,55 @@ def main(argv: Sequence[str] | None = None) -> int:
                     raise ValueError(
                         f"unknown fight {args.fight!r}; choose: {', '.join(CURRENT_FIGHTS)}"
                     )
-                if args.rank is not None:
-                    if args.rank < 1:
-                        raise ValueError("rank must be a positive number")
+                rank_range = _RANK_RANGE.fullmatch(args.rank) if args.rank is not None else None
+                if rank_range is not None:
+                    first, last = map(int, rank_range.groups())
+                    validate_rank_range(first, last)
                     with _Progress() as progress:
                         progress.message("Processing...")
-                        reference = ranked_source(encounter_id, job, args.rank)
+                        ranked, skipped = ranked_sources_in_range(encounter_id, job, first, last)
+                        urls = [
+                            f"https://www.fflogs.com/reports/{reference.report_code}"
+                            f"?fight={reference.fight_id}&source={reference.source_id}"
+                            for _, reference in ranked
+                        ]
+                        analysis_skipped = _download_and_compare(
+                            urls, args.output, None, progress,
+                            rank_positions=tuple(rank for rank, _ in ranked),
+                            skip_analysis_errors=True,
+                        )
+                    skipped_ranks = (*skipped, *analysis_skipped)
+                    args.output.mkdir(parents=True, exist_ok=True)
+                    manifest = args.output / f"ranks-{job}-{args.fight.casefold()}-{first}-{last}.json"
+                    manifest.write_text(json.dumps({
+                        "job": job,
+                        "fight": args.fight.casefold(),
+                        "encounter_id": encounter_id,
+                        "first_rank": first,
+                        "last_rank": last,
+                        "reports": [
+                            {"rank": rank, "report_code": ref.report_code,
+                             "fight_id": ref.fight_id, "source_id": ref.source_id}
+                            for rank, ref in ranked
+                        ],
+                        "skipped": [
+                            {"rank": rank, "reason": reason}
+                            for rank, reason in skipped_ranks
+                        ],
+                    }, indent=2) + "\n", encoding="utf-8")
+                    if skipped_ranks:
+                        print("Skipped ranks: " + ", ".join(
+                            f"{rank} ({reason})" for rank, reason in skipped_ranks
+                        ))
+                        print()
+                    return 0
+                if args.rank is not None:
+                    if not args.rank.isdecimal() or int(args.rank) < 1:
+                        raise ValueError("rank must be a positive number")
+                    rank = int(args.rank)
+                    with _Progress() as progress:
+                        progress.message("Processing...")
+                        reference = ranked_source(encounter_id, job, rank)
                         url = (
                             f"https://www.fflogs.com/reports/{reference.report_code}"
                             f"?fight={reference.fight_id}&source={reference.source_id}"
@@ -712,11 +923,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                         )
                         progress.update("Downloading", 1, 1)
                         actions_path = _actions_for_job(job, None)
+                        _verify_supported_fight(directory)
                         progress.update("Calculating", 0, 1)
                         result = analyze_saved_fight(directory, actions_path)
                         progress.update("Calculating", 1, 1)
                     _print_analysis(
-                        result, rank=args.rank, anonymous=reference.report_code.startswith("a:"),
+                        result, rank=rank, anonymous=reference.report_code.startswith("a:"),
                     )
                     return 0
                 with _Progress() as progress:

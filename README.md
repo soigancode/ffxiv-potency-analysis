@@ -2,7 +2,7 @@
 
 Compare logs from the **same job and fight** by the potency of attacks that actually dealt damage. Potency removes the random damage roll and Crit/Direct Hit damage variance, making it easier to compare rotations. The tool also shows potency per second (PPS), hit luck, and FF Logs rDPS and nDPS.
 
-**Current support:** level 100 Bard (BRD) and Machinist (MCH), using patch 7.55 job data and configured gear stats. The supported leaderboard fights are the 7.4 Savage tier (M9S–M12S) and Dancing Mad Ultimate in 7.5. See [Limitations](#limitations) for gear and sync assumptions.
+**Current support:** level 100 Bard (BRD) and Machinist (MCH), using patch 7.55 job data and configured gear stats. Analysis accepts fights played in patch 7.5; the supported leaderboard fights are the 7.4 Savage tier (M9S–M12S) and Dancing Mad Ultimate in 7.5. See [Limitations](#limitations) for gear and sync assumptions.
 
 ## Contents
 
@@ -58,7 +58,13 @@ Analyse **any leaderboard position** instead:
 ffxiv-potency fflogs brd umad 3
 ```
 
-The number is the actual FF Logs rank, including positions the tool cannot access. For comparisons, inaccessible or ambiguous ranks are skipped and the search continues down the leaderboard. Anonymous reports work when the player can be identified from the selected fight. Downloads are reused.
+Compare an inclusive range of ranks:
+
+```bash
+ffxiv-potency fflogs mch m11s 20-25
+```
+
+Compare logs from a specific range (min 2, max 25). The numbers represent the actual ranks on FF Logs. Inaccessible or ambiguous ranks are skipped. Anonymous reports work when the player can be identified from the selected fight. Downloads are reused.
 
 | Fight | Encounter |
 | --- | --- |
@@ -79,7 +85,7 @@ Copy a selected player's FF Logs URL containing `fight` and `source`, and quote 
 ffxiv-potency analyse "https://www.fflogs.com/reports/REPORT1?fight=9&source=18"
 ```
 
-The report starts with the player, fight, duration, food, nDPS, rDPS, landed events, potency, and PPS. It then shows any variable potency estimates, reduced damage and ghosted casts, potion item and windows, hit outcomes and luck, action totals, auto-attacks, and job-specific details. If FF Logs does not identify a consumed item in the fight events, the report labels its configured name as unverified. A ghosted cast dealt no positive recorded damage; its note may identify an untargetable target, a defeated target, or a boss phase HP lock.
+The report starts with the player, fight, duration, food, nDPS, rDPS, landed events, potency, and PPS. A wipe is labelled after its duration. Deaths, Weakness, Brink of Death, and encounter-specific Damage Down appear below the summary when recorded. It then shows any variable potency estimates, reduced damage and ghosted casts, potion item and windows, hit outcomes and luck, action totals, auto-attacks, and job-specific details. If FF Logs does not identify a consumed item in the fight events, the report labels its configured name as unverified. A ghosted cast dealt no positive recorded damage; its note may identify an untargetable target, a defeated target, or a boss phase HP lock.
 
 To download a selected fight without analysing it, run `ffxiv-potency fflogs "<report URL with fight and source>"`. To empty `data/logs`, run `ffxiv-potency clear logs`; it asks for confirmation and leaves job data intact. Add `--yes` to skip the prompt.
 
@@ -124,11 +130,17 @@ P_{\mathrm{potted}} = P_{\mathrm{base}}\times
 \frac{f_{\mathrm{main}}(7379)}{f_{\mathrm{main}}(6838)}.
 ```
 
-The factor uses level 100's tiered main-stat calculation, so a 541 Dexterity gain is not treated as 10% extra damage. MCH pets use their own configured main-stat factor. BRD DoT ticks and MCH Wildfire use the potion state snapshotted when their effect was applied.
+The factor uses level 100's tiered main-stat calculation, so a 541 Dexterity gain is not treated as 10% extra damage. MCH pets use their own configured main-stat factor. DoT ticks and MCH Wildfire use the potion state snapshotted when their effect was applied.
+
+#### Damage penalties
+
+Weakness reduces the player's main damage stat by 25%; Brink of Death reduces it by 50%. These effects apply across encounters. The tool calculates their damage factors from the configured gear, accounting for a potion when one overlaps the hit.
+
+Damage Down strength is configured by encounter. The tool reduces potency on landed hits carrying that status; older DoT snapshots without it retain their potency. Consecutive applications appear as one interval with refresh times and a combined affected-hit count.
 
 #### Auto-attacks
 
-Shot has no current official listed potency in the job guide. The tool assumes a base value of **80**, estimates weapon delay from consecutive Shots, and matches it to a known delay for the job. It reports an error if no known delay is close enough. For the configured level 100 profile, action-comparable potency per Shot is:
+Shot has no current official listed potency in the job guide. The tool assumes a base value of **80**, estimates weapon delay from consecutive Shots, and matches it to a known delay for the job. BRD's Shots under Army's Paeon or Army's Muse still count toward potency, but do not set the base weapon-delay estimate. It reports an error if no known delay is close enough. For the configured level 100 profile, action-comparable potency per Shot is:
 
 ```math
 P_{\mathrm{Shot}}=80\times
@@ -222,7 +234,7 @@ For **Apex Arrow**, candidate potency is $140+7(g-20)$ for Soul Voice Gauge $g$ 
 
 ## Future features
 
-- Support selecting FF Logs partitions for rankings and reports.
+- Audit balance changes before supporting earlier FF Logs partitions and action data.
 - Add more jobs and support additional gear and level-sync profiles.
 - Interpret other damage-affecting traits from the job guide where their effects are needed.
 - Improve variable-potency estimates if FF Logs exposes the underlying resources.

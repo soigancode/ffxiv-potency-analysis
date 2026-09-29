@@ -36,7 +36,7 @@ def test_iron_jaws_clipped_to_one_damage_contributes_one_percent_potency() -> No
 
 
 def test_dancing_mad_dot_snapshots() -> None:
-    archive = Path(__file__).parents[1] / "fixtures/logs/bard_dancing_mad.zip"
+    archive = Path(__file__).parents[1] / "fixtures/logs/brd_dancing_mad.zip"
     root = "7CANHrvwKT6tp2Gx/fight-7/source-2/"
     with ZipFile(archive) as saved:
         def load(name: str):
@@ -106,7 +106,7 @@ def test_iron_jaws_refreshes_unexpired_dot_after_ticks_pause() -> None:
 
 
 def test_dancing_mad_dot_potency_retains_potion_after_it_expires() -> None:
-    with ZipFile(Path(__file__).parents[1] / "fixtures/logs/bard_dancing_mad.zip") as saved:
+    with ZipFile(Path(__file__).parents[1] / "fixtures/logs/brd_dancing_mad.zip") as saved:
         root = "7CANHrvwKT6tp2Gx/fight-7/source-2/"
 
         def load(name: str):
@@ -153,7 +153,7 @@ def test_dancing_mad_dot_potency_retains_potion_after_it_expires() -> None:
 def test_full_dancing_mad_analysis_uses_dot_snapshots_without_extra_potions(
     tmp_path: Path, extract_fight
 ) -> None:
-    extract_fight("bard_dancing_mad.zip", "7CANHrvwKT6tp2Gx/fight-7/source-2/")
+    extract_fight("brd_dancing_mad.zip", "7CANHrvwKT6tp2Gx/fight-7/source-2/")
     actions = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
     dots = {row.name: row for row in result.brd_dots}
@@ -209,6 +209,23 @@ def test_clipped_auto_attack_counts_only_landed_fraction_without_self_buffs() ->
 
     assert summary[0].hits == 2
     assert summary[0].total_potency == pytest.approx(summary[0].potency_per_hit * 1.01)
+
+
+def test_armys_paeon_and_muse_shots_do_not_set_weapon_delay() -> None:
+    # Faster Shots still contribute potency, but cannot estimate base delay.
+    shots = [
+        {"_resolved_name": "Shot", "timestamp": timestamp, "buffs": buff}
+        for timestamp, buff in (
+            (0, ""), (3040, ""), (6080, ""),
+            (8500, "1002218."), (10920, "1002218."),
+            (13340, "1001932."), (15760, "1001932."),
+            (18800, ""), (21840, ""),
+        )
+    ]
+    summary, _, _ = _summarize_auto_attacks(shots, "bard", _load_combat_profile("bard"))
+    assert summary[0].hits == 9
+    assert summary[0].estimated_delay_seconds == pytest.approx(3.04)
+    assert summary[0].weapon_delay_seconds == 3.04
 
 
 def test_prepull_raging_strikes_snapshot_is_counted() -> None:

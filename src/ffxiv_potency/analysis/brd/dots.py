@@ -7,6 +7,8 @@ from typing import Any
 
 from ..damage import landed_fraction
 from ..dots import DotRules, DotTick, reconstruct_dot_ticks
+from ..penalties import penalty_multiplier, revival_multiplier
+from ..profiles import _CombatProfile
 from .buffs import brd_self_buff_windows
 
 DOT_NAMES = frozenset({"Caustic Bite", "Stormbite"})
@@ -45,6 +47,8 @@ def brd_dot_potency(
     *,
     potion_multiplier: float,
     self_buff_windows: dict[int, tuple[tuple[int, int, float], ...]],
+    damage_penalties: dict[int, tuple[str, float]] | None = None,
+    combat_profile: _CombatProfile | None = None,
 ) -> float:
     """Apply only self-sourced damage buffs snapshotted at application.
 
@@ -56,10 +60,18 @@ def brd_dot_potency(
         raise ValueError("cannot calculate potency for an unmatched Bard DoT tick")
     if potency_per_tick <= 0 or potion_multiplier <= 0:
         raise ValueError("potency and potion multiplier must be positive")
+    snapshot_potted = (
+        combat_profile is not None
+        and str(combat_profile.potion_buff_id) in tick.snapshot_buffs.split(".")
+    )
+    revival = (
+        revival_multiplier({"buffs": tick.tick_buffs}, combat_profile, potted=snapshot_potted)
+        if combat_profile is not None else 1.0
+    )
     return tick.landed_fraction * _buffed_potency(
         potency_per_tick, tick.snapshot_timestamp, tick.snapshot_buffs,
         potion_multiplier, self_buff_windows,
-    )
+    ) * penalty_multiplier({"buffs": tick.tick_buffs}, damage_penalties or {}) * revival
 
 
 def _buffed_potency(
@@ -89,6 +101,8 @@ def summarize_brd_dots(
     source_id: int,
     *,
     potion_multiplier: float,
+    damage_penalties: dict[int, tuple[str, float]] | None = None,
+    combat_profile: _CombatProfile | None = None,
 ) -> tuple[BrdDotActionSummary, ...]:
     """Calculate initial hits, Iron Jaws hits and all DoT ticks.
 
@@ -113,16 +127,19 @@ def summarize_brd_dots(
         row[2] += landed_fraction(event) * _buffed_potency(
             base, event["timestamp"], str(event.get("buffs", "")),
             potion_multiplier, windows,
+        ) * penalty_multiplier(event, damage_penalties or {}) * (
+            revival_multiplier(event, combat_profile) if combat_profile is not None else 1.0
         )
     for tick in reconstruct_brd_dots(damage, ability_names, source_id):
         per_tick = actions[tick.name]["potency"]["damage_over_time"]["potency_per_tick"]
         row = potency[tick.name]
         row[1] += 1
         row[3] += brd_dot_potency(
-            tick, per_tick, potion_multiplier=potion_multiplier, self_buff_windows=windows
+            tick, per_tick, potion_multiplier=potion_multiplier, self_buff_windows=windows,
+            damage_penalties=damage_penalties,
+            combat_profile=combat_profile,
         )
     return tuple(
         BrdDotActionSummary(name, int(row[0]), int(row[1]), row[2], row[3])
         for name, row in sorted(potency.items())
     )
-

@@ -16,7 +16,7 @@ def test_anonymous_brd_dot_refresh_after_untargetable_phase(
     tmp_path: Path, extract_fight
 ) -> None:
     extract_fight(
-        "bard_red_hot_deep_blue_anonymous.zip",
+        "brd_red_hot_deep_blue_anonymous.zip",
         "a-DNaXrgHGZ8PbCkfL/fight-22/source-7/",
     )
     master = json.loads((tmp_path / "master-data.json").read_text(encoding="utf-8"))
@@ -44,7 +44,7 @@ def test_anonymous_brd_appears_as_anonymous_in_comparison(
     directory = tmp_path / "a-DNaXrgHGZ8PbCkfL/fight-22/source-7"
     directory.mkdir(parents=True)
     prefix = "a-DNaXrgHGZ8PbCkfL/fight-22/source-7/"
-    with ZipFile(Path(__file__).parents[1] / "fixtures/logs/bard_red_hot_deep_blue_anonymous.zip") as z:
+    with ZipFile(Path(__file__).parents[1] / "fixtures/logs/brd_red_hot_deep_blue_anonymous.zip") as z:
         for member in z.namelist():
             if member.startswith(prefix) and member.endswith(".json"):
                 (directory / member.removeprefix(prefix)).write_bytes(z.read(member))
@@ -60,7 +60,7 @@ def test_anonymous_brd_analysis_groups_landed_events(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
     extract_fight(
-        "bard_red_hot_deep_blue_anonymous.zip",
+        "brd_red_hot_deep_blue_anonymous.zip",
         "a-DNaXrgHGZ8PbCkfL/fight-22/source-7/",
     )
     actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
@@ -79,7 +79,7 @@ def test_one_leaderboard_rank_shows_full_anonymous_analysis(
     tmp_path: Path, extract_fight, monkeypatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     extract_fight(
-        "bard_red_hot_deep_blue_anonymous.zip",
+        "brd_red_hot_deep_blue_anonymous.zip",
         "a-DNaXrgHGZ8PbCkfL/fight-22/source-7/",
     )
     reference = ReportReference("a:DNaXrgHGZ8PbCkfL", 22, 7)

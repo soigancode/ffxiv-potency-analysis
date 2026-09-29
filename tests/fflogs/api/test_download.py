@@ -5,6 +5,7 @@ import httpx
 import pytest
 
 from ffxiv_potency.fflogs import ReportReference, download_report_events, refresh_report_rankings
+from ffxiv_potency.fflogs.download import refresh_report_date, refresh_revival_buff_events
 
 
 @pytest.mark.parametrize("report_code, directory_name", [
@@ -112,6 +113,33 @@ def test_downloads_metadata_and_paginated_events(
                                     "sourceID": 9, "targetID": 5, "overkill": 42}],
                            "nextPageTimestamp": None},
             }}}})
+        if "ActorStatusEvents" in query:
+            assert "dataType:" not in query
+            assert "targetID:" not in query
+            if variables["abilityID"] == 1000418.0:
+                assert variables["filter"] == 'type="applybuff" or type="refreshbuff"'
+                events = [
+                    {"timestamp": 650, "type": "applybuff", "targetID": 18,
+                     "sourceID": -1, "abilityGameID": 1000418},
+                    {"timestamp": 651, "type": "applybuff", "targetID": 17,
+                     "sourceID": -1, "abilityGameID": 1000418},
+                ]
+            elif 'type="applydebuff"' in variables["filter"]:
+                events = [
+                    {"timestamp": 300, "type": "applydebuff", "targetID": 18,
+                     "abilityGameID": 43},
+                    {"timestamp": 301, "type": "applydebuff", "targetID": 17,
+                     "abilityGameID": 43},
+                ]
+            else:
+                events = [
+                    {"timestamp": 600, "type": "death", "targetID": 18},
+                    {"timestamp": 601, "type": "death", "targetID": 17},
+                    {"timestamp": 900, "type": "resurrect", "targetID": 18},
+                ]
+            return httpx.Response(200, json={"data": {"reportData": {"report": {
+                "events": {"data": events, "nextPageTimestamp": None},
+            }}}})
         if "DamageDone" in query:
             damage_pages += 1
             if damage_pages == 1:
@@ -125,13 +153,6 @@ def test_downloads_metadata_and_paginated_events(
             assert variables["targetID"] == 18
             events = {
                 "data": [{"timestamp": 200, "type": "removebuff", "abilityGameID": 49}],
-                "nextPageTimestamp": None,
-            }
-        elif "Debuffs" in query:
-            assert variables["sourceID"] is None
-            assert variables["targetID"] == 18
-            events = {
-                "data": [{"timestamp": 300, "type": "applydebuff", "abilityGameID": 43}],
                 "nextPageTimestamp": None,
             }
         else:
@@ -164,11 +185,20 @@ def test_downloads_metadata_and_paginated_events(
     assert result.debuff_events is not None
     assert result.targetability_events is not None
     assert result.encounter_overkill_events is not None
+    assert result.life_events is not None
+    assert result.revival_buff_events is not None
     assert json.loads(result.buff_events.read_text())[0]["type"] == "removebuff"
     assert json.loads(result.debuff_events.read_text())[0]["type"] == "applydebuff"
+    assert len(json.loads(result.debuff_events.read_text())) == 1
+    assert [event["type"] for event in json.loads(result.life_events.read_text())] == [
+        "death", "resurrect",
+    ]
+    assert [event["targetID"] for event in json.loads(
+        result.revival_buff_events.read_text())] == [18]
     assert json.loads(result.targetability_events.read_text())[0]["targetable"] == 0
     assert json.loads(result.encounter_overkill_events.read_text())[0]["sourceID"] == 9
     assert json.loads(result.fight.read_text())["name"] == "Test Boss"
+    assert json.loads(result.fight.read_text())["reportStartTime"] == 1000
     assert json.loads(result.master_data.read_text())["lang"] == "en"
     assert json.loads(result.rankings.read_text())["metric"] == "ndps"
     assert (
@@ -183,6 +213,62 @@ def test_downloads_metadata_and_paginated_events(
         ][0]["amount"]
         == 12345.6
     )
+
+
+def test_backfills_report_date_without_redownloading_events(tmp_path: Path) -> None:
+    directory = tmp_path / "report/fight-3/source-4"
+    directory.mkdir(parents=True)
+    (directory / "fight.json").write_text('{"id":3,"startTime":500}')
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/token":
+            return httpx.Response(200, json={"access_token": "token"})
+        body = json.loads(request.content)
+        assert "ReportDate" in body["query"]
+        assert body["variables"] == {"code": "report"}
+        return httpx.Response(200, json={"data": {"reportData": {
+            "report": {"startTime": 1777593600000},
+        }}})
+
+    path = refresh_report_date(
+        ReportReference("report", 3, 4), directory, client_id="id", client_secret="secret",
+        transport=httpx.MockTransport(handler),
+    )
+    assert json.loads(path.read_text()) == {
+        "id": 3, "startTime": 500, "reportStartTime": 1777593600000,
+    }
+
+
+def test_backfills_environment_sourced_transcendent_for_saved_death(tmp_path: Path) -> None:
+    directory = tmp_path / "report/fight-2/source-18"
+    directory.mkdir(parents=True)
+    (directory / "life-events.json").write_text(
+        '[{"type": "death", "targetID": 18, "timestamp": 1000}]', encoding="utf-8"
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/token":
+            return httpx.Response(200, json={"access_token": "test-token"})
+        variables = json.loads(request.content)["variables"]
+        assert variables["abilityID"] == 1000418.0
+        assert variables["filter"] == 'type="applybuff" or type="refreshbuff"'
+        return httpx.Response(200, json={"data": {"reportData": {"report": {
+            "events": {"data": [
+                {"type": "applybuff", "abilityGameID": 1000418,
+                 "sourceID": -1, "targetID": 18, "timestamp": 1046},
+                {"type": "applybuff", "abilityGameID": 1000418,
+                 "sourceID": -1, "targetID": 17, "timestamp": 1046},
+            ], "nextPageTimestamp": None},
+        }}}})
+
+    result = refresh_revival_buff_events(
+        ReportReference("report", 2, 18), directory,
+        client_id="id", client_secret="secret", transport=httpx.MockTransport(handler),
+    )
+    assert json.loads(result.read_text()) == [{
+        "type": "applybuff", "abilityGameID": 1000418,
+        "sourceID": -1, "targetID": 18, "timestamp": 1046,
+    }]
 
 
 def test_refreshes_old_rankings_without_redownloading_events(tmp_path: Path) -> None:

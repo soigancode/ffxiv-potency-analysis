@@ -18,7 +18,7 @@ from ffxiv_potency.analysis import analyze_saved_fight
 
 
 def test_audited_vamp_fatale_events(tmp_path: Path, mch_actions: Path, load_audit) -> None:
-    load_audit("vamp_fatale_audit.json")
+    load_audit("mch_vamp_fatale_audit.json")
     result = analyze_saved_fight(tmp_path, mch_actions)
     by_name = {action.name: action for action in result.actions}
 
@@ -57,7 +57,7 @@ def test_audited_potency_ignores_damage_rolls_and_hit_outcomes(
     tmp_path: Path, mch_actions: Path, load_audit
 ) -> None:
     """Critical hits and damage amounts cannot change landed potency."""
-    source = load_audit("vamp_fatale_audit.json")
+    source = load_audit("mch_vamp_fatale_audit.json")
     before = analyze_saved_fight(tmp_path, mch_actions)
     for event in source["damage_events"]:
         if event.get("type") == "damage" and event.get("amount", 0) > 0:

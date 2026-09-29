@@ -13,6 +13,7 @@ build/
 # Keep normalized JSON in Git; raw downloaded pages are local snapshots.
 data/**/source.html
 data/raid_buffs/
+data/raid_effects/sources/
 data/logs/
 data/research/
 .env

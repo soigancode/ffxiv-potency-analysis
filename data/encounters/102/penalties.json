@@ -1,0 +1,6 @@
+{
+  "encounter_id": 102,
+  "effects": [
+    {"status_id": 1002911, "name": "Damage Down", "potency_multiplier": 0.70}
+  ]
+}

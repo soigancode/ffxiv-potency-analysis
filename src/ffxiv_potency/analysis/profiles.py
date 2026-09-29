@@ -30,6 +30,9 @@ class _CombatProfile:
     skill_speed_factor: float
     critical_rate: float
     direct_rate: float
+    party_main_stat: int
+    potted_main_stat: int
+    player_damage_coefficient: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -275,6 +278,9 @@ def _load_combat_profile(job: str, action_document: dict | None = None) -> _Comb
         potion_action_names=tuple(action_names),
         potion_duration_seconds=required_ints["potion_duration"],
         player_potion_multiplier=player_after / player_before,
+        party_main_stat=required_ints["party"],
+        potted_main_stat=required_ints["potted"],
+        player_damage_coefficient=required_ints["player_damage_coefficient"],
         pet_potion_multipliers=pet_multipliers,
         critical_damage_multiplier=_critical_damage_multiplier(
             required_ints["critical_hit"],

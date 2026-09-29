@@ -11,7 +11,7 @@ SOURCE_URL = "https://eu.finalfantasyxiv.com/jobguide/machinist/"
 
 
 def test_saved_full_guide_is_exported_as_json(tmp_path: Path) -> None:
-    source = FIXTURES / "machinist_full_7_5.html"
+    source = FIXTURES / "mch_full_7_5.html"
     destination = tmp_path / "machinist.json"
 
     assert (
@@ -27,7 +27,7 @@ def test_saved_full_guide_is_exported_as_json(tmp_path: Path) -> None:
     )
 
     document = json.loads(destination.read_text(encoding="utf-8"))
-    assert document["schema_version"] == 2
+    assert document["schema_version"] == 3
     assert document["job"] == "machinist"
     assert document["patch"] == "7.5"
     assert document["source"]["url"] == SOURCE_URL

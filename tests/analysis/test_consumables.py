@@ -31,7 +31,7 @@ def test_buff_applier_identifies_consumable_and_does_not_guess_from_other_player
 def test_dancing_mad_consumables_are_identified_from_saved_api_events(
     tmp_path: Path, extract_fight
 ) -> None:
-    extract_fight("bard_dancing_mad.zip", "7CANHrvwKT6tp2Gx/fight-7/source-2/")
+    extract_fight("brd_dancing_mad.zip", "7CANHrvwKT6tp2Gx/fight-7/source-2/")
     actions = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
 
@@ -58,7 +58,7 @@ def test_food_gap_starts_with_removal_and_ends_at_reapplication() -> None:
 def test_real_food_expiry_changes_luck_baseline_without_changing_landed_potency(
     tmp_path: Path, extract_fight, capsys
 ) -> None:
-    extract_fight("bard_food_expiry.zip", "gBtCvT39QpRF1xWA/fight-8/source-2/")
+    extract_fight("brd_food_expiry.zip", "gBtCvT39QpRF1xWA/fight-8/source-2/")
     actions = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
     actual = analyze_saved_fight(tmp_path, actions)
 

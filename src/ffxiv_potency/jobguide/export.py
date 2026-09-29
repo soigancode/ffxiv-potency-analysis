@@ -33,7 +33,7 @@ def export_actions(
         source_metadata["sha256"] = source_sha256
 
     document = {
-        "schema_version": 2,
+        "schema_version": 3,
         "job": job,
         "patch": patch,
         "source": source_metadata,

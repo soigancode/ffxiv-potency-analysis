@@ -18,7 +18,7 @@ from ffxiv_potency.analysis import analyze_saved_fight
 def test_audited_wildfire_hypercharge_auto_attacks_and_three_potions(
     tmp_path: Path, mch_actions: Path, load_audit
 ) -> None:
-    load_audit("tyrant_audit.json")
+    load_audit("mch_tyrant_audit.json")
     result = analyze_saved_fight(tmp_path, mch_actions)
     by_name = {action.name: action for action in result.actions}
 
@@ -65,7 +65,7 @@ def test_audited_wildfire_hypercharge_auto_attacks_and_three_potions(
 def test_wildfire_potion_snapshots_on_application(
     tmp_path: Path, mch_actions: Path, load_audit, potion_time: int, expected_potted: bool
 ) -> None:
-    source = load_audit("tyrant_audit.json")
+    source = load_audit("mch_tyrant_audit.json")
     casts = source["cast_events"]
     potion_cast = next(cast for cast in casts if cast["abilityGameID"] == 34603667)
     potion_cast["timestamp"] = potion_time
@@ -86,7 +86,7 @@ def test_wildfire_potion_snapshots_on_application(
 def test_wildfire_without_detonation_is_visible(
     tmp_path: Path, mch_actions: Path, load_audit
 ) -> None:
-    source = load_audit("tyrant_audit.json")
+    source = load_audit("mch_tyrant_audit.json")
     damage = [event for event in source["damage_events"] if event["abilityGameID"] != 1000861]
     (tmp_path / "damage-events.json").write_text(json.dumps(damage), encoding="utf-8")
 
@@ -101,7 +101,7 @@ def test_wildfire_without_detonation_is_visible(
 def test_wildfire_recovers_prepull_potion_when_cast_is_missing(
     tmp_path: Path, mch_actions: Path, load_audit
 ) -> None:
-    source = load_audit("tyrant_audit.json")
+    source = load_audit("mch_tyrant_audit.json")
     casts = [
         cast
         for cast in source["cast_events"]
@@ -116,7 +116,7 @@ def test_wildfire_recovers_prepull_potion_when_cast_is_missing(
 def test_detonator_marks_early_wildfire_without_changing_potency(
     tmp_path: Path, mch_actions: Path, load_audit, capsys
 ) -> None:
-    source = load_audit("tyrant_audit.json")
+    source = load_audit("mch_tyrant_audit.json")
     source["master_data"]["abilities"].append({"gameID": 9001, "name": "Detonator"})
     source["cast_events"].append(
         {

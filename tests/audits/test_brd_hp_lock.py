@@ -12,7 +12,7 @@ def test_dancing_mad_hp_locks_explain_ghosted_casts(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
     extract_fight(
-        "bard_dancing_mad_hp_lock.zip", "a-D6ZtNJ4Cbnf1ak8y/fight-6/source-198/"
+        "brd_dancing_mad_hp_lock.zip", "a-D6ZtNJ4Cbnf1ak8y/fight-6/source-198/"
     )
     actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
     _print_analysis(analyze_saved_fight(tmp_path, actions))
@@ -34,13 +34,13 @@ def test_dancing_mad_hp_locks_explain_ghosted_casts(
     "archive_name,prefix,expected",
     [
         (
-            "bard_dancing_mad.zip",
+            "brd_dancing_mad.zip",
             "7CANHrvwKT6tp2Gx/fight-7/source-2/",
             ("06m16s Burst Shot on Kefka", "11m51s Burst Shot on Exdeath",
              "12m00s Iron Jaws on Chaos"),
         ),
         (
-            "bard_dancing_mad_rank2.zip",
+            "brd_dancing_mad_rank2.zip",
             "ApcPadnzZx1brm4T/fight-4/source-10/",
             ("06m17s Burst Shot on Kefka", "11m52s Burst Shot on Exdeath",
              "12m00s Burst Shot on Exdeath"),

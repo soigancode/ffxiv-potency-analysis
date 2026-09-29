@@ -67,7 +67,7 @@ def test_crawls_seven_raid_rates_from_four_guides(tmp_path: Path) -> None:
         0.20,
         0.20,
     ]
-    assert (tmp_path / "raid_buffs/7.55/bard.html").is_file()
+    assert (tmp_path / "raid_effects/sources/7.55/bard.html").is_file()
     actions = tmp_path / "machinist/7.55/actions.json"
     actions.parent.mkdir(parents=True)
     actions.write_text('{"patch": "7.55"}', encoding="utf-8")

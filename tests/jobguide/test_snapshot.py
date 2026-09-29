@@ -17,9 +17,9 @@ from ffxiv_potency.jobguide.snapshot import BRD_URL, update_job_guide
 FIXTURES = Path(__file__).parents[1] / "fixtures/jobguide"
 
 
-@pytest.mark.parametrize("job", ["bard", "machinist"])
-def test_full_guide_matches_committed_action_snapshot(job: str) -> None:
-    html = (FIXTURES / f"{job}_full_7_5.html").read_text(encoding="utf-8")
+@pytest.mark.parametrize("job, abbreviation", [("bard", "brd"), ("machinist", "mch")])
+def test_full_guide_matches_committed_action_snapshot(job: str, abbreviation: str) -> None:
+    html = (FIXTURES / f"{abbreviation}_full_7_5.html").read_text(encoding="utf-8")
     committed = json.loads(
         (Path(__file__).parents[2] / "data" / job / "7.55" / "actions.json").read_text()
     )
@@ -29,7 +29,7 @@ def test_full_guide_matches_committed_action_snapshot(job: str) -> None:
 
 def test_update_downloads_and_exports_versioned_snapshot(tmp_path: Path) -> None:
     mch_url = "https://example.test/jobguide/machinist/"
-    source_bytes = (FIXTURES / "machinist_full_7_5.html").read_bytes()
+    source_bytes = (FIXTURES / "mch_full_7_5.html").read_bytes()
 
     def handler(request: httpx.Request) -> httpx.Response:
         assert str(request.url) == mch_url
@@ -58,14 +58,14 @@ def test_update_downloads_and_exports_versioned_snapshot(tmp_path: Path) -> None
         "sha256": hashlib.sha256(source_bytes).hexdigest(),
     }
     assert len(document["actions"]) == 40
-    assert document["schema_version"] == 2
+    assert document["schema_version"] == 3
     assert document["traits"][0]["name"] == "Increased Action Damage"
     assert "action_damage_multiplier" not in document["traits"][0]
     assert document["traits"][1]["action_damage_multiplier"] == 1.2
 
 
 def test_complete_mch_snapshot_has_expected_coverage() -> None:
-    html = (FIXTURES / "machinist_full_7_5.html").read_text(encoding="utf-8")
+    html = (FIXTURES / "mch_full_7_5.html").read_text(encoding="utf-8")
 
     report = inspect_job_actions(html)
 
@@ -80,7 +80,7 @@ def test_complete_mch_snapshot_has_expected_coverage() -> None:
 
 
 def test_brd_guide_crawls_all_actions_and_special_potencies(tmp_path: Path) -> None:
-    html = (FIXTURES / "bard_full_7_5.html").read_bytes()
+    html = (FIXTURES / "brd_full_7_5.html").read_bytes()
 
     def handler(request: httpx.Request) -> httpx.Response:
         assert str(request.url) == BRD_URL
@@ -122,7 +122,12 @@ def test_brd_guide_crawls_all_actions_and_special_potencies(tmp_path: Path) -> N
         "maximum_potency": 700,
         "minimum_cost": 20,
     }
-    assert actions["Shadowbite"]["potency"]["barrage_potency"] == 300
+    assert actions["Shadowbite"]["potency"]["conditional_potencies"] == {
+        "Barrage": 300,
+    }
+    assert actions["Wide Volley"]["potency"]["conditional_potencies"] == {
+        "Barrage": 220,
+    }
     assert [
         trait["action_damage_multiplier"] for trait in document["traits"]
         if trait["name"].startswith("Increased Action Damage")
@@ -133,7 +138,7 @@ def test_unrecognized_action_damage_trait_does_not_replace_snapshot(tmp_path: Pa
     destination = tmp_path / "bard/7.55/actions.json"
     destination.parent.mkdir(parents=True)
     destination.write_text('{"previous": true}\n', encoding="utf-8")
-    html = (FIXTURES / "bard_full_7_5.html").read_text(encoding="utf-8")
+    html = (FIXTURES / "brd_full_7_5.html").read_text(encoding="utf-8")
     changed = html.replace("Increases base action damage by 20%.", "Makes attacks stronger.", 1)
     assert changed != html
 
@@ -155,7 +160,7 @@ def test_unrecognized_guide_wording_does_not_replace_existing_actions(tmp_path: 
     actions = tmp_path / "machinist/7.55/actions.json"
     actions.parent.mkdir(parents=True)
     actions.write_text('{"previous": true}\n', encoding="utf-8")
-    html = (FIXTURES / "machinist_full_7_5.html").read_text(encoding="utf-8")
+    html = (FIXTURES / "mch_full_7_5.html").read_text(encoding="utf-8")
     original = "Delivers an attack with a potency of 660.<br>Maximum Charges: 2"
     assert original in html
     changed = html.replace(original, "Unrecognized potency wording.<br>Maximum Charges: 2", 1)

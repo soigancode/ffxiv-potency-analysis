@@ -79,7 +79,7 @@ def update_raid_effects(
         raise ValueError(
             f"only patch {LATEST_KNOWN_PATCH} is supported for now; received {patch!r}"
         )
-    source_directory = output_root / "raid_buffs" / patch
+    source_directory = output_root / "raid_effects" / "sources" / patch
     effects = []
     for job in EFFECT_JOBS:
         url = JOBGUIDE_URL_TEMPLATE.format(job=job)

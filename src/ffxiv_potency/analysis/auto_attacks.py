@@ -12,6 +12,7 @@ from .damage import landed_fraction
 from .errors import AnalysisError
 from .events import _has_buff
 from .models import AutoAttackSummary
+from .penalties import penalty_multiplier, revival_multiplier
 from .profiles import _CombatProfile, _load_weapon_delays
 
 _WEAPON_DELAY_MATCH_TOLERANCE = 0.04
@@ -42,11 +43,15 @@ def _estimate_delay(intervals: list[float]) -> float:
 def _match_weapon_delay(estimated: float, known: tuple[float, ...], job: str) -> float:
     matched = min(known, key=lambda value: abs(value - estimated))
     difference = abs(matched - estimated)
-    if difference > _WEAPON_DELAY_MATCH_TOLERANCE:
+    # BRD's observed Shot spacing can run ~40 ms above the weapon's nominal
+    # delay even after excluding Army's speed statuses. Its known delays are
+    # separated by 160 ms, so a 50 ms limit remains unambiguous.
+    tolerance = 0.05 if job.casefold() == "bard" else _WEAPON_DELAY_MATCH_TOLERANCE
+    if difference > tolerance:
         formatted = ", ".join(f"{value:.2f}" for value in known)
         raise AnalysisError(
             f"estimated auto-attack delay {estimated:.3f}s for {job} does not match "
-            f"a known value within {_WEAPON_DELAY_MATCH_TOLERANCE:.2f}s ({formatted})"
+            f"a known value within {tolerance:.2f}s ({formatted})"
         )
     return matched
 
@@ -54,6 +59,7 @@ def _match_weapon_delay(estimated: float, known: tuple[float, ...], job: str) ->
 def _summarize_auto_attacks(
     events: list[dict[str, Any]], job: str, combat_profile: _CombatProfile,
     self_windows: dict[int, tuple[tuple[int, int, float], ...]] | None = None,
+    damage_penalties: dict[int, tuple[str, float]] | None = None,
 ) -> tuple[tuple[AutoAttackSummary, ...], float, float]:
     known_delays = _load_weapon_delays(job)
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -64,12 +70,21 @@ def _summarize_auto_attacks(
     summaries = []
     potted_base = potion_gain = 0.0
     for name, action_events in sorted(grouped.items()):
-        values = sorted(
-            float(event["timestamp"])
-            for event in action_events
-            if isinstance(event.get("timestamp"), (int, float))
+        timed = sorted(
+            (event for event in action_events
+             if isinstance(event.get("timestamp"), (int, float))),
+            key=lambda event: event["timestamp"],
         )
-        intervals = [(right - left) / 1000 for left, right in pairwise(values)]
+        # Army's Paeon and Army's Muse change BRD's attack speed. Keep every
+        # landed Shot in the potency total, but use only pairs whose endpoints
+        # are free of either status to infer the underlying weapon delay.
+        haste_statuses = (1002218, 1001932) if job.casefold() == "bard" else ()
+        intervals = [
+            (right["timestamp"] - left["timestamp"]) / 1000
+            for left, right in pairwise(timed)
+            if not any(_has_buff(event, status) for event in (left, right)
+                       for status in haste_statuses)
+        ]
         estimated_delay = _estimate_delay(intervals)
         weapon_delay = _match_weapon_delay(estimated_delay, known_delays, job)
         # Auto-attacks use the delay-adjusted weapon factor and do not receive
@@ -86,21 +101,24 @@ def _summarize_auto_attacks(
             * combat_profile.skill_speed_factor
             / combat_profile.action_trait_multiplier
         )
-        buffed_bases = [
-            potency_per_hit * landed_fraction(event) * (
+        base_total = action_gain = potted_effective = 0.0
+        for event in action_events:
+            base = potency_per_hit * landed_fraction(event) * (
                 _brd_self_multiplier(
                     str(event.get("buffs", "")), float(event.get("timestamp", 0)), self_windows
                 ) if self_windows else 1.0
-            )
-            for event in action_events
-        ]
-        base_total = sum(buffed_bases)
-        potted_action_base = sum(
-            base for event, base in zip(action_events, buffed_bases)
-            if _has_buff(event, combat_profile.potion_buff_id)
-        )
-        action_gain = potted_action_base * (combat_profile.player_potion_multiplier - 1)
-        potted_base += potted_action_base
+            ) * penalty_multiplier(event, damage_penalties or {})
+            effective_base = base * revival_multiplier(event, combat_profile)
+            base_total += effective_base
+            if _has_buff(event, combat_profile.potion_buff_id):
+                unpotted_base = base * revival_multiplier(event, combat_profile, potted=False)
+                potted_base += unpotted_base
+                potted_effective += effective_base
+                action_gain += (
+                    effective_base * combat_profile.player_potion_multiplier - unpotted_base
+                )
+        # `base_total` uses the potted main-stat reduction on potted hits. Its
+        # remaining potion factor must be added separately to the final total.
         potion_gain += action_gain
         summaries.append(
             AutoAttackSummary(
@@ -109,8 +127,8 @@ def _summarize_auto_attacks(
                 estimated_delay_seconds=estimated_delay,
                 weapon_delay_seconds=weapon_delay,
                 potency_per_hit=potency_per_hit,
-                total_potency=base_total + action_gain,
+                total_potency=base_total + potted_effective
+                * (combat_profile.player_potion_multiplier - 1),
             )
         )
     return tuple(summaries), potted_base, potion_gain
-

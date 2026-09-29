@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
 from ..events import _event_name, _has_buff
@@ -36,6 +36,7 @@ class MchWildfireTracker:
     applications: dict[int, float] = field(init=False)
     records: dict[int, MchWildfireSummary] = field(default_factory=dict)
     potted_events: set[int] = field(default_factory=set)
+    explosion_casts: dict[int, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.applications = {
@@ -112,6 +113,7 @@ class MchWildfireTracker:
         potted = self._snapshotted_potion(cast, explosion)
         if potted:
             self.potted_events.add(id(explosion))
+        self.explosion_casts[id(explosion)] = id(cast)
         self.records[id(cast)] = MchWildfireSummary(
             (started - self.fight_start) / 1000,
             (event_time - self.fight_start) / 1000,
@@ -125,6 +127,12 @@ class MchWildfireTracker:
             ),
         )
         return value
+
+    def set_landed_potency(self, explosion: dict[str, Any], potency: float) -> None:
+        """Keep the window summary equal to the fully adjusted landed action."""
+        cast_id = self.explosion_casts.get(id(explosion))
+        if cast_id is not None and cast_id in self.records:
+            self.records[cast_id] = replace(self.records[cast_id], potency=potency)
 
     def summaries(self) -> tuple[MchWildfireSummary, ...]:
         return tuple(

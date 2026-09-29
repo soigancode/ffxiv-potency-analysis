@@ -9,6 +9,7 @@ from .models import (
     Action,
     AoeFalloff,
     ComboPotency,
+    ConditionalPotency,
     DamageOverTime,
     GaugeGain,
     GaugeScaling,
@@ -315,7 +316,8 @@ def _parse_potency(action_name: str, description: tuple[str, ...]) -> Potency | 
         triggered=triggered,
         modifier=modifier,
         stack_potency=stack_potency,
-        barrage_potency=barrage_potency,
+        conditional_potencies=(ConditionalPotency("Barrage", barrage_potency),)
+        if barrage_potency is not None else (),
     )
 
 

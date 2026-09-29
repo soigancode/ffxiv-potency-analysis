@@ -14,6 +14,8 @@ from ..models import (
     BrdPitchHitEstimate,
     BrdPotencyEstimateSummary,
 )
+from ..penalties import revival_multiplier
+from ..profiles import _CombatProfile
 from .songs import _brd_coda
 
 
@@ -30,6 +32,7 @@ def _brd_damage_estimates(
     unfed_critical_multiplier: float | None = None,
     unfed_determination_ratio: float = 1.0,
     food_missing: tuple[tuple[float, float], ...] = (),
+    combat_profile: _CombatProfile | None = None,
 ) -> tuple[dict[int, tuple[float, bool, float]], tuple[BrdPotencyEstimateSummary, ...]]:
     """Infer BRD variable potency from fixed attacks by the same player.
 
@@ -58,6 +61,14 @@ def _brd_damage_estimates(
             amount /= multiplier
             if _has_buff(event, potion_buff_id):
                 amount *= 1.05 / potion_multiplier
+            # FF Logs labels these as 0.75/0.50 in its multiplier, while the
+            # main-stat damage formula produces a slightly different factor.
+            # Remove the remaining difference for cross-window classification.
+            if combat_profile is not None:
+                for status_id, displayed in ((1000044, 0.50), (1000043, 0.75)):
+                    if _has_buff(event, status_id):
+                        amount *= displayed / revival_multiplier(event, combat_profile)
+                        break
         if unfed:
             amount *= unfed_determination_ratio
         return amount

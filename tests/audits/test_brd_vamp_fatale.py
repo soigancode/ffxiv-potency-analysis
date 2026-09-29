@@ -12,7 +12,7 @@ from ffxiv_potency.analysis import analyze_saved_fight
 def test_brd_adds_and_clipped_hit(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    extract_fight("bard_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
+    extract_fight("brd_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
     actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
     by_name = {action.name: action for action in result.actions}
@@ -47,7 +47,7 @@ def test_brd_adds_and_clipped_hit(
 def test_barrage_shadowbite_buffs_every_target(
     tmp_path: Path, extract_fight
 ) -> None:
-    extract_fight("bard_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
+    extract_fight("brd_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
     actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
     ordinary = analyze_saved_fight(tmp_path, actions)
     ordinary_potency = next(row.potency_min for row in ordinary.actions if row.name == "Shadowbite")
@@ -74,7 +74,7 @@ def test_barrage_shadowbite_buffs_every_target(
 def test_recorded_targetability_explains_ghosted_burst_shot(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    extract_fight("bard_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
+    extract_fight("brd_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
     (tmp_path / "targetability-events.json").write_text(json.dumps([
         {"type": "targetabilityupdate", "timestamp": 5768288,
          "sourceID": 5, "targetID": 5, "targetable": 0},
@@ -93,7 +93,7 @@ def test_recorded_targetability_explains_ghosted_burst_shot(
 def test_other_players_overkill_explains_ghosted_coffinmaker_shot(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    extract_fight("bard_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
+    extract_fight("brd_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
     casts = json.loads((tmp_path / "cast-events.json").read_text(encoding="utf-8"))
     coffin_id = next(cast["targetID"] for cast in casts if cast.get("timestamp") == 5818473)
     (tmp_path / "encounter-overkill-events.json").write_text(json.dumps([
@@ -109,7 +109,7 @@ def test_other_players_overkill_explains_ghosted_coffinmaker_shot(
 def test_repeated_cell_overkill_is_not_a_boss_hp_lock(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    extract_fight("bard_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
+    extract_fight("brd_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
     # Another player keeps dealing overkill to a cell after this Bard's cast.
     (tmp_path / "encounter-overkill-events.json").write_text(json.dumps([
         {"type": "damage", "timestamp": timestamp, "sourceID": 8,
@@ -127,7 +127,7 @@ def test_rank_two_cell_dies_from_own_sidewinder_before_burst_shot_lands(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
     extract_fight(
-        "bard_vamp_fatale_rank2.zip", "xCN3zZp6rnDwTMLq/fight-10/source-325/"
+        "brd_vamp_fatale_rank2.zip", "xCN3zZp6rnDwTMLq/fight-10/source-325/"
     )
     actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
