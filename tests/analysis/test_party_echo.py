@@ -2,7 +2,11 @@
 
 import pytest
 
-from ffxiv_potency.analysis.echo import echo_status, normalize_echo_damage
+from ffxiv_potency.analysis.echo import (
+    echo_status,
+    is_non_echo_partition,
+    normalize_echo_damage,
+)
 from ffxiv_potency.analysis.errors import AnalysisError
 from ffxiv_potency.analysis.party import party_bonus_percent
 from ffxiv_potency.analysis.profiles import _load_combat_profile, _player_main_stat_factor
@@ -83,3 +87,15 @@ def test_echo_normalizes_damage_fields_without_changing_saved_events() -> None:
     assert normalized[1]["targetResources"]["hitPoints"] == 10
     assert normalized[2]["amount"] == 0
     assert events[1]["amount"] == 112
+
+
+@pytest.mark.parametrize("partition,expected", [
+    (1, True), (2, True), (7, True), (8, True), (13, False), (14, False), (3, False),
+])
+def test_non_echo_rankings_establish_zero_echo(partition, expected) -> None:
+    rankings = {"rankings": {"data": [{"fightID": 23, "partition": partition}]}}
+    assert is_non_echo_partition(23, rankings) is expected
+    assert not is_non_echo_partition(24, rankings)
+    assert not is_non_echo_partition(23, {})
+    rankings["rdps"] = {"data": [{"fightID": 23, "partition": 13}]}
+    assert not is_non_echo_partition(23, rankings)

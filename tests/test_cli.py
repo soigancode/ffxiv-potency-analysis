@@ -701,7 +701,7 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     assert "15,000.0  248,364" in compact_output
     assert "45.12%        n/a    7.5  01/05/26" in compact_output
 
-    for encounter in (4549, 4551):
+    for encounter in (4549, 4550, 4551):
         def dungeon_result(
             directory: Path, actions_path: Path, encounter_id: int = encounter,
         ) -> AnalysisResult:
@@ -713,8 +713,12 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
             cli._compare_directories([tmp_path / "abc123/fight-9/source-18"],
                                      actions, rank_positions=ranks)
             dungeon_output = capsys.readouterr().out
-            assert "DPS" in dungeon_output and "16,789.2" in dungeon_output
-            assert "rDPS" not in dungeon_output and "nDPS" not in dungeon_output
+            if encounter in (4549, 4551):
+                assert "DPS" in dungeon_output and "16,789.2" in dungeon_output
+                assert "rDPS" not in dungeon_output and "nDPS" not in dungeon_output
+            if ranks is not None:
+                assert "Partition" not in dungeon_output
+                assert "Patch: 7.5" in dungeon_output
     monkeypatch.setattr(cli, "analyze_saved_fight", fake_analyze)
 
     def fail_download(*args, **kwargs):

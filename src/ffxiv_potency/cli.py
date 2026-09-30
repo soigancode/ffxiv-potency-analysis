@@ -543,8 +543,10 @@ def _print_analysis(
                 else ""
             )
             print(
-                f"  {_format_timestamp(deployment.timestamp_seconds)} {deployment.actor}: "
+                f"  {'Pre-pull' if deployment.mch_prepull else _format_timestamp(deployment.timestamp_seconds)} "
+                f"{deployment.actor}: "
                 f"{deployment.gauge_spent} {deployment.gauge}"
+                f"{' (estimated from Queen damage)' if deployment.mch_gauge_inferred else ''}"
                 f"{' (assumed carry-over; unconfirmed by this report)' if deployment.gauge_assumed else ''}, "
                 f"{_format_potency(deployment.potency_min, deployment.potency_max)} total potency"
                 f"{missing}{overdrive}"
@@ -652,18 +654,26 @@ def _compare_directories(
     print(f"Fight: {_format_fight(results[0])}")
     provenance = [_fight_provenance(directory) for directory in compared_directories]
     shared_provenance = rank_positions is not None and len(set(provenance)) == 1
+    show_partition = not (rank_positions is not None
+                          and results[0].encounter_id in {4549, 4550, 4551})
     if shared_provenance:
         partition, patch = provenance[0]
-        print(f"Partition: {partition}")
+        if show_partition:
+            print(f"Partition: {partition}")
         print(f"Patch: {patch}")
+    provenance_labels = (() if shared_provenance else
+                         (("Partition", "Patch") if show_partition else ("Patch",)))
     use_dps = results[0].encounter_id in {4549, 4551}
     labels = ("Duration", *(("DPS",) if use_dps else ("rDPS", "nDPS")),
               "Potency", "PPS", "Luck", "aLuck",
-              *(("Partition", "Patch") if not shared_provenance else ()), "Date")
+              *provenance_labels, "Date")
     rows: list[tuple[str, ...]] = []
     for index, result in enumerate(results):
         partition, patch = provenance[index]
-        assumed_battery = any(deployment.gauge_assumed for deployment in result.pet_deployments)
+        provenance_values = (() if shared_provenance else
+                             ((partition, patch) if show_partition else (patch,)))
+        assumed_battery = any(deployment.gauge_assumed or deployment.mch_gauge_inferred
+                              for deployment in result.pet_deployments)
         marker = "~" if assumed_battery else ""
         rows.append((
             _format_duration(result.duration_seconds),
@@ -676,7 +686,7 @@ def _compare_directories(
             marker + _format_pps(result.pps_min, result.pps_max),
             marker + f"{result.luck_score:.2%}",
             marker + f"{result.adjusted_luck_score:.2%}",
-            *((partition, patch) if not shared_provenance else ()),
+            *provenance_values,
             _fight_date(compared_directories[index]),
         ))
     widths = tuple(max(len(label), *(len(row[column]) for row in rows))
@@ -696,6 +706,9 @@ def _compare_directories(
     if any(deployment.gauge_assumed for result in results
            for deployment in result.pet_deployments):
         print("~ Potency, PPS, Luck, and aLuck include an unconfirmed 100 Battery Gauge carry-over.")
+    if any(deployment.mch_gauge_inferred for result in results
+           for deployment in result.pet_deployments):
+        print("~ Potency, PPS, Luck, and aLuck include Battery estimated from Queen damage.")
     print()
     return tuple(skipped)
 

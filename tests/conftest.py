@@ -24,6 +24,7 @@ _LOG_FILES = {
     "life_events": "life-events.json",
     "revival_buff_events": "revival-buff-events.json",
     "rankings": "rankings.json",
+    "checkpoint_context": "checkpoint-context.json",
     "targetability_events": "targetability-events.json",
     "encounter_overkill_events": "encounter-overkill-events.json",
 }

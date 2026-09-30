@@ -1,0 +1,3695 @@
+{
+  "method": "Independent matching of same-action Queen damage and Crit/potion state to later Queens. Damage roll +/-5%, reported multiplier +/-0.005, final integer rounding +/-2. Opening prepull Queen and first recorded deployment excluded from references. All 19 opening Queens uniquely fitted.",
+  "cases": [
+    {
+      "report": "2qVzYZa16DTt4Bgp",
+      "fight": 23,
+      "source": 494,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 23741142,
+          "type": "damage",
+          "packetID": 24060,
+          "sourceID": 499,
+          "sourceInstance": 1,
+          "targetID": 277,
+          "abilityGameID": 17206,
+          "fight": 23,
+          "buffs": "1000786.",
+          "hitType": 1,
+          "amount": 24338,
+          "unmitigatedAmount": 24338,
+          "multiplier": 1,
+          "action": "Roller Dash",
+          "t": 23740254
+        },
+        {
+          "timestamp": 23744170,
+          "type": "damage",
+          "packetID": 24088,
+          "sourceID": 499,
+          "sourceInstance": 1,
+          "targetID": 277,
+          "abilityGameID": 16504,
+          "fight": 23,
+          "buffs": "1000786.",
+          "hitType": 1,
+          "amount": 12982,
+          "unmitigatedAmount": 12982,
+          "multiplier": 1,
+          "action": "Arm Punch",
+          "t": 23743416
+        },
+        {
+          "timestamp": 23745773,
+          "type": "damage",
+          "packetID": 24102,
+          "sourceID": 499,
+          "sourceInstance": 1,
+          "targetID": 277,
+          "abilityGameID": 16504,
+          "fight": 23,
+          "buffs": "1000786.",
+          "hitType": 1,
+          "amount": 12188,
+          "unmitigatedAmount": 12188,
+          "multiplier": 1,
+          "action": "Arm Punch",
+          "t": 23744973
+        },
+        {
+          "timestamp": 23747332,
+          "type": "damage",
+          "packetID": 24118,
+          "sourceID": 499,
+          "sourceInstance": 1,
+          "targetID": 277,
+          "abilityGameID": 16504,
+          "fight": 23,
+          "buffs": "1000786.",
+          "hitType": 2,
+          "amount": 20334,
+          "unmitigatedAmount": 20334,
+          "multiplier": 1,
+          "action": "Arm Punch",
+          "t": 23746531
+        },
+        {
+          "timestamp": 23749387,
+          "type": "damage",
+          "packetID": 24132,
+          "sourceID": 499,
+          "sourceInstance": 1,
+          "targetID": 277,
+          "abilityGameID": 16503,
+          "fight": 23,
+          "buffs": "1000786.",
+          "hitType": 1,
+          "amount": 37366,
+          "unmitigatedAmount": 37366,
+          "multiplier": 1,
+          "action": "Pile Bunker",
+          "t": 23748091
+        },
+        {
+          "timestamp": 23752103,
+          "type": "damage",
+          "packetID": 24143,
+          "sourceID": 499,
+          "sourceInstance": 1,
+          "targetID": 277,
+          "abilityGameID": 25787,
+          "fight": 23,
+          "buffs": "1000786.",
+          "hitType": 2,
+          "amount": 68237,
+          "unmitigatedAmount": 68237,
+          "multiplier": 1,
+          "action": "Crowned Collider",
+          "t": 23750146
+        }
+      ],
+      "references": {
+        "('Roller Dash', True, False)": {
+          "n": 1,
+          "interval": [
+            135.9340861828424,
+            151.7676099797232
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 21,
+          "interval": [
+            88.0991866066493,
+            91.44847042228687
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 5,
+          "interval": [
+            86.25778669676825,
+            90.59124310925111
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 4,
+          "interval": [
+            86.75547780025393,
+            91.25700477194792
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 7,
+          "interval": [
+            88.00758114190953,
+            89.60396524532997
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 8,
+          "interval": [
+            90.44502477136194,
+            94.08839083354317
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 3,
+          "interval": [
+            87.87353804080874,
+            95.58564297035862
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 3,
+          "interval": [
+            88.90079303078626,
+            96.97615403986593
+          ]
+        },
+        "('Roller Dash', True, True)": {
+          "n": 1,
+          "interval": [
+            137.44505701174626,
+            153.37626362557108
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 2,
+          "interval": [
+            139.8961859625367,
+            154.88961638546124
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 4,
+          "interval": [
+            142.42754481560453,
+            146.0989156307855
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 2,
+          "interval": [
+            138.4807057151219,
+            150.4692858365245
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 3,
+          "interval": [
+            139.94739367873697,
+            154.15810496476988
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 1,
+          "interval": [
+            144.98785296108966,
+            161.7891477920808
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 1,
+          "interval": [
+            140.6352678390593,
+            156.93056712447293
+          ]
+        },
+        "('Roller Dash', False, True)": {
+          "n": 1,
+          "interval": [
+            86.22207176709546,
+            96.21841685553596
+          ]
+        }
+      },
+      "first_time": 13.847,
+      "first_recorded_cast": 8.28,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "4xJjXqtDgmvzfydh",
+      "fight": 19,
+      "source": 41,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 8572367,
+          "type": "damage",
+          "packetID": 18898,
+          "sourceID": 48,
+          "sourceInstance": 1,
+          "targetID": 50,
+          "abilityGameID": 16504,
+          "fight": 19,
+          "buffs": "1000049.1001878.1001297.1003849.1000786.1001221.",
+          "hitType": 2,
+          "amount": 27702,
+          "unmitigatedAmount": 27702,
+          "multiplier": 1.23,
+          "action": "Arm Punch",
+          "t": 8571609
+        },
+        {
+          "timestamp": 8573927,
+          "type": "damage",
+          "packetID": 18917,
+          "sourceID": 48,
+          "sourceInstance": 1,
+          "targetID": 50,
+          "abilityGameID": 16504,
+          "fight": 19,
+          "buffs": "1000049.1001878.1001297.1003849.1000786.1001221.",
+          "hitType": 1,
+          "amount": 15776,
+          "unmitigatedAmount": 15776,
+          "multiplier": 1.23,
+          "action": "Arm Punch",
+          "t": 8573169
+        },
+        {
+          "timestamp": 8575486,
+          "type": "damage",
+          "packetID": 18933,
+          "sourceID": 48,
+          "sourceInstance": 1,
+          "targetID": 50,
+          "abilityGameID": 16504,
+          "fight": 19,
+          "buffs": "1000049.1001878.1001297.1003849.1000786.1001221.",
+          "hitType": 2,
+          "amount": 25636,
+          "unmitigatedAmount": 25636,
+          "multiplier": 1.23,
+          "action": "Arm Punch",
+          "t": 8574729
+        },
+        {
+          "timestamp": 8577046,
+          "type": "damage",
+          "packetID": 18954,
+          "sourceID": 48,
+          "sourceInstance": 1,
+          "targetID": 50,
+          "abilityGameID": 16504,
+          "fight": 19,
+          "buffs": "1000049.1001878.1001297.1003849.1000786.1001221.",
+          "hitType": 1,
+          "amount": 17094,
+          "unmitigatedAmount": 17094,
+          "multiplier": 1.23,
+          "action": "Arm Punch",
+          "t": 8576287
+        },
+        {
+          "timestamp": 8578605,
+          "type": "damage",
+          "packetID": 18971,
+          "sourceID": 48,
+          "sourceInstance": 1,
+          "targetID": 50,
+          "abilityGameID": 16504,
+          "fight": 19,
+          "buffs": "1000049.1001878.1001297.1003849.1000786.1001221.",
+          "hitType": 1,
+          "amount": 20685,
+          "unmitigatedAmount": 20685,
+          "directHit": true,
+          "multiplier": 1.23,
+          "action": "Arm Punch",
+          "t": 8577847
+        },
+        {
+          "timestamp": 8580704,
+          "type": "damage",
+          "packetID": 18986,
+          "sourceID": 48,
+          "sourceInstance": 1,
+          "targetID": 50,
+          "abilityGameID": 16503,
+          "fight": 19,
+          "buffs": "1000049.1001878.1001297.1003849.1000786.1001221.",
+          "hitType": 1,
+          "amount": 45823,
+          "unmitigatedAmount": 45823,
+          "multiplier": 1.23,
+          "action": "Pile Bunker",
+          "t": 8579409
+        },
+        {
+          "timestamp": 8583420,
+          "type": "damage",
+          "packetID": 19007,
+          "sourceID": 48,
+          "sourceInstance": 1,
+          "targetID": 50,
+          "abilityGameID": 25787,
+          "fight": 19,
+          "buffs": "1000049.1001878.1001297.1003849.1000786.1001221.",
+          "hitType": 1,
+          "amount": 52911,
+          "unmitigatedAmount": 52911,
+          "multiplier": 1.23,
+          "action": "Crowned Collider",
+          "t": 8581458
+        }
+      ],
+      "references": {
+        "('Arm Punch', False, False)": {
+          "n": 33,
+          "interval": [
+            88.60459606728264,
+            89.73963384172325
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 16,
+          "interval": [
+            144.17909007574661,
+            146.05827874407046
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 8,
+          "interval": [
+            88.25852065535999,
+            89.58966464381099
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 10,
+          "interval": [
+            88.59955210666112,
+            89.7920177698571
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 4,
+          "interval": [
+            88.10708362947169,
+            89.53983671625416
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 4,
+          "interval": [
+            136.81173962122162,
+            146.09580409788882
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 2,
+          "interval": [
+            141.4514727947564,
+            149.6085013461369
+          ]
+        },
+        "('Roller Dash', True, False)": {
+          "n": 2,
+          "interval": [
+            133.16025691647584,
+            147.55179405800936
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 2,
+          "interval": [
+            148.56240126382306,
+            158.07375581811672
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 5,
+          "interval": [
+            91.6907653749759,
+            94.41786283891545
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 1,
+          "interval": [
+            88.50080316486785,
+            98.75864725139614
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 1,
+          "interval": [
+            88.94258979567036,
+            99.24981758776772
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 1,
+          "interval": [
+            145.5302768880832,
+            162.1695294659217
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 1,
+          "interval": [
+            139.56193917409172,
+            155.66700382850345
+          ]
+        }
+      },
+      "first_time": 14.221,
+      "first_recorded_cast": 8.644,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "7fW2431bcRJamFnv",
+      "fight": 28,
+      "source": 28,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 7051102,
+          "type": "damage",
+          "packetID": 38391,
+          "sourceID": 32,
+          "sourceInstance": 1,
+          "targetID": 70,
+          "abilityGameID": 16504,
+          "fight": 28,
+          "buffs": "1000049.1002599.1001297.1001221.",
+          "hitType": 1,
+          "amount": 19378,
+          "unmitigatedAmount": 19378,
+          "directHit": true,
+          "multiplier": 1.14,
+          "action": "Arm Punch",
+          "t": 7050343
+        },
+        {
+          "timestamp": 7052662,
+          "type": "damage",
+          "packetID": 38409,
+          "sourceID": 32,
+          "sourceInstance": 1,
+          "targetID": 70,
+          "abilityGameID": 16504,
+          "fight": 28,
+          "buffs": "1000049.1002599.1001297.1001221.",
+          "hitType": 1,
+          "amount": 14582,
+          "unmitigatedAmount": 14582,
+          "multiplier": 1.14,
+          "action": "Arm Punch",
+          "t": 7051903
+        },
+        {
+          "timestamp": 7054223,
+          "type": "damage",
+          "packetID": 38422,
+          "sourceID": 32,
+          "sourceInstance": 1,
+          "targetID": 70,
+          "abilityGameID": 16504,
+          "fight": 28,
+          "buffs": "1000049.1002599.1001297.1001221.",
+          "hitType": 2,
+          "amount": 30429,
+          "unmitigatedAmount": 30429,
+          "directHit": true,
+          "multiplier": 1.14,
+          "action": "Arm Punch",
+          "t": 7053464
+        },
+        {
+          "timestamp": 7055787,
+          "type": "damage",
+          "packetID": 38433,
+          "sourceID": 32,
+          "sourceInstance": 1,
+          "targetID": 70,
+          "abilityGameID": 16504,
+          "fight": 28,
+          "buffs": "1000049.1002599.1001297.1001221.",
+          "hitType": 1,
+          "amount": 18803,
+          "unmitigatedAmount": 18803,
+          "directHit": true,
+          "multiplier": 1.14,
+          "action": "Arm Punch",
+          "t": 7055029
+        },
+        {
+          "timestamp": 7057354,
+          "type": "damage",
+          "packetID": 38450,
+          "sourceID": 32,
+          "sourceInstance": 1,
+          "targetID": 70,
+          "abilityGameID": 16504,
+          "fight": 28,
+          "buffs": "1000049.1002599.1001297.1001221.",
+          "hitType": 1,
+          "amount": 18857,
+          "unmitigatedAmount": 18857,
+          "directHit": true,
+          "multiplier": 1.14,
+          "action": "Arm Punch",
+          "t": 7056592
+        },
+        {
+          "timestamp": 7062143,
+          "type": "damage",
+          "packetID": 38475,
+          "sourceID": 32,
+          "sourceInstance": 1,
+          "targetID": 70,
+          "abilityGameID": 25787,
+          "fight": 28,
+          "buffs": "1000049.",
+          "hitType": 2,
+          "amount": 90915,
+          "unmitigatedAmount": 90915,
+          "directHit": true,
+          "multiplier": 1.05,
+          "action": "Crowned Collider",
+          "t": 7060216
+        }
+      ],
+      "references": {
+        "('Arm Punch', False, False)": {
+          "n": 41,
+          "interval": [
+            88.02548106030694,
+            89.07843310117842
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 9,
+          "interval": [
+            86.54486670290007,
+            89.92018918120012
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 8,
+          "interval": [
+            86.41078577112694,
+            90.30160374101622
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 18,
+          "interval": [
+            141.41198768064442,
+            144.7441887801581
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 3,
+          "interval": [
+            136.8574494474407,
+            147.16682266541866
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 4,
+          "interval": [
+            142.57178707474955,
+            151.5377155683953
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 1,
+          "interval": [
+            85.24836136776436,
+            95.17764259895971
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 4,
+          "interval": [
+            88.59875828060484,
+            93.70015948963317
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 2,
+          "interval": [
+            90.79984600475261,
+            97.26821980366057
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 1,
+          "interval": [
+            139.7644374063588,
+            155.84131457073724
+          ]
+        },
+        "('Roller Dash', False, True)": {
+          "n": 1,
+          "interval": [
+            87.37337729851768,
+            97.43245779647357
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 1,
+          "interval": [
+            145.2484924100645,
+            161.9743190575558
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 1,
+          "interval": [
+            83.44406665327452,
+            93.11611749284879
+          ]
+        }
+      },
+      "first_time": 17.186,
+      "first_recorded_cast": 11.644,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "CWFc7HrQTn3Bvk2N",
+      "fight": 16,
+      "source": 178,
+      "fits": [
+        100
+      ],
+      "hits": [
+        {
+          "timestamp": 7311842,
+          "type": "damage",
+          "packetID": 35642,
+          "sourceID": 179,
+          "sourceInstance": 8,
+          "targetID": 104,
+          "abilityGameID": 16504,
+          "fight": 16,
+          "buffs": "1000049.1002703.1001878.1002599.1000786.1001221.",
+          "hitType": 2,
+          "amount": 55709,
+          "unmitigatedAmount": 55709,
+          "directHit": true,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 7311084
+        },
+        {
+          "timestamp": 7313400,
+          "type": "damage",
+          "packetID": 35659,
+          "sourceID": 179,
+          "sourceInstance": 8,
+          "targetID": 104,
+          "abilityGameID": 16504,
+          "fight": 16,
+          "buffs": "1000049.1002703.1001878.1002599.1000786.1001221.",
+          "hitType": 2,
+          "amount": 41347,
+          "unmitigatedAmount": 41347,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 7312642
+        },
+        {
+          "timestamp": 7314963,
+          "type": "damage",
+          "packetID": 35678,
+          "sourceID": 179,
+          "sourceInstance": 8,
+          "targetID": 104,
+          "abilityGameID": 16504,
+          "fight": 16,
+          "buffs": "1000049.1002703.1001878.1002599.1000786.1001221.",
+          "hitType": 2,
+          "amount": 42803,
+          "unmitigatedAmount": 42803,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 7314204
+        }
+      ],
+      "references": {
+        "('Roller Dash', False, False)": {
+          "n": 3,
+          "interval": [
+            86.99360341151387,
+            89.87922066472716
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 33,
+          "interval": [
+            88.34794282555477,
+            90.07023421199565
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 9,
+          "interval": [
+            88.0473401481805,
+            90.98640778712966
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 4,
+          "interval": [
+            140.1089789149491,
+            149.349988810449
+          ]
+        },
+        "('Roller Dash', True, False)": {
+          "n": 5,
+          "interval": [
+            142.55479969765688,
+            147.822445561139
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 10,
+          "interval": [
+            140.28271341704178,
+            147.93264568456317
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 3,
+          "interval": [
+            137.09271587422847,
+            149.03931421814957
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 9,
+          "interval": [
+            87.38480977286949,
+            90.82280498308005
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 5,
+          "interval": [
+            91.11680546658124,
+            94.58454749313475
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 3,
+          "interval": [
+            144.24026872159655,
+            157.15150847830876
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 2,
+          "interval": [
+            89.57192835640481,
+            93.43200387684662
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 1,
+          "interval": [
+            145.68419132734485,
+            162.37245834250896
+          ]
+        }
+      },
+      "first_time": 3.517,
+      "first_recorded_cast": 19.028,
+      "gauge": 100,
+      "assumed": false
+    },
+    {
+      "report": "G7AMRFxhDTQWXL8H",
+      "fight": 14,
+      "source": 35,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 7100841,
+          "type": "damage",
+          "packetID": 12745,
+          "sourceID": 62,
+          "sourceInstance": 1,
+          "targetID": 129,
+          "abilityGameID": 16504,
+          "fight": 14,
+          "buffs": "1002599.1001185.1003685.1001878.1001221.",
+          "hitType": 1,
+          "amount": 19560,
+          "unmitigatedAmount": 19560,
+          "directHit": true,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 7100083
+        },
+        {
+          "timestamp": 7102401,
+          "type": "damage",
+          "packetID": 12759,
+          "sourceID": 62,
+          "sourceInstance": 1,
+          "targetID": 129,
+          "abilityGameID": 16504,
+          "fight": 14,
+          "buffs": "1002599.1001185.1003685.1001878.1001221.",
+          "hitType": 2,
+          "amount": 25036,
+          "unmitigatedAmount": 25036,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 7101644
+        },
+        {
+          "timestamp": 7104004,
+          "type": "damage",
+          "packetID": 12778,
+          "sourceID": 62,
+          "sourceInstance": 1,
+          "targetID": 129,
+          "abilityGameID": 16504,
+          "fight": 14,
+          "buffs": "1002599.1001185.1003685.1001878.1001221.",
+          "hitType": 2,
+          "amount": 30604,
+          "unmitigatedAmount": 30604,
+          "directHit": true,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 7103204
+        },
+        {
+          "timestamp": 7105521,
+          "type": "damage",
+          "packetID": 12797,
+          "sourceID": 62,
+          "sourceInstance": 1,
+          "targetID": 129,
+          "abilityGameID": 16504,
+          "fight": 14,
+          "buffs": "1002599.1001185.1003685.1001878.1001221.",
+          "hitType": 1,
+          "amount": 15618,
+          "unmitigatedAmount": 15618,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 7104761
+        },
+        {
+          "timestamp": 7107081,
+          "type": "damage",
+          "packetID": 12815,
+          "sourceID": 62,
+          "sourceInstance": 1,
+          "targetID": 129,
+          "abilityGameID": 16504,
+          "fight": 14,
+          "buffs": "1002599.1001185.1003685.1001878.1001221.",
+          "hitType": 1,
+          "amount": 15403,
+          "unmitigatedAmount": 15403,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 7106325
+        },
+        {
+          "timestamp": 7109177,
+          "type": "damage",
+          "packetID": 12830,
+          "sourceID": 62,
+          "sourceInstance": 1,
+          "targetID": 129,
+          "abilityGameID": 16503,
+          "fight": 14,
+          "buffs": "1002599.1001185.1003685.1001878.1001221.",
+          "hitType": 2,
+          "amount": 88873,
+          "unmitigatedAmount": 88873,
+          "directHit": true,
+          "multiplier": 1.2,
+          "action": "Pile Bunker",
+          "t": 7107884
+        },
+        {
+          "timestamp": 7111893,
+          "type": "damage",
+          "packetID": 12846,
+          "sourceID": 62,
+          "sourceInstance": 1,
+          "targetID": 129,
+          "abilityGameID": 25787,
+          "fight": 14,
+          "buffs": "1002599.1001185.1003685.1001878.1001221.",
+          "hitType": 1,
+          "amount": 50970,
+          "unmitigatedAmount": 50970,
+          "multiplier": 1.2,
+          "action": "Crowned Collider",
+          "t": 7109935
+        }
+      ],
+      "references": {
+        "('Roller Dash', False, False)": {
+          "n": 3,
+          "interval": [
+            85.27731711811315,
+            92.2714274673468
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 21,
+          "interval": [
+            87.90018163152493,
+            89.65392263461558
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 4,
+          "interval": [
+            88.06016602329157,
+            92.75619518893221
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 2,
+          "interval": [
+            87.53465071873032,
+            92.99824745474045
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 14,
+          "interval": [
+            143.63762102351313,
+            144.97046636692232
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 4,
+          "interval": [
+            89.10095752201016,
+            92.94048518425248
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 1,
+          "interval": [
+            89.79940791482468,
+            100.20649710400401
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 1,
+          "interval": [
+            82.73774356723665,
+            92.30267080940276
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 4,
+          "interval": [
+            148.74924937036738,
+            152.49278574923363
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 3,
+          "interval": [
+            147.1294900939099,
+            161.6043565675379
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 3,
+          "interval": [
+            148.40521797043536,
+            155.31098633591708
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 3,
+          "interval": [
+            142.55891411290884,
+            155.4101843335881
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 5,
+          "interval": [
+            140.80513184990798,
+            150.3701319600901
+          ]
+        },
+        "('Roller Dash', True, True)": {
+          "n": 1,
+          "interval": [
+            145.05889641759208,
+            161.6145068847417
+          ]
+        }
+      },
+      "first_time": 14.434,
+      "first_recorded_cast": 8.78,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "HTR8VGQ2nxJm9wyF",
+      "fight": 4,
+      "source": 9,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 777117,
+          "type": "damage",
+          "packetID": 6828,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 27,
+          "abilityGameID": 16504,
+          "fight": 4,
+          "buffs": "1000049.1003685.1001878.1001185.1001221.",
+          "hitType": 2,
+          "amount": 34974,
+          "unmitigatedAmount": 34974,
+          "directHit": true,
+          "multiplier": 1.23,
+          "action": "Arm Punch",
+          "t": 776361
+        },
+        {
+          "timestamp": 778674,
+          "type": "damage",
+          "packetID": 6844,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 27,
+          "abilityGameID": 16504,
+          "fight": 4,
+          "buffs": "1000049.1003685.1001878.1001185.1001221.",
+          "hitType": 2,
+          "amount": 34866,
+          "unmitigatedAmount": 34866,
+          "directHit": true,
+          "multiplier": 1.23,
+          "action": "Arm Punch",
+          "t": 777918
+        },
+        {
+          "timestamp": 780768,
+          "type": "damage",
+          "packetID": 6858,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 27,
+          "abilityGameID": 16503,
+          "fight": 4,
+          "buffs": "1000049.1003685.1001878.1001185.1001221.",
+          "hitType": 1,
+          "amount": 60837,
+          "unmitigatedAmount": 60837,
+          "directHit": true,
+          "multiplier": 1.23,
+          "action": "Pile Bunker",
+          "t": 779476
+        }
+      ],
+      "references": {
+        "('Roller Dash', False, False)": {
+          "n": 7,
+          "interval": [
+            89.32519939982627,
+            90.69885012961589
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 21,
+          "interval": [
+            89.61804732949011,
+            90.81119885139987
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 14,
+          "interval": [
+            145.86577893568776,
+            147.99435775368067
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 7,
+          "interval": [
+            89.79080994099768,
+            91.79633000704234
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 7,
+          "interval": [
+            88.1105259214712,
+            91.48986695858167
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 2,
+          "interval": [
+            144.37458616563094,
+            149.8218970999635
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 2,
+          "interval": [
+            139.02476413450955,
+            148.61614574420088
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 4,
+          "interval": [
+            150.39602210654843,
+            156.73820382961657
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 2,
+          "interval": [
+            89.93354426790961,
+            96.77350332393513
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 2,
+          "interval": [
+            143.93478765948404,
+            158.10638525319965
+          ]
+        },
+        "('Roller Dash', False, True)": {
+          "n": 1,
+          "interval": [
+            91.94139194139196,
+            102.45614035087719
+          ]
+        }
+      },
+      "first_time": 14.259,
+      "first_recorded_cast": 8.694,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "JG19dtAwDKycvBTQ",
+      "fight": 6,
+      "source": 10,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 2249888,
+          "type": "damage",
+          "packetID": 20204,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 27,
+          "abilityGameID": 16504,
+          "fight": 6,
+          "buffs": "1000049.1001297.1001185.",
+          "hitType": 1,
+          "amount": 15672,
+          "unmitigatedAmount": 15672,
+          "multiplier": 1.16,
+          "action": "Arm Punch",
+          "t": 2249129
+        },
+        {
+          "timestamp": 2251449,
+          "type": "damage",
+          "packetID": 20220,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 27,
+          "abilityGameID": 16504,
+          "fight": 6,
+          "buffs": "1000049.1001297.1001185.",
+          "hitType": 2,
+          "amount": 23902,
+          "unmitigatedAmount": 23902,
+          "multiplier": 1.16,
+          "action": "Arm Punch",
+          "t": 2250690
+        },
+        {
+          "timestamp": 2253007,
+          "type": "damage",
+          "packetID": 20240,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 27,
+          "abilityGameID": 16504,
+          "fight": 6,
+          "buffs": "1000049.1001297.1001185.",
+          "hitType": 2,
+          "amount": 24812,
+          "unmitigatedAmount": 24812,
+          "multiplier": 1.16,
+          "action": "Arm Punch",
+          "t": 2252251
+        },
+        {
+          "timestamp": 2257834,
+          "type": "damage",
+          "packetID": 20274,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 27,
+          "abilityGameID": 25787,
+          "fight": 6,
+          "buffs": "1000049.1001185.",
+          "hitType": 2,
+          "amount": 76177,
+          "unmitigatedAmount": 76177,
+          "multiplier": 1.1,
+          "action": "Crowned Collider",
+          "t": 2255867
+        }
+      ],
+      "references": {
+        "('Roller Dash', True, False)": {
+          "n": 1,
+          "interval": [
+            135.83756701501312,
+            151.6549609646674
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 14,
+          "interval": [
+            142.67287899128695,
+            144.74565811513708
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 28,
+          "interval": [
+            88.12755871579401,
+            89.18275588468659
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 8,
+          "interval": [
+            87.50763987186915,
+            89.61370319087699
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 9,
+          "interval": [
+            87.41484759584306,
+            91.25790897808884
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 4,
+          "interval": [
+            88.1031351180605,
+            93.76456215916677
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 2,
+          "interval": [
+            141.46038505900097,
+            155.17836862330228
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 1,
+          "interval": [
+            135.3844765358625,
+            151.14709851551956
+          ]
+        },
+        "('Roller Dash', True, True)": {
+          "n": 1,
+          "interval": [
+            148.6346333405157,
+            165.7870704157654
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 2,
+          "interval": [
+            144.15423393964167,
+            158.64813549024075
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 1,
+          "interval": [
+            86.13120784794606,
+            96.03402445507709
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 1,
+          "interval": [
+            146.9530301390943,
+            163.83338024204897
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 1,
+          "interval": [
+            146.79578885587472,
+            163.65739523634264
+          ]
+        }
+      },
+      "first_time": 14.75,
+      "first_recorded_cast": 9.071,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "MBgZvWrGPLyQfXkD",
+      "fight": 55,
+      "source": 179,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 75146463,
+          "type": "damage",
+          "packetID": 17378,
+          "sourceID": 180,
+          "sourceInstance": 1,
+          "targetID": 134,
+          "abilityGameID": 16504,
+          "fight": 55,
+          "buffs": "1000049.1001185.",
+          "hitType": 1,
+          "amount": 14545,
+          "unmitigatedAmount": 14545,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 75145705
+        },
+        {
+          "timestamp": 75148024,
+          "type": "damage",
+          "packetID": 17391,
+          "sourceID": 180,
+          "sourceInstance": 1,
+          "targetID": 134,
+          "abilityGameID": 16504,
+          "fight": 55,
+          "buffs": "1000049.1001185.",
+          "hitType": 1,
+          "amount": 14223,
+          "unmitigatedAmount": 14223,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 75147266
+        },
+        {
+          "timestamp": 75149587,
+          "type": "damage",
+          "packetID": 17398,
+          "sourceID": 180,
+          "sourceInstance": 1,
+          "targetID": 134,
+          "abilityGameID": 16504,
+          "fight": 55,
+          "buffs": "1000049.",
+          "hitType": 1,
+          "amount": 14537,
+          "unmitigatedAmount": 14537,
+          "multiplier": 1.05,
+          "action": "Arm Punch",
+          "t": 75148828
+        },
+        {
+          "timestamp": 75154403,
+          "type": "damage",
+          "packetID": 17425,
+          "sourceID": 180,
+          "sourceInstance": 1,
+          "targetID": 134,
+          "abilityGameID": 25787,
+          "fight": 55,
+          "hitType": 1,
+          "amount": 41660,
+          "unmitigatedAmount": 41660,
+          "multiplier": 1,
+          "action": "Crowned Collider",
+          "t": 75152439
+        }
+      ],
+      "references": {
+        "('Roller Dash', True, False)": {
+          "n": 5,
+          "interval": [
+            138.37479270315094,
+            147.66375738340827
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 18,
+          "interval": [
+            142.8097607202085,
+            145.6404831173411
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 37,
+          "interval": [
+            88.93510010639328,
+            90.12963029583527
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 10,
+          "interval": [
+            88.70493471020248,
+            90.105014235263
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 4,
+          "interval": [
+            139.4055364204618,
+            148.50818618131635
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 5,
+          "interval": [
+            139.25935216541012,
+            145.3272554724085
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 11,
+          "interval": [
+            87.7022222993787,
+            91.17110518856089
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 4,
+          "interval": [
+            84.33704493405988,
+            89.9982367980252
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 2,
+          "interval": [
+            146.89592266606485,
+            150.98033325322436
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 5,
+          "interval": [
+            91.9243210712405,
+            98.69422414483697
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 1,
+          "interval": [
+            86.00453756163098,
+            95.93140789120261
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 1,
+          "interval": [
+            90.30574754556655,
+            100.72929953968165
+          ]
+        }
+      },
+      "first_time": 22.223,
+      "first_recorded_cast": 16.644,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "VcqvyTztLXKCDAQR",
+      "fight": 5,
+      "source": 5,
+      "fits": [
+        90
+      ],
+      "hits": [
+        {
+          "timestamp": 1049630,
+          "type": "damage",
+          "packetID": 51814,
+          "sourceID": 15,
+          "sourceInstance": 9,
+          "targetID": 26,
+          "abilityGameID": 16504,
+          "fight": 5,
+          "buffs": "1001878.1001185.",
+          "hitType": 1,
+          "amount": 26272,
+          "unmitigatedAmount": 26272,
+          "directHit": true,
+          "multiplier": 1.11,
+          "action": "Arm Punch",
+          "t": 1048872
+        },
+        {
+          "timestamp": 1051233,
+          "type": "damage",
+          "packetID": 51834,
+          "sourceID": 15,
+          "sourceInstance": 9,
+          "targetID": 26,
+          "abilityGameID": 16504,
+          "fight": 5,
+          "buffs": "1001878.1001185.1003685.",
+          "hitType": 1,
+          "amount": 21615,
+          "unmitigatedAmount": 21615,
+          "multiplier": 1.17,
+          "action": "Arm Punch",
+          "t": 1050432
+        },
+        {
+          "timestamp": 1052791,
+          "type": "damage",
+          "packetID": 51850,
+          "sourceID": 15,
+          "sourceInstance": 9,
+          "targetID": 26,
+          "abilityGameID": 16504,
+          "fight": 5,
+          "buffs": "1001878.1001185.1003685.",
+          "hitType": 1,
+          "amount": 21340,
+          "unmitigatedAmount": 21340,
+          "multiplier": 1.17,
+          "action": "Arm Punch",
+          "t": 1051991
+        },
+        {
+          "timestamp": 1054304,
+          "type": "damage",
+          "packetID": 51866,
+          "sourceID": 15,
+          "sourceInstance": 9,
+          "targetID": 26,
+          "abilityGameID": 16504,
+          "fight": 5,
+          "buffs": "1001878.1001185.1003685.",
+          "hitType": 2,
+          "amount": 44839,
+          "unmitigatedAmount": 44839,
+          "directHit": true,
+          "multiplier": 1.17,
+          "action": "Arm Punch",
+          "t": 1053546
+        },
+        {
+          "timestamp": 1055864,
+          "type": "damage",
+          "packetID": 51879,
+          "sourceID": 15,
+          "sourceInstance": 9,
+          "targetID": 26,
+          "abilityGameID": 16504,
+          "fight": 5,
+          "buffs": "1001878.1001185.1003685.",
+          "hitType": 1,
+          "amount": 22928,
+          "unmitigatedAmount": 22928,
+          "multiplier": 1.17,
+          "action": "Arm Punch",
+          "t": 1055107
+        },
+        {
+          "timestamp": 1057957,
+          "type": "damage",
+          "packetID": 51897,
+          "sourceID": 15,
+          "sourceInstance": 9,
+          "targetID": 26,
+          "abilityGameID": 16503,
+          "fight": 5,
+          "buffs": "1001878.1001185.1003685.",
+          "hitType": 1,
+          "amount": 60196,
+          "unmitigatedAmount": 60196,
+          "multiplier": 1.17,
+          "action": "Pile Bunker",
+          "t": 1056667
+        },
+        {
+          "timestamp": 1060673,
+          "type": "damage",
+          "packetID": 51918,
+          "sourceID": 15,
+          "sourceInstance": 9,
+          "targetID": 26,
+          "abilityGameID": 25787,
+          "fight": 5,
+          "buffs": "1001878.1001185.1003685.",
+          "hitType": 2,
+          "amount": 146074,
+          "unmitigatedAmount": 146074,
+          "directHit": true,
+          "multiplier": 1.17,
+          "action": "Crowned Collider",
+          "t": 1058714
+        }
+      ],
+      "references": {
+        "('Arm Punch', False, False)": {
+          "n": 22,
+          "interval": [
+            87.51473206449509,
+            89.54730651139054
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 5,
+          "interval": [
+            142.9515974438421,
+            149.6771784619693
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 4,
+          "interval": [
+            85.5510805759562,
+            89.69679707579735
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 7,
+          "interval": [
+            90.78465394254869,
+            91.90691013247404
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 2,
+          "interval": [
+            89.10602297599202,
+            95.69090794212421
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 2,
+          "interval": [
+            88.79160425719132,
+            95.32622765705472
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 3,
+          "interval": [
+            82.00268498775962,
+            89.28193599576831
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 7,
+          "interval": [
+            142.24653833164473,
+            144.72361809045225
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 2,
+          "interval": [
+            87.01144139247741,
+            96.9236112139811
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 3,
+          "interval": [
+            138.22354784212166,
+            148.05471351358682
+          ]
+        },
+        "('Roller Dash', False, True)": {
+          "n": 1,
+          "interval": [
+            90.04048582995952,
+            100.33655567490153
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 1,
+          "interval": [
+            145.11599511599513,
+            161.71500179018975
+          ]
+        }
+      },
+      "first_time": 8.325,
+      "first_recorded_cast": 2.717,
+      "gauge": 100,
+      "assumed": true
+    },
+    {
+      "report": "VmpTdfGbRwHkB93c",
+      "fight": 21,
+      "source": 4,
+      "fits": [
+        70
+      ],
+      "hits": [
+        {
+          "timestamp": 9624397,
+          "type": "damage",
+          "packetID": 70969,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 280,
+          "abilityGameID": 17206,
+          "fight": 21,
+          "buffs": "1000049.1001185.1003685.1001221.",
+          "hitType": 2,
+          "amount": 72947,
+          "unmitigatedAmount": 72947,
+          "directHit": true,
+          "multiplier": 1.16,
+          "action": "Roller Dash",
+          "t": 9623508
+        },
+        {
+          "timestamp": 9627424,
+          "type": "damage",
+          "packetID": 70990,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 280,
+          "abilityGameID": 16504,
+          "fight": 21,
+          "buffs": "1000049.1001185.1003685.1001221.",
+          "hitType": 1,
+          "amount": 17235,
+          "unmitigatedAmount": 17235,
+          "multiplier": 1.16,
+          "action": "Arm Punch",
+          "t": 9626666
+        },
+        {
+          "timestamp": 9629024,
+          "type": "damage",
+          "packetID": 71002,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 280,
+          "abilityGameID": 16504,
+          "fight": 21,
+          "buffs": "1000049.1003685.1001221.",
+          "hitType": 1,
+          "amount": 17501,
+          "unmitigatedAmount": 17501,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 9628223
+        },
+        {
+          "timestamp": 9630581,
+          "type": "damage",
+          "packetID": 71009,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 280,
+          "abilityGameID": 16504,
+          "fight": 21,
+          "buffs": "1000049.",
+          "hitType": 1,
+          "amount": 20945,
+          "unmitigatedAmount": 20945,
+          "directHit": true,
+          "multiplier": 1.05,
+          "action": "Arm Punch",
+          "t": 9629781
+        }
+      ],
+      "references": {
+        "('Roller Dash', True, False)": {
+          "n": 2,
+          "interval": [
+            142.68735686646136,
+            146.31498838420248
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 15,
+          "interval": [
+            87.60562268024955,
+            89.07696376619943
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 3,
+          "interval": [
+            82.53627598081798,
+            89.76772406926273
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 4,
+          "interval": [
+            87.88414460056252,
+            89.57659339779022
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 10,
+          "interval": [
+            142.8212310565252,
+            148.12307149784007
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 4,
+          "interval": [
+            135.65940403310645,
+            147.21533363411484
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 3,
+          "interval": [
+            143.11970199200715,
+            146.47190066391337
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 4,
+          "interval": [
+            87.47137329226882,
+            89.76902054130301
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 4,
+          "interval": [
+            145.87828180245242,
+            150.22664316293125
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 2,
+          "interval": [
+            89.30640186564356,
+            95.59396326313619
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 2,
+          "interval": [
+            148.28452708097458,
+            154.24652258284326
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 2,
+          "interval": [
+            90.65400859578247,
+            97.78122862477584
+          ]
+        },
+        "('Roller Dash', True, True)": {
+          "n": 1,
+          "interval": [
+            148.1144102848579,
+            165.13144332693204
+          ]
+        }
+      },
+      "first_time": 21.554,
+      "first_recorded_cast": 15.986,
+      "gauge": 70,
+      "assumed": false
+    },
+    {
+      "report": "a-rkPGcq7z1xbMg8vh",
+      "fight": 2,
+      "source": 7,
+      "fits": [
+        100
+      ],
+      "hits": [
+        {
+          "timestamp": 619945,
+          "type": "damage",
+          "packetID": 16714,
+          "sourceID": 14,
+          "sourceInstance": 8,
+          "targetID": 24,
+          "abilityGameID": 16504,
+          "fight": 2,
+          "buffs": "1000049.1002599.",
+          "hitType": 2,
+          "amount": 49922,
+          "unmitigatedAmount": 49922,
+          "directHit": true,
+          "multiplier": 1.08,
+          "action": "Arm Punch",
+          "t": 619189
+        },
+        {
+          "timestamp": 621509,
+          "type": "damage",
+          "packetID": 16733,
+          "sourceID": 14,
+          "sourceInstance": 8,
+          "targetID": 24,
+          "abilityGameID": 16504,
+          "fight": 2,
+          "buffs": "1000049.1002599.",
+          "hitType": 1,
+          "amount": 24074,
+          "unmitigatedAmount": 24074,
+          "multiplier": 1.08,
+          "action": "Arm Punch",
+          "t": 620749
+        },
+        {
+          "timestamp": 623072,
+          "type": "damage",
+          "packetID": 16748,
+          "sourceID": 14,
+          "sourceInstance": 8,
+          "targetID": 24,
+          "abilityGameID": 16504,
+          "fight": 2,
+          "buffs": "1000049.1002599.",
+          "hitType": 2,
+          "amount": 51106,
+          "unmitigatedAmount": 51106,
+          "directHit": true,
+          "multiplier": 1.08,
+          "action": "Arm Punch",
+          "t": 622315
+        },
+        {
+          "timestamp": 627891,
+          "type": "damage",
+          "packetID": 16786,
+          "sourceID": 14,
+          "sourceInstance": 8,
+          "targetID": 24,
+          "abilityGameID": 25787,
+          "fight": 2,
+          "buffs": "1000049.1002599.",
+          "hitType": 1,
+          "amount": 79779,
+          "unmitigatedAmount": 79779,
+          "multiplier": 1.08,
+          "action": "Crowned Collider",
+          "t": 625932
+        }
+      ],
+      "references": {
+        "('Arm Punch', False, False)": {
+          "n": 20,
+          "interval": [
+            87.8978125246782,
+            89.83073261042051
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 1,
+          "interval": [
+            142.72317622701254,
+            159.29170127614586
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 4,
+          "interval": [
+            85.90805329935765,
+            90.35189442489099
+          ]
+        },
+        "('Roller Dash', True, False)": {
+          "n": 2,
+          "interval": [
+            143.16315249151071,
+            149.7311116988451
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 2,
+          "interval": [
+            88.2768696201532,
+            95.21995944635458
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 6,
+          "interval": [
+            87.74335604888721,
+            89.79083289284904
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 6,
+          "interval": [
+            144.08907841743664,
+            146.85066324347454
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 3,
+          "interval": [
+            141.99333005303157,
+            146.2304776242888
+          ]
+        },
+        "('Roller Dash', False, True)": {
+          "n": 1,
+          "interval": [
+            88.04220612976373,
+            98.22317421460626
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 1,
+          "interval": [
+            140.76804915514592,
+            157.04610363117092
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 2,
+          "interval": [
+            91.42781915293763,
+            98.5410895660203
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 1,
+          "interval": [
+            141.8575012943566,
+            158.2961766927874
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 1,
+          "interval": [
+            84.54420776695659,
+            94.34296082495527
+          ]
+        }
+      },
+      "first_time": 4.497,
+      "first_recorded_cast": 64.191,
+      "gauge": 100,
+      "assumed": false
+    },
+    {
+      "report": "bF8LWjvqVJyYK1z9",
+      "fight": 10,
+      "source": 194,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 20816783,
+          "type": "damage",
+          "packetID": 8307,
+          "sourceID": 200,
+          "sourceInstance": 1,
+          "targetID": 216,
+          "abilityGameID": 17206,
+          "fight": 10,
+          "buffs": "1000049.1001185.1001878.1003889.1001221.",
+          "hitType": 2,
+          "amount": 65403,
+          "unmitigatedAmount": 65403,
+          "directHit": true,
+          "multiplier": 1.24,
+          "action": "Roller Dash",
+          "t": 20815865
+        },
+        {
+          "timestamp": 20819725,
+          "type": "damage",
+          "packetID": 8339,
+          "sourceID": 200,
+          "sourceInstance": 1,
+          "targetID": 216,
+          "abilityGameID": 16504,
+          "fight": 10,
+          "buffs": "1000049.1001185.1001878.1003889.1001221.",
+          "hitType": 1,
+          "amount": 16236,
+          "unmitigatedAmount": 16236,
+          "multiplier": 1.24,
+          "action": "Arm Punch",
+          "t": 20818967
+        },
+        {
+          "timestamp": 20821290,
+          "type": "damage",
+          "packetID": 8361,
+          "sourceID": 200,
+          "sourceInstance": 1,
+          "targetID": 216,
+          "abilityGameID": 16504,
+          "fight": 10,
+          "buffs": "1000049.1001185.1001878.1003889.1001221.",
+          "hitType": 1,
+          "amount": 16816,
+          "unmitigatedAmount": 16816,
+          "multiplier": 1.24,
+          "action": "Arm Punch",
+          "t": 20820528
+        },
+        {
+          "timestamp": 20822857,
+          "type": "damage",
+          "packetID": 8378,
+          "sourceID": 200,
+          "sourceInstance": 1,
+          "targetID": 216,
+          "abilityGameID": 16504,
+          "fight": 10,
+          "buffs": "1000049.1001185.1001878.1003889.1001221.",
+          "hitType": 1,
+          "amount": 17147,
+          "unmitigatedAmount": 17147,
+          "multiplier": 1.24,
+          "action": "Arm Punch",
+          "t": 20822093
+        },
+        {
+          "timestamp": 20824937,
+          "type": "damage",
+          "packetID": 8395,
+          "sourceID": 200,
+          "sourceInstance": 1,
+          "targetID": 216,
+          "abilityGameID": 16503,
+          "fight": 10,
+          "buffs": "1000049.1001185.1001878.1003889.1001221.",
+          "hitType": 1,
+          "amount": 57536,
+          "unmitigatedAmount": 57536,
+          "directHit": true,
+          "multiplier": 1.24,
+          "action": "Pile Bunker",
+          "t": 20823660
+        }
+      ],
+      "references": {
+        "('Arm Punch', True, False)": {
+          "n": 10,
+          "interval": [
+            143.35939350864726,
+            145.66431160858406
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 19,
+          "interval": [
+            89.26803580832018,
+            91.41761438772811
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 5,
+          "interval": [
+            88.35709408141368,
+            92.60233053813961
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 6,
+          "interval": [
+            89.34861710981116,
+            92.57895414996712
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 3,
+          "interval": [
+            143.73290123224177,
+            147.44571064708077
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 2,
+          "interval": [
+            136.065528890641,
+            150.87963556646574
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 4,
+          "interval": [
+            87.95388138671723,
+            90.77140086396898
+          ]
+        },
+        "('Roller Dash', True, False)": {
+          "n": 2,
+          "interval": [
+            143.38821764194898,
+            155.71938640571275
+          ]
+        },
+        "('Roller Dash', True, True)": {
+          "n": 1,
+          "interval": [
+            146.43947942526142,
+            163.40972047343237
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 2,
+          "interval": [
+            91.10057925223802,
+            95.55527574918156
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 1,
+          "interval": [
+            139.43579327465585,
+            155.60144380088977
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 1,
+          "interval": [
+            84.88855257742907,
+            94.72676907579954
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 1,
+          "interval": [
+            140.13969179845958,
+            156.37861676642837
+          ]
+        },
+        "('Roller Dash', False, True)": {
+          "n": 1,
+          "interval": [
+            88.07668366491895,
+            98.25028705706426
+          ]
+        }
+      },
+      "first_time": 15.455,
+      "first_recorded_cast": 9.88,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "bfR2ngBAHqpZNPcV",
+      "fight": 19,
+      "source": 100,
+      "fits": [
+        100
+      ],
+      "hits": [
+        {
+          "timestamp": 8234423,
+          "type": "damage",
+          "packetID": 19766,
+          "sourceID": 185,
+          "sourceInstance": 8,
+          "targetID": 41,
+          "abilityGameID": 17206,
+          "fight": 19,
+          "buffs": "1000049.1002703.",
+          "hitType": 1,
+          "amount": 50921,
+          "unmitigatedAmount": 50921,
+          "multiplier": 1.1,
+          "action": "Roller Dash",
+          "t": 8233531
+        },
+        {
+          "timestamp": 8237450,
+          "type": "damage",
+          "packetID": 19807,
+          "sourceID": 185,
+          "sourceInstance": 8,
+          "targetID": 41,
+          "abilityGameID": 16504,
+          "fight": 19,
+          "buffs": "1000049.1002703.1001221.",
+          "hitType": 1,
+          "amount": 31745,
+          "unmitigatedAmount": 31745,
+          "directHit": true,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 8236694
+        },
+        {
+          "timestamp": 8239011,
+          "type": "damage",
+          "packetID": 19820,
+          "sourceID": 185,
+          "sourceInstance": 8,
+          "targetID": 41,
+          "abilityGameID": 16504,
+          "fight": 19,
+          "buffs": "1000049.1002703.1001221.",
+          "hitType": 1,
+          "amount": 25520,
+          "unmitigatedAmount": 25520,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 8238253
+        },
+        {
+          "timestamp": 8240568,
+          "type": "damage",
+          "packetID": 19838,
+          "sourceID": 185,
+          "sourceInstance": 8,
+          "targetID": 41,
+          "abilityGameID": 16504,
+          "fight": 19,
+          "buffs": "1000049.1002703.1001221.",
+          "hitType": 1,
+          "amount": 31607,
+          "unmitigatedAmount": 31607,
+          "directHit": true,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 8239812
+        }
+      ],
+      "references": {
+        "('Roller Dash', True, False)": {
+          "n": 1,
+          "interval": [
+            137.06423789342531,
+            153.0224220517794
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 16,
+          "interval": [
+            88.53878754376267,
+            90.76806849660034
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 5,
+          "interval": [
+            88.62472573330051,
+            91.03930384637326
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 5,
+          "interval": [
+            88.0452438661394,
+            90.40554398925201
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 4,
+          "interval": [
+            83.38071547026772,
+            90.49879024753398
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 12,
+          "interval": [
+            143.95922666064845,
+            146.09921934021654
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 3,
+          "interval": [
+            142.63643119364514,
+            156.00074902013958
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 3,
+          "interval": [
+            142.00506073075996,
+            150.4597289854847
+          ]
+        },
+        "('Roller Dash', False, True)": {
+          "n": 2,
+          "interval": [
+            84.83085541909072,
+            93.5412160538332
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 3,
+          "interval": [
+            87.34994787804538,
+            93.28286469598652
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 1,
+          "interval": [
+            147.83578589806962,
+            164.8953164539067
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 1,
+          "interval": [
+            84.14808921596251,
+            93.85909452239659
+          ]
+        }
+      },
+      "first_time": 3.567,
+      "first_recorded_cast": 20.718,
+      "gauge": 100,
+      "assumed": false
+    },
+    {
+      "report": "bh8BjMw2Lq96DcxK",
+      "fight": 3,
+      "source": 2,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 659137,
+          "type": "damage",
+          "packetID": 91124,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16504,
+          "fight": 3,
+          "buffs": "1003685.1003849.1001221.",
+          "hitType": 1,
+          "amount": 13771,
+          "unmitigatedAmount": 13771,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 658378
+        },
+        {
+          "timestamp": 660695,
+          "type": "damage",
+          "packetID": 91137,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16504,
+          "fight": 3,
+          "buffs": "1003685.1003849.1001221.",
+          "hitType": 1,
+          "amount": 13527,
+          "unmitigatedAmount": 13527,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 659936
+        },
+        {
+          "timestamp": 662255,
+          "type": "damage",
+          "packetID": 91156,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16504,
+          "fight": 3,
+          "buffs": "1003685.1003849.1001221.",
+          "hitType": 2,
+          "amount": 28044,
+          "unmitigatedAmount": 28044,
+          "directHit": true,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 661496
+        },
+        {
+          "timestamp": 663811,
+          "type": "damage",
+          "packetID": 91174,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16504,
+          "fight": 3,
+          "buffs": "1003685.1003849.1001221.",
+          "hitType": 2,
+          "amount": 29131,
+          "unmitigatedAmount": 29131,
+          "directHit": true,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 663054
+        },
+        {
+          "timestamp": 665374,
+          "type": "damage",
+          "packetID": 91190,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16504,
+          "fight": 3,
+          "buffs": "1003685.1003849.1001221.",
+          "hitType": 1,
+          "amount": 17145,
+          "unmitigatedAmount": 17145,
+          "directHit": true,
+          "multiplier": 1.1,
+          "action": "Arm Punch",
+          "t": 664613
+        },
+        {
+          "timestamp": 667466,
+          "type": "damage",
+          "packetID": 91208,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16503,
+          "fight": 3,
+          "buffs": "1003685.1003849.1001221.",
+          "hitType": 1,
+          "amount": 52293,
+          "unmitigatedAmount": 52293,
+          "directHit": true,
+          "multiplier": 1.1,
+          "action": "Pile Bunker",
+          "t": 666174
+        },
+        {
+          "timestamp": 670184,
+          "type": "damage",
+          "packetID": 91225,
+          "sourceID": 16,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 25787,
+          "fight": 3,
+          "buffs": "1003685.1003849.1001221.",
+          "hitType": 1,
+          "amount": 46232,
+          "unmitigatedAmount": 46232,
+          "multiplier": 1.1,
+          "action": "Crowned Collider",
+          "t": 668223
+        }
+      ],
+      "references": {
+        "('Roller Dash', True, False)": {
+          "n": 1,
+          "interval": [
+            141.28431914501567,
+            157.7404566693115
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 20,
+          "interval": [
+            142.9448875551695,
+            145.09332692461746
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 31,
+          "interval": [
+            88.06233383347812,
+            89.56008110729084
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 3,
+          "interval": [
+            142.37774711874798,
+            153.2523297602564
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 7,
+          "interval": [
+            87.72012951117429,
+            89.28357486939872
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 6,
+          "interval": [
+            143.24155985713315,
+            149.96390497775536
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 3,
+          "interval": [
+            89.43740392084435,
+            94.2317093042203
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 3,
+          "interval": [
+            90.21778058112972,
+            93.5044904969717
+          ]
+        },
+        "('Roller Dash', True, True)": {
+          "n": 1,
+          "interval": [
+            135.99800109617308,
+            151.76397932630618
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 5,
+          "interval": [
+            88.39638419470351,
+            95.14815747502728
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 1,
+          "interval": [
+            136.72368914551626,
+            152.43069378407725
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 7,
+          "interval": [
+            87.2544838831055,
+            91.27896291898158
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 2,
+          "interval": [
+            84.34101845866552,
+            90.10843692144935
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 3,
+          "interval": [
+            135.43480920879642,
+            144.85165368000597
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 1,
+          "interval": [
+            137.26522731262068,
+            153.17259280107575
+          ]
+        }
+      },
+      "first_time": 14.081,
+      "first_recorded_cast": 8.507,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "gYKk1vZja4XLPr3x",
+      "fight": 8,
+      "source": 7,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 2301688,
+          "type": "damage",
+          "packetID": 23802,
+          "sourceID": 15,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16504,
+          "fight": 8,
+          "buffs": "1000049.1000786.1001221.",
+          "hitType": 1,
+          "amount": 16671,
+          "unmitigatedAmount": 16671,
+          "directHit": true,
+          "multiplier": 1.05,
+          "action": "Arm Punch",
+          "t": 2300930
+        },
+        {
+          "timestamp": 2303245,
+          "type": "damage",
+          "packetID": 23822,
+          "sourceID": 15,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16504,
+          "fight": 8,
+          "buffs": "1000049.1000786.1001221.",
+          "hitType": 1,
+          "amount": 14521,
+          "unmitigatedAmount": 14521,
+          "multiplier": 1.05,
+          "action": "Arm Punch",
+          "t": 2302487
+        },
+        {
+          "timestamp": 2304803,
+          "type": "damage",
+          "packetID": 23837,
+          "sourceID": 15,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16504,
+          "fight": 8,
+          "buffs": "1000049.1000786.1001221.",
+          "hitType": 2,
+          "amount": 21441,
+          "unmitigatedAmount": 21441,
+          "multiplier": 1.05,
+          "action": "Arm Punch",
+          "t": 2304048
+        },
+        {
+          "timestamp": 2306406,
+          "type": "damage",
+          "packetID": 23855,
+          "sourceID": 15,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16504,
+          "fight": 8,
+          "buffs": "1000049.1000786.1001221.",
+          "hitType": 1,
+          "amount": 13884,
+          "unmitigatedAmount": 13884,
+          "multiplier": 1.05,
+          "action": "Arm Punch",
+          "t": 2305605
+        },
+        {
+          "timestamp": 2307922,
+          "type": "damage",
+          "packetID": 23873,
+          "sourceID": 15,
+          "sourceInstance": 1,
+          "targetID": 28,
+          "abilityGameID": 16504,
+          "fight": 8,
+          "buffs": "1000049.1000786.1001221.",
+          "hitType": 1,
+          "amount": 14263,
+          "unmitigatedAmount": 14263,
+          "multiplier": 1.05,
+          "action": "Arm Punch",
+          "t": 2307163
+        }
+      ],
+      "references": {
+        "('Arm Punch', False, False)": {
+          "n": 25,
+          "interval": [
+            87.58588012319356,
+            89.3723000969761
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 16,
+          "interval": [
+            142.57197258855635,
+            145.23396710648763
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 5,
+          "interval": [
+            141.83982050531654,
+            149.7338775058644
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 3,
+          "interval": [
+            137.69977949082428,
+            148.6623400402824
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 2,
+          "interval": [
+            82.85293111163757,
+            91.83098729515022
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 4,
+          "interval": [
+            85.42123316988487,
+            93.56171984794977
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 6,
+          "interval": [
+            88.02818089716929,
+            90.90681865080172
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 4,
+          "interval": [
+            141.58364767708034,
+            152.24184864074059
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 1,
+          "interval": [
+            88.07535652491646,
+            98.30197503327696
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 1,
+          "interval": [
+            85.41426049092622,
+            95.31709939075101
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 1,
+          "interval": [
+            142.90525543064473,
+            159.46528079492066
+          ]
+        }
+      },
+      "first_time": 15.141,
+      "first_recorded_cast": 8.993,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "mZ9rcHtwnChyjTdv",
+      "fight": 10,
+      "source": 7,
+      "fits": [
+        100
+      ],
+      "hits": [
+        {
+          "timestamp": 3827483,
+          "type": "damage",
+          "packetID": 8884,
+          "sourceID": 14,
+          "sourceInstance": 10,
+          "targetID": 24,
+          "abilityGameID": 16504,
+          "fight": 10,
+          "buffs": "1002599.1000049.1001878.",
+          "hitType": 2,
+          "amount": 41574,
+          "unmitigatedAmount": 41574,
+          "multiplier": 1.15,
+          "action": "Arm Punch",
+          "t": 3826725
+        },
+        {
+          "timestamp": 3829175,
+          "type": "damage",
+          "packetID": 8903,
+          "sourceID": 14,
+          "sourceInstance": 10,
+          "targetID": 24,
+          "abilityGameID": 16504,
+          "fight": 10,
+          "buffs": "1002599.1000049.1001878.1001297.",
+          "hitType": 1,
+          "amount": 26568,
+          "unmitigatedAmount": 26568,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 3828419
+        },
+        {
+          "timestamp": 3830732,
+          "type": "damage",
+          "packetID": 8925,
+          "sourceID": 14,
+          "sourceInstance": 10,
+          "targetID": 24,
+          "abilityGameID": 16504,
+          "fight": 10,
+          "buffs": "1002599.1000049.1001878.1001297.",
+          "hitType": 2,
+          "amount": 44650,
+          "unmitigatedAmount": 44650,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 3829976
+        },
+        {
+          "timestamp": 3832290,
+          "type": "damage",
+          "packetID": 8944,
+          "sourceID": 14,
+          "sourceInstance": 10,
+          "targetID": 24,
+          "abilityGameID": 16504,
+          "fight": 10,
+          "buffs": "1002599.1000049.1001878.1001297.",
+          "hitType": 1,
+          "amount": 27466,
+          "unmitigatedAmount": 27466,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 3831533
+        },
+        {
+          "timestamp": 3833849,
+          "type": "damage",
+          "packetID": 8960,
+          "sourceID": 14,
+          "sourceInstance": 10,
+          "targetID": 24,
+          "abilityGameID": 16504,
+          "fight": 10,
+          "buffs": "1002599.1000049.1001878.1001297.",
+          "hitType": 2,
+          "amount": 44999,
+          "unmitigatedAmount": 44999,
+          "multiplier": 1.2,
+          "action": "Arm Punch",
+          "t": 3833091
+        },
+        {
+          "timestamp": 3838667,
+          "type": "damage",
+          "packetID": 9001,
+          "sourceID": 14,
+          "sourceInstance": 10,
+          "targetID": 24,
+          "abilityGameID": 25787,
+          "fight": 10,
+          "buffs": "1002599.1000049.1001878.1001297.",
+          "hitType": 1,
+          "amount": 89022,
+          "unmitigatedAmount": 89022,
+          "multiplier": 1.2,
+          "action": "Crowned Collider",
+          "t": 3836704
+        }
+      ],
+      "references": {
+        "('Arm Punch', True, False)": {
+          "n": 11,
+          "interval": [
+            141.92529416410014,
+            146.86370448734905
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 33,
+          "interval": [
+            88.04193319118693,
+            89.12251315054807
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 3,
+          "interval": [
+            86.73021447384924,
+            88.91208241513107
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 5,
+          "interval": [
+            141.8183806243508,
+            145.09989701737916
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 2,
+          "interval": [
+            87.57071852309949,
+            94.65088600899233
+          ]
+        },
+        "('Roller Dash', True, False)": {
+          "n": 1,
+          "interval": [
+            137.75853775853776,
+            153.5960230513207
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 7,
+          "interval": [
+            142.41026427154608,
+            146.9484139323392
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 5,
+          "interval": [
+            87.22362951218673,
+            89.54420537964552
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 3,
+          "interval": [
+            88.05462249445652,
+            93.51505215852275
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 2,
+          "interval": [
+            144.0097477441876,
+            155.75619662825122
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 1,
+          "interval": [
+            139.76157544622276,
+            155.77174127376855
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 1,
+          "interval": [
+            84.91165614263817,
+            94.64009772311908
+          ]
+        }
+      },
+      "first_time": 3.835,
+      "first_recorded_cast": 25.858,
+      "gauge": 100,
+      "assumed": false
+    },
+    {
+      "report": "w96XAMPVpvck1Hg8",
+      "fight": 87,
+      "source": 1199,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 73728719,
+          "type": "damage",
+          "packetID": 65147,
+          "sourceID": 1208,
+          "sourceInstance": 1,
+          "targetID": 415,
+          "abilityGameID": 16504,
+          "fight": 87,
+          "buffs": "1002703.1001221.",
+          "hitType": 1,
+          "amount": 17138,
+          "unmitigatedAmount": 17138,
+          "directHit": true,
+          "multiplier": 1.05,
+          "action": "Arm Punch",
+          "t": 73727962
+        },
+        {
+          "timestamp": 73730282,
+          "type": "damage",
+          "packetID": 65161,
+          "sourceID": 1208,
+          "sourceInstance": 1,
+          "targetID": 415,
+          "abilityGameID": 16504,
+          "fight": 87,
+          "buffs": "1002703.1001221.",
+          "hitType": 2,
+          "amount": 27605,
+          "unmitigatedAmount": 27605,
+          "directHit": true,
+          "multiplier": 1.05,
+          "action": "Arm Punch",
+          "t": 73729524
+        },
+        {
+          "timestamp": 73731845,
+          "type": "damage",
+          "packetID": 65179,
+          "sourceID": 1208,
+          "sourceInstance": 1,
+          "targetID": 415,
+          "abilityGameID": 16504,
+          "fight": 87,
+          "buffs": "1002703.1001221.",
+          "hitType": 1,
+          "amount": 12820,
+          "unmitigatedAmount": 12820,
+          "multiplier": 1.05,
+          "action": "Arm Punch",
+          "t": 73731085
+        },
+        {
+          "timestamp": 73733939,
+          "type": "damage",
+          "packetID": 65194,
+          "sourceID": 1208,
+          "sourceInstance": 1,
+          "targetID": 415,
+          "abilityGameID": 16503,
+          "fight": 87,
+          "buffs": "1002703.1001221.",
+          "hitType": 1,
+          "amount": 38117,
+          "unmitigatedAmount": 38117,
+          "multiplier": 1.05,
+          "action": "Pile Bunker",
+          "t": 73732647
+        },
+        {
+          "timestamp": 73736660,
+          "type": "damage",
+          "packetID": 65209,
+          "sourceID": 1208,
+          "sourceInstance": 1,
+          "targetID": 415,
+          "abilityGameID": 25787,
+          "fight": 87,
+          "buffs": "1001221.",
+          "hitType": 2,
+          "amount": 81215,
+          "unmitigatedAmount": 81215,
+          "directHit": true,
+          "multiplier": 1,
+          "action": "Crowned Collider",
+          "t": 73734697
+        }
+      ],
+      "references": {
+        "('Roller Dash', False, False)": {
+          "n": 4,
+          "interval": [
+            87.7161809997631,
+            93.5929648241206
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 25,
+          "interval": [
+            87.5724065297525,
+            89.64559640306797
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 8,
+          "interval": [
+            142.68340835505018,
+            145.16882658908577
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 5,
+          "interval": [
+            139.72254304565428,
+            146.29183067037977
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 3,
+          "interval": [
+            142.65263021481928,
+            144.97046636692235
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 8,
+          "interval": [
+            90.07748439028059,
+            93.27625283303952
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 2,
+          "interval": [
+            84.89386275837349,
+            92.6200245900425
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 1,
+          "interval": [
+            88.80463401790415,
+            99.0958810349392
+          ]
+        },
+        "('Roller Dash', False, True)": {
+          "n": 1,
+          "interval": [
+            89.5101630395748,
+            99.84722079170527
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 2,
+          "interval": [
+            136.63021769793892,
+            150.120304984245
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 3,
+          "interval": [
+            148.71589661505627,
+            153.36962206768297
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 2,
+          "interval": [
+            82.95935289538701,
+            90.26468032333273
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 4,
+          "interval": [
+            87.58108663321934,
+            89.70900385869972
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 4,
+          "interval": [
+            148.52710314895188,
+            150.74215218411322
+          ]
+        }
+      },
+      "first_time": 13.949,
+      "first_recorded_cast": 8.381,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "wGBKCPJc7bQXAzxp",
+      "fight": 20,
+      "source": 43,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 8349968,
+          "type": "damage",
+          "packetID": 42935,
+          "sourceID": 51,
+          "sourceInstance": 1,
+          "targetID": 133,
+          "abilityGameID": 16504,
+          "fight": 20,
+          "buffs": "1000049.1001185.1001878.1001221.",
+          "hitType": 2,
+          "amount": 25747,
+          "unmitigatedAmount": 25747,
+          "multiplier": 1.17,
+          "action": "Arm Punch",
+          "t": 8349208
+        },
+        {
+          "timestamp": 8351527,
+          "type": "damage",
+          "packetID": 42948,
+          "sourceID": 51,
+          "sourceInstance": 1,
+          "targetID": 133,
+          "abilityGameID": 16504,
+          "fight": 20,
+          "buffs": "1000049.1001185.1001878.1001221.",
+          "hitType": 1,
+          "amount": 15412,
+          "unmitigatedAmount": 15412,
+          "multiplier": 1.17,
+          "action": "Arm Punch",
+          "t": 8350769
+        },
+        {
+          "timestamp": 8353487,
+          "type": "damage",
+          "packetID": 42965,
+          "sourceID": 51,
+          "sourceInstance": 1,
+          "targetID": 133,
+          "abilityGameID": 16504,
+          "fight": 20,
+          "buffs": "1000049.1001185.1001878.1001221.",
+          "hitType": 2,
+          "amount": 24878,
+          "unmitigatedAmount": 24878,
+          "multiplier": 1.17,
+          "action": "Arm Punch",
+          "t": 8352730
+        }
+      ],
+      "references": {
+        "('Arm Punch', True, False)": {
+          "n": 12,
+          "interval": [
+            142.39460294897395,
+            145.24886877828052
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 27,
+          "interval": [
+            87.07257363973783,
+            89.1445531752329
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 2,
+          "interval": [
+            141.11654612093594,
+            156.3180786728868
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 5,
+          "interval": [
+            143.35320882406083,
+            147.76392081866825
+          ]
+        },
+        "('Roller Dash', True, False)": {
+          "n": 2,
+          "interval": [
+            142.98755495938596,
+            157.0065238473067
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 7,
+          "interval": [
+            87.73661931140168,
+            90.70273970471553
+          ]
+        },
+        "('Roller Dash', False, False)": {
+          "n": 1,
+          "interval": [
+            87.4538870274478,
+            97.64360650369643
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 4,
+          "interval": [
+            88.05614349324372,
+            93.46100724043067
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 4,
+          "interval": [
+            91.24350487579187,
+            96.44755665989007
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 1,
+          "interval": [
+            137.99729821006417,
+            153.84760183721104
+          ]
+        },
+        "('Pile Bunker', True, True)": {
+          "n": 1,
+          "interval": [
+            137.01650873115204,
+            152.74452224983057
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 1,
+          "interval": [
+            144.2080378250591,
+            160.76060074252982
+          ]
+        }
+      },
+      "first_time": 18.929,
+      "first_recorded_cast": 13.391,
+      "gauge": 60,
+      "assumed": false
+    },
+    {
+      "report": "xMJLFT8aWXC7QmfD",
+      "fight": 22,
+      "source": 329,
+      "fits": [
+        60
+      ],
+      "hits": [
+        {
+          "timestamp": 84872166,
+          "type": "damage",
+          "packetID": 5178,
+          "sourceID": 389,
+          "sourceInstance": 1,
+          "targetID": 431,
+          "abilityGameID": 17206,
+          "fight": 22,
+          "buffs": "1001221.",
+          "hitType": 1,
+          "amount": 26308,
+          "unmitigatedAmount": 26308,
+          "multiplier": 1,
+          "action": "Roller Dash",
+          "t": 84871276
+        },
+        {
+          "timestamp": 84875187,
+          "type": "damage",
+          "packetID": 5207,
+          "sourceID": 389,
+          "sourceInstance": 1,
+          "targetID": 431,
+          "abilityGameID": 16504,
+          "fight": 22,
+          "buffs": "1001221.",
+          "hitType": 1,
+          "amount": 12506,
+          "unmitigatedAmount": 12506,
+          "multiplier": 1,
+          "action": "Arm Punch",
+          "t": 84874430
+        },
+        {
+          "timestamp": 84876743,
+          "type": "damage",
+          "packetID": 5221,
+          "sourceID": 389,
+          "sourceInstance": 1,
+          "targetID": 431,
+          "abilityGameID": 16504,
+          "fight": 22,
+          "buffs": "1001221.",
+          "hitType": 1,
+          "amount": 12962,
+          "unmitigatedAmount": 12962,
+          "multiplier": 1,
+          "action": "Arm Punch",
+          "t": 84875987
+        },
+        {
+          "timestamp": 84878299,
+          "type": "damage",
+          "packetID": 5237,
+          "sourceID": 389,
+          "sourceInstance": 1,
+          "targetID": 431,
+          "abilityGameID": 16504,
+          "fight": 22,
+          "buffs": "1001221.",
+          "hitType": 2,
+          "amount": 19913,
+          "unmitigatedAmount": 19913,
+          "multiplier": 1,
+          "action": "Arm Punch",
+          "t": 84877543
+        },
+        {
+          "timestamp": 84880393,
+          "type": "damage",
+          "packetID": 5250,
+          "sourceID": 389,
+          "sourceInstance": 1,
+          "targetID": 431,
+          "abilityGameID": 16503,
+          "fight": 22,
+          "buffs": "1001221.",
+          "hitType": 1,
+          "amount": 45748,
+          "unmitigatedAmount": 45748,
+          "directHit": true,
+          "multiplier": 1,
+          "action": "Pile Bunker",
+          "t": 84879102
+        },
+        {
+          "timestamp": 84883107,
+          "type": "damage",
+          "packetID": 5271,
+          "sourceID": 389,
+          "sourceInstance": 1,
+          "targetID": 431,
+          "abilityGameID": 25787,
+          "fight": 22,
+          "buffs": "1001221.",
+          "hitType": 2,
+          "amount": 70210,
+          "unmitigatedAmount": 70210,
+          "multiplier": 1,
+          "action": "Crowned Collider",
+          "t": 84881150
+        }
+      ],
+      "references": {
+        "('Roller Dash', False, False)": {
+          "n": 4,
+          "interval": [
+            87.25420516465293,
+            94.34704852583721
+          ]
+        },
+        "('Arm Punch', True, False)": {
+          "n": 10,
+          "interval": [
+            142.53468109189504,
+            146.63375356313733
+          ]
+        },
+        "('Arm Punch', False, False)": {
+          "n": 23,
+          "interval": [
+            88.44665561083472,
+            89.82044726556761
+          ]
+        },
+        "('Pile Bunker', False, False)": {
+          "n": 6,
+          "interval": [
+            87.74056886436166,
+            90.10739974381713
+          ]
+        },
+        "('Crowned Collider', False, False)": {
+          "n": 8,
+          "interval": [
+            87.52452633049649,
+            90.60024971159592
+          ]
+        },
+        "('Arm Punch', False, True)": {
+          "n": 12,
+          "interval": [
+            90.70724656371237,
+            92.91810067433336
+          ]
+        },
+        "('Arm Punch', True, True)": {
+          "n": 5,
+          "interval": [
+            148.79259760776347,
+            153.47939226055567
+          ]
+        },
+        "('Pile Bunker', False, True)": {
+          "n": 2,
+          "interval": [
+            85.01705895628393,
+            93.59029433984622
+          ]
+        },
+        "('Crowned Collider', False, True)": {
+          "n": 1,
+          "interval": [
+            91.14803048452337,
+            101.71073617056996
+          ]
+        },
+        "('Pile Bunker', True, False)": {
+          "n": 4,
+          "interval": [
+            141.65586632663016,
+            151.03825185191772
+          ]
+        },
+        "('Crowned Collider', True, False)": {
+          "n": 1,
+          "interval": [
+            137.7921139115169,
+            153.83439916632193
+          ]
+        },
+        "('Roller Dash', True, False)": {
+          "n": 1,
+          "interval": [
+            143.02824501829477,
+            159.68732551647128
+          ]
+        },
+        "('Crowned Collider', True, True)": {
+          "n": 1,
+          "interval": [
+            146.69503453073753,
+            163.69275538250605
+          ]
+        }
+      },
+      "first_time": 14.275,
+      "first_recorded_cast": 8.715,
+      "gauge": 60,
+      "assumed": false
+    }
+  ]
+}

@@ -18,7 +18,13 @@ from .brd.songs import _brd_coda, _brd_song_durations
 from .brd.variable_potency import _brd_damage_estimates
 from .consumables import food_active, food_gaps, identify_consumable, initial_food_aura
 from .damage import landed_fraction
-from .echo import echo_status, is_echo_partition, normalize_echo_damage
+from .echo import (
+    HEAVYWEIGHT_SAVAGE,
+    echo_status,
+    is_echo_partition,
+    is_non_echo_partition,
+    normalize_echo_damage,
+)
 from .errors import AnalysisError
 from .events import _event_name, _has_buff, _load_json
 from .luck import (
@@ -32,6 +38,11 @@ from .luck import (
 from .mch.battery import mch_battery_events
 from .mch.checkpoint import mch_checkpoint_gauges
 from .mch.queen import summarize_mch_queen_deployments
+from .mch.queen_gauge import (
+    infer_mch_opening_queen,
+    mch_has_prepull_queen,
+    mch_queen_hits,
+)
 from .mch.wildfire import MchWildfireTracker
 from .models import (
     ActionSummary,
@@ -174,6 +185,9 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     initial_echo = echo_status(
         encounter_id if isinstance(encounter_id, int) else None, source_id, combatants,
     )
+    if (initial_echo == "unknown" and encounter_id in HEAVYWEIGHT_SAVAGE
+            and is_non_echo_partition(fight.get("id"), rankings)):
+        initial_echo = "absent"
     if encounter_id in EXTREME_ENCOUNTERS:
         if initial_echo == "unknown":
             raise AnalysisError(
@@ -389,6 +403,19 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             directory, fight, source_id, actions, ability_names, pet_profiles,
         ) if job.casefold() == "machinist" and encounter_id == 105 else ({}, False)
     )
+    opening_queen_hits = []
+    prepull_queen = False
+    if job.casefold() == "machinist" and encounter_id == 105:
+        opening_queen_hits = mch_queen_hits(
+            raw_damage, actors, actions, ability_names, source_id, penalty_rules,
+        )
+        prepull_queen = mch_has_prepull_queen(
+            opening_queen_hits, sorted_casts, ability_names, source_id,
+        )
+        if prepull_queen:
+            # The carried resource has already been spent on the active Queen.
+            starting_gauges = {**starting_gauges, "Battery Gauge": 0}
+            unknown_initial_gauge = False
     pet_deployments, _ = _reconstruct_pet_deployments(
         sorted_casts, actions, ability_names, landed_by_packet, pet_profiles, float(start),
         initial_gauges=starting_gauges,
@@ -396,6 +423,10 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         gauge_events_by_packet={"Battery Gauge": mch_battery_events(raw_damage, source_id)}
         if job.casefold() == "machinist" else None,
     )
+    if opening_queen_hits:
+        pet_deployments = infer_mch_opening_queen(
+            opening_queen_hits, pet_deployments, actions, float(start), prepull_queen,
+        )
     guaranteed_packets = _guaranteed_outcome_packets(sorted_casts, actions, ability_names)
     channel_casts: dict[str, list[tuple[int, dict[str, Any]]]] = defaultdict(list)
     for cast_index, cast in enumerate(sorted_casts):

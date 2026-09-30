@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ..fflogs.partitions import EXTREME_ENCOUNTERS
+from ..fflogs.partitions import EXTREME_ENCOUNTERS, SAVAGE_PARTITIONS
 
 ECHO_BUFF_ID = 1000042
 HEAVYWEIGHT_SAVAGE = frozenset({101, 102, 103, 104, 105})
@@ -40,6 +40,23 @@ def is_echo_partition(fight_id: Any, rankings: dict[str, Any]) -> bool:
         ):
             return True
     return False
+
+
+def is_non_echo_partition(fight_id: Any, rankings: dict[str, Any]) -> bool:
+    """Known pre-Echo Savage rankings establish zero Echo without initial auras."""
+    partitions = set()
+    for metric in ("rankings", "rdps"):
+        value = rankings.get(metric)
+        rows = value.get("data") if isinstance(value, dict) else None
+        if isinstance(rows, list):
+            partitions.update(
+                row["partition"] for row in rows if isinstance(row, dict)
+                and row.get("fightID") in (None, fight_id)
+                and isinstance(row.get("partition"), int)
+                and not isinstance(row["partition"], bool)
+            )
+    non_echo = {partition for partition, (_, echo) in SAVAGE_PARTITIONS.items() if not echo}
+    return bool(partitions) and partitions.issubset(non_echo)
 
 
 def normalize_echo_damage(events: list[Any]) -> list[Any]:

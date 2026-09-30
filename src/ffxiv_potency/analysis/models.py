@@ -38,6 +38,8 @@ class PetDeploymentSummary:
     potency_max: float = 0.0
     mch_missing_finishers: tuple[str, ...] = ()
     mch_overdrive_seconds: float | None = None
+    mch_gauge_inferred: bool = False
+    mch_prepull: bool = False
 
 
 @dataclass(frozen=True, slots=True)
