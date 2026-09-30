@@ -356,6 +356,7 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     output = capsys.readouterr().out
     assert output.startswith("\nPlayer:") and output.endswith("\n\n")
     assert ("Fight: Test Boss (1), 00m10s\n"
+            "Date: 01/05/2026 (UTC)\nPartition: n/a\nPatch: 7.5\n"
             "Party main-stat bonus: 5% (assumed; older saved fight)\n"
             "Food: Caramel Popcorn [HQ]\n"
             "nDPS: 12,345.6\nrDPS: 12,330.4") in output
@@ -548,6 +549,30 @@ def test_analyse_backfills_targetability_without_redownloading_fight(
     assert calls == [(9, directory)]
 
 
+def test_mch_lindwurm_ii_saved_fight_backfills_checkpoint_once(monkeypatch, tmp_path: Path) -> None:
+    directory = tmp_path / "abc123/fight-23/source-18"
+    _write_selected_log(directory, 18)
+    fight = json.loads((directory / "fight.json").read_text(encoding="utf-8"))
+    fight.update(encounterID=105, friendlyPlayers=[18])
+    (directory / "fight.json").write_text(json.dumps(fight))
+    for name in ("combatant-info-events.json", "life-events.json",
+                 "revival-buff-events.json"):
+        (directory / name).write_text("[]")
+    monkeypatch.setenv("FFLOGS_CLIENT_ID", "test")
+    monkeypatch.setenv("FFLOGS_CLIENT_SECRET", "secret")
+    calls = []
+
+    def backfill(reference, saved):
+        calls.append((reference, saved))
+        (saved / "checkpoint-context.json").write_text('{"carry":false}')
+
+    monkeypatch.setattr(cli, "refresh_checkpoint_context", backfill)
+    url = "https://www.fflogs.com/reports/abc123?fight=23&source=18"
+    assert cli._resolve_analysis_directory(url, tmp_path) == directory
+    assert cli._resolve_analysis_directory(url, tmp_path) == directory
+    assert calls == [(ReportReference("abc123", 23, 18), directory)]
+
+
 def test_anonymous_report_cache_reconstructs_original_code(tmp_path: Path) -> None:
     reference = ReportReference("a:DNaXrgHGZ8PbCkfL", 22, 4)
     directory = cli._saved_directory(tmp_path, reference)
@@ -645,7 +670,7 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     assert "Rank" not in output
     assert "aLuck" in output and "45.12%" in output
     assert "nDPS  Potency" in output
-    assert "aLuck  Date" in output
+    assert "aLuck  Partition  Patch  Date" in output
     assert "Party" not in output and "Echo" not in output
     assert "Crit" not in output and "DH" not in output and "CDH" not in output
     assert "Alice" in output and "1,000" in output and "10" in output
@@ -658,6 +683,9 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     )
     ranked_output = capsys.readouterr().out
     assert "Rank  Player" in ranked_output
+    assert "Fight: Boss (10)\nPartition: n/a\nPatch: 7.5\n" in ranked_output
+    header = next(line for line in ranked_output.splitlines() if line.startswith("Rank"))
+    assert "Partition" not in header and "Patch" not in header
     assert any(line.startswith("   1  Alice") for line in ranked_output.splitlines())
     assert any(line.startswith("   9  Bob") for line in ranked_output.splitlines())
     assert all(line.endswith("01/05/26") for line in ranked_output.splitlines()
@@ -671,7 +699,23 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     cli._compare_directories([tmp_path / "abc123/fight-9/source-18"], actions)
     compact_output = capsys.readouterr().out
     assert "15,000.0  248,364" in compact_output
-    assert "45.12%  01/05/26" in compact_output
+    assert "45.12%        n/a    7.5  01/05/26" in compact_output
+
+    for encounter in (4549, 4551):
+        def dungeon_result(
+            directory: Path, actions_path: Path, encounter_id: int = encounter,
+        ) -> AnalysisResult:
+            return replace(fake_analyze(directory, actions_path),
+                           encounter_id=encounter_id, dps=16789.2)
+
+        monkeypatch.setattr(cli, "analyze_saved_fight", dungeon_result)
+        for ranks in (None, (1,)):
+            cli._compare_directories([tmp_path / "abc123/fight-9/source-18"],
+                                     actions, rank_positions=ranks)
+            dungeon_output = capsys.readouterr().out
+            assert "DPS" in dungeon_output and "16,789.2" in dungeon_output
+            assert "rDPS" not in dungeon_output and "nDPS" not in dungeon_output
+    monkeypatch.setattr(cli, "analyze_saved_fight", fake_analyze)
 
     def fail_download(*args, **kwargs):
         raise AssertionError("complete compare sources should be reused")
@@ -1099,15 +1143,15 @@ def test_progress_reuses_one_line_and_clears_it(monkeypatch, tmp_path: Path) -> 
 
     output = terminal.getvalue()
     assert output.startswith("\rProcessing...")
-    assert "Downloading: [--------------------] 0/2" in output
-    assert "Downloading: [####################] 2/2" in output
+    assert "Loading fight data: [--------------------] 0/2" in output
+    assert "Loading fight data: [####################] 2/2" in output
     assert "Calculating: [####################] 2/2" in output
     assert "\n" not in output
     assert output.endswith("\r")
     assert output.rsplit("\r", 2)[-2].strip() == ""
 
 
-def test_rankings_show_processing_before_lookup(monkeypatch, tmp_path: Path) -> None:
+def test_rankings_show_current_step_before_lookup(monkeypatch, tmp_path: Path) -> None:
     import io
 
     from ffxiv_potency.fflogs import ReportReference
@@ -1119,9 +1163,11 @@ def test_rankings_show_processing_before_lookup(monkeypatch, tmp_path: Path) -> 
     terminal = Terminal()
     monkeypatch.setattr(cli.sys, "stderr", terminal)
 
-    def fake_rankings(encounter_id: int, job: str, *, partition: int | None):
-        assert terminal.getvalue() == "\rProcessing..."
+    def fake_rankings(encounter_id: int, job: str, *, partition: int | None, on_status):
+        assert terminal.getvalue() == "\rConnecting to FF Logs..."
         assert partition is None
+        on_status("Loading leaderboard page 1...")
+        on_status("Identifying player for rank 1...")
         return (
             ((1, ReportReference("abc123", 9, 18)),
              (2, ReportReference("def456", 4, 7))),
@@ -1142,7 +1188,9 @@ def test_rankings_show_processing_before_lookup(monkeypatch, tmp_path: Path) -> 
     monkeypatch.setattr(cli, "_resolve_analysis_directory", fake_resolve)
     monkeypatch.setattr(cli, "_compare_directories", fake_compare)
     assert cli.main(["fflogs", "mch", "m10s", "--output", str(tmp_path)]) == 0
-    assert "Downloading:" in terminal.getvalue()
+    assert "Loading leaderboard page 1..." in terminal.getvalue()
+    assert "Identifying player for rank 1..." in terminal.getvalue()
+    assert "Loading fight data:" in terminal.getvalue()
     assert terminal.getvalue().endswith("\r")
 
 

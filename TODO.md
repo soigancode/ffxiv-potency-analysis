@@ -9,7 +9,6 @@
 
 - Cache per-player analysis results so ranking comparisons and later single-log views reuse calculations. Invalidate when the analyzer revision or any relevant log, action, gear, consumable, encounter, or raid-effect data changes; keep presentation formatting outside the cache.
 - Handle adds excluded from FF Logs rankings if a supported encounter uses them.
-- Let users select a fight and player from an unselected report URL or report ID.
 - Generate a navigable HTML report from exported analysis JSON.
 
 ## Jobs, gear, and content

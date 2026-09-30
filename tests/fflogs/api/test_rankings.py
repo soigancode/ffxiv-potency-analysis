@@ -137,11 +137,14 @@ def test_one_rank_resolves_only_its_report(partition: int | None) -> None:
             ]},
         }}}})
 
+    statuses: list[str] = []
     assert ranked_source(1085, "bard", 2, partition=partition,
+                         on_status=statuses.append,
                          client_id="id", client_secret="secret",
                          transport=httpx.MockTransport(handler)) == ReportReference("def456", 2, 7)
     assert requests[0]["variables"]["partition"] == (partition if partition is not None else 1)
     assert len(requests) == 2
+    assert statuses == ["Loading leaderboard page 1...", "Identifying player for rank 2..."]
 
 
 @pytest.mark.parametrize("encounter,metric", [(4549, "dps"), (4550, "rdps"), (4551, "dps")])

@@ -316,6 +316,7 @@ def test_reconstructs_battery_spent_and_exact_pet_potency(tmp_path: Path) -> Non
         {
             "metric": "ndps",
             "rdps": {"data": [{"id": 999999, "name": "Player", "amount": 12222.2}]},
+            "dps": {"data": [{"id": 999999, "name": "Player", "amount": 13500.0}]},
             "rankings": {
                 "data": [
                     {
@@ -377,6 +378,7 @@ def test_reconstructs_battery_spent_and_exact_pet_potency(tmp_path: Path) -> Non
     assert result.potency_min == result.potency_max == pytest.approx(106.8)
     assert result.ndps == 12345.6
     assert result.rdps == 12222.2
+    assert result.dps == 13500.0
     old_rankings = json.loads((log / "rankings.json").read_text(encoding="utf-8"))["rankings"]
     write_json(log / "rankings.json", old_rankings)
     assert analyze_saved_fight(log, actions).ndps is None

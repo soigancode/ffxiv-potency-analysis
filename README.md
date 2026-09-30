@@ -114,15 +114,25 @@ Doomtrain follows the Savage 7.4 and 7.5 partition pairs; Enuo uses the 7.5 pair
 
 ### Analyse one log
 
-Copy a selected player's FF Logs URL containing `fight` and `source`, and quote the entire link:
+Provide a report link to choose a fight and a BRD or MCH player from the report:
+
+```bash
+ffxiv-potency analyse "https://www.fflogs.com/reports/REPORT1"
+```
+
+Bare report IDs also work with `analyse`, `fflogs`, and `compare`, for example `ffxiv-potency analyse XhcqCfrJzNgZdQxP`.
+
+When there is only one supported fight or player, it is selected automatically.
+
+A link with `fight` and `source` already selected runs without the prompts:
 
 ```bash
 ffxiv-potency analyse "https://www.fflogs.com/reports/REPORT1?fight=9&source=18"
 ```
 
-The report starts with the player, fight, duration, food, nDPS, rDPS, landed events, potency, and PPS. A wipe is labelled after its duration. Deaths, Weakness, Brink of Death, and encounter-specific Damage Down appear below the summary when recorded. It then shows any variable potency estimates, reduced damage and ghosted casts, potion item and windows, hit outcomes and luck, action totals, auto-attacks, and job-specific details. If FF Logs does not identify a consumed item in the fight events, the report labels its configured name as unverified. A ghosted cast dealt no positive recorded damage; its note may identify an untargetable target, a defeated target, or a boss phase HP lock.
+The report starts with the player, fight, duration, date (UTC), partition, patch, food, nDPS, rDPS, landed events, potency, and PPS. A wipe is labelled after its duration. Deaths, Weakness, Brink of Death, and encounter-specific Damage Down appear below the summary when recorded. It then shows any variable potency estimates, reduced damage and ghosted casts, potion item and windows, hit outcomes and luck, action totals, auto-attacks, and job-specific details. If FF Logs does not identify a consumed item in the fight events, the report labels its configured name as unverified. A ghosted cast dealt no positive recorded damage; its note may identify an untargetable target, a defeated target, or a boss phase HP lock.
 
-To download a selected fight without analysing it, run `ffxiv-potency fflogs "<report URL with fight and source>"`. To empty `data/logs`, run `ffxiv-potency clear logs`; it asks for confirmation and leaves job data intact. Add `--yes` to skip the prompt.
+To download a fight without analysing it, run `ffxiv-potency fflogs "<report URL>"`; an unselected URL offers the same prompts. To empty `data/logs`, run `ffxiv-potency clear logs`; it asks for confirmation and leaves job data intact. Add `--yes` to skip the prompt.
 
 ### Compare your logs
 
@@ -134,7 +144,7 @@ ffxiv-potency compare \
   "https://www.fflogs.com/reports/REPORT2?fight=4&source=7"
 ```
 
-The comparison shows duration, rDPS, nDPS, landed potency, PPS, Luck, adjusted Luck, and the fight date in UTC (`dd/mm/yy`). Saved fights are reused.
+The comparison shows duration, rDPS, nDPS, landed potency, PPS, Luck, adjusted Luck, partition, patch, and the fight date in UTC (`dd/mm/yy`). Saved fights are reused.
 
 ## Understanding the results
 
@@ -259,6 +269,7 @@ For **Apex Arrow**, candidate potency is $140+7(g-20)$ for Soul Voice Gauge $g$ 
 
 ### Machinist
 
+- Lindwurm II can start with carried Battery Gauge. The first Queen uses the preceding phase-one pull when available; otherwise 100 Battery is assumed and marked unconfirmed.
 - **Wildfire** counts weaponskills that actually landed during each window, including an early detonation when present. Its potency uses the potion state at application.
 - **Automaton Queen and Rook Autoturret** are deployment actions; their own landed attacks add potency. The report shows Battery Gauge spent and total potency per deployment, identifies missing Queen finishers, and notes Queen Overdrive. The configured conversion of pet action potency to player-comparable potency is **0.89**, an approximation. Deployments and Queen Overdrive themselves do not add damage potency.
 
@@ -275,4 +286,3 @@ For **Apex Arrow**, candidate potency is $140+7(g-20)$ for Soul Voice Gauge $g$ 
 - Interpret other damage-affecting traits from the job guide where their effects are needed.
 - Improve variable-potency estimates if FF Logs exposes the underlying resources.
 - Provide an HTML report generated from exported analysis data.
-- Select a fight and player from a report without copying a source-specific link.

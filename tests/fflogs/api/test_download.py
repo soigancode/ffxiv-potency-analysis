@@ -6,10 +6,50 @@ import pytest
 
 from ffxiv_potency.fflogs import ReportReference, download_report_events, refresh_report_rankings
 from ffxiv_potency.fflogs.download import (
+    _checkpoint_context,
     refresh_fight_context,
     refresh_report_date,
     refresh_revival_buff_events,
 )
+
+
+def test_mch_checkpoint_context_only_uses_immediately_preceding_phase_one_kill() -> None:
+    fight = {"id": 23, "encounterID": 105, "startTime": 10000}
+    previous = {"id": 22, "encounterID": 104, "kill": True,
+                "startTime": 1000, "endTime": 9000, "friendlyPlayers": [2]}
+
+    class Client:
+        def __init__(self, fights):
+            self.fights = fights
+            self.events = []
+
+        def graphql(self, query, variables):
+            if "CheckpointFights" in query:
+                assert variables == {"code": "abc123"}
+                return {"reportData": {"report": {"fights": self.fights}}}
+            self.events.append((query, variables))
+            return {"reportData": {"report": {"events": {
+                "data": [{"type": "cast" if "dataType: Casts" in query else "damage"}],
+                "nextPageTimestamp": None,
+            }}}}
+
+    reference = ReportReference("abc123", 23, 2)
+    client = Client([previous, fight])
+    result = _checkpoint_context(client, reference, fight)
+    assert result["carry"] is True
+    assert result["previousFight"] == previous
+    assert len(client.events) == 2
+    assert all(variables["fightIDs"] == [22] and variables["sourceID"] == 2
+               for _, variables in client.events)
+
+    wiped = Client([previous, {"id": 23, "encounterID": 105, "kill": False,
+                               "startTime": 9500, "endTime": 9700},
+                    {"id": 24, "encounterID": 105, "startTime": 10000}])
+    assert _checkpoint_context(wiped, reference, {**fight, "id": 24}) == {"carry": False}
+    assert wiped.events == []
+    partial = Client([fight])
+    assert _checkpoint_context(partial, reference, fight) == {"carry": "unknown"}
+    assert partial.events == []
 
 
 def test_refresh_fight_context_preserves_saved_fight_and_initial_auras(tmp_path: Path) -> None:
@@ -331,6 +371,7 @@ def test_refreshes_old_rankings_without_redownloading_events(tmp_path: Path) -> 
         assert "ReportRankings" in body["query"]
         assert "playerMetric: ndps" in body["query"]
         assert "playerMetric: rdps" in body["query"]
+        assert "playerMetric: dps" in body["query"]
         assert body["variables"] == {"code": "abc123", "fightIDs": [9]}
         return httpx.Response(
             200,
@@ -340,6 +381,7 @@ def test_refreshes_old_rankings_without_redownloading_events(tmp_path: Path) -> 
                         "report": {
                             "ndpsRankings": {"data": [{"id": 18, "amount": 12345.6}]},
                             "rdpsRankings": {"data": [{"id": 18, "amount": 12222.2}]},
+                            "dpsRankings": {"data": [{"id": 18, "amount": 13500.0}]},
                         }
                     }
                 }
@@ -358,5 +400,6 @@ def test_refreshes_old_rankings_without_redownloading_events(tmp_path: Path) -> 
         "metric": "ndps",
         "rankings": {"data": [{"id": 18, "amount": 12345.6}]},
         "rdps": {"data": [{"id": 18, "amount": 12222.2}]},
+        "dps": {"data": [{"id": 18, "amount": 13500.0}]},
     }
     assert damage.read_text() == '[{"amount": 123}]'

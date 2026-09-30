@@ -15,7 +15,7 @@ from .models import AutoAttackSummary
 from .penalties import penalty_multiplier, revival_multiplier
 from .profiles import _CombatProfile, _load_weapon_delays
 
-_WEAPON_DELAY_MATCH_TOLERANCE = 0.04
+_WEAPON_DELAY_MATCH_TOLERANCE = 0.05
 
 def _is_auto_attack(event: dict[str, Any], name: str) -> bool:
     # These stable game ability IDs are represented as Attack (melee) and Shot
@@ -43,10 +43,9 @@ def _estimate_delay(intervals: list[float]) -> float:
 def _match_weapon_delay(estimated: float, known: tuple[float, ...], job: str) -> float:
     matched = min(known, key=lambda value: abs(value - estimated))
     difference = abs(matched - estimated)
-    # BRD's observed Shot spacing can run ~40 ms above the weapon's nominal
-    # delay even after excluding Army's speed statuses. Its known delays are
-    # separated by 160 ms, so a 50 ms limit remains unambiguous.
-    tolerance = 0.05 if job.casefold() == "bard" else _WEAPON_DELAY_MATCH_TOLERANCE
+    # Audited BRD and MCH Shot spacing can exceed nominal delay by ~42 ms.
+    # Match the nearest known delay, allowing up to 50 ms of timestamp variation.
+    tolerance = _WEAPON_DELAY_MATCH_TOLERANCE
     if difference > tolerance:
         formatted = ", ".join(f"{value:.2f}" for value in known)
         raise AnalysisError(

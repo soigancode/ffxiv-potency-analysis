@@ -18,8 +18,10 @@ def _reconstruct_pet_deployments(
     landed_by_packet: dict[tuple[Any, Any], list[dict[str, Any]]],
     profiles: dict[str, _PetProfile],
     fight_start: float,
-) -> tuple[PetDeploymentSummary, ...]:
-    gauge_values: dict[str, int] = defaultdict(int)
+    *, initial_gauges: dict[str, int] | None = None,
+    allow_unknown_initial_gauge: bool = False,
+) -> tuple[tuple[PetDeploymentSummary, ...], dict[str, int]]:
+    gauge_values: dict[str, int] = defaultdict(int, initial_gauges or {})
     deployments: list[PetDeploymentSummary] = []
     deployment_profiles = {
         profile.deployment_action: (actor, profile)
@@ -56,10 +58,17 @@ def _reconstruct_pet_deployments(
         actor, profile = deployment_entry
         assert profile.gauge_name is not None
         spent = gauge_values[profile.gauge_name]
+        assumed = False
         if profile.gauge_minimum is not None and spent < profile.gauge_minimum:
-            raise AnalysisError(
-                f"reconstructed only {spent} {profile.gauge_name} at {action_name} deployment"
-            )
+            if (allow_unknown_initial_gauge and action_name == "Automaton Queen"
+                    and not deployments
+                    and profile.gauge_maximum is not None):
+                spent = profile.gauge_maximum
+                assumed = True
+            else:
+                raise AnalysisError(
+                    f"reconstructed only {spent} {profile.gauge_name} at {action_name} deployment"
+                )
         timestamp = cast.get("timestamp")
         if not isinstance(timestamp, (int, float)):
             raise AnalysisError(f"{action_name} deployment has no timestamp")
@@ -69,10 +78,11 @@ def _reconstruct_pet_deployments(
                 timestamp_seconds=(timestamp - fight_start) / 1000,
                 gauge=profile.gauge_name,
                 gauge_spent=spent,
+                gauge_assumed=assumed,
             )
         )
         gauge_values[profile.gauge_name] = 0
-    return tuple(deployments)
+    return tuple(deployments), dict(gauge_values)
 
 
 def _deployment_for_event(
@@ -87,5 +97,3 @@ def _deployment_for_event(
         if deployment.actor == actor and deployment.timestamp_seconds <= relative
     ]
     return candidates[-1] if candidates else None
-
-

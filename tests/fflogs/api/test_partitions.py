@@ -4,7 +4,26 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ffxiv_potency.fflogs.partitions import current_partition, require_current_patch
+from ffxiv_potency.fflogs.partitions import (
+    current_partition,
+    fight_partition_patch,
+    require_current_patch,
+)
+
+
+def test_display_uses_ranked_partition_and_patch() -> None:
+    fight = {"id": 23, "encounterID": 105}
+    rankings = {"rankings": {"data": [
+        {"fightID": 23, "partition": 1, "bracketData": 7.4},
+        {"fightID": 14, "partition": 7, "bracketData": 7.5},
+    ]}}
+    assert fight_partition_patch(fight, rankings) == ("1", "7.4")
+
+
+def test_display_uses_date_when_dungeon_has_no_partition() -> None:
+    fight = {"id": 3, "encounterID": 4550, "startTime": 1000,
+             "reportStartTime": datetime(2026, 3, 4, tzinfo=UTC).timestamp() * 1000}
+    assert fight_partition_patch(fight, {}) == ("n/a", "7.45")
 
 
 @pytest.mark.parametrize("encounter,partition", [(101, 7), (105, 7), (1085, 1)])

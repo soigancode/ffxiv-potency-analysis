@@ -29,6 +29,7 @@ from .luck import (
     _raid_luck_adjustment,
     _summarize_hit_outcomes,
 )
+from .mch.checkpoint import mch_checkpoint_gauges
 from .mch.queen import summarize_mch_queen_deployments
 from .mch.wildfire import MchWildfireTracker
 from .models import (
@@ -382,8 +383,15 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         if job.casefold() == "machinist" else None
     )
 
-    pet_deployments = _reconstruct_pet_deployments(
-        sorted_casts, actions, ability_names, landed_by_packet, pet_profiles, float(start)
+    starting_gauges, unknown_initial_gauge = (
+        mch_checkpoint_gauges(
+            directory, fight, source_id, actions, ability_names, pet_profiles,
+        ) if job.casefold() == "machinist" and encounter_id == 105 else ({}, False)
+    )
+    pet_deployments, _ = _reconstruct_pet_deployments(
+        sorted_casts, actions, ability_names, landed_by_packet, pet_profiles, float(start),
+        initial_gauges=starting_gauges,
+        allow_unknown_initial_gauge=unknown_initial_gauge,
     )
     guaranteed_packets = _guaranteed_outcome_packets(sorted_casts, actions, ability_names)
     channel_casts: dict[str, list[tuple[int, dict[str, Any]]]] = defaultdict(list)
@@ -954,6 +962,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         echo_status=initial_echo,
         ndps=ndps,
         rdps=rdps,
+        dps=_find_ranking_amount(rankings.get("dps"), source_id, str(source_name)),
         duration_seconds=duration,
         raw_damage_events=len(raw_damage),
         landed_damage_events=len(landed),

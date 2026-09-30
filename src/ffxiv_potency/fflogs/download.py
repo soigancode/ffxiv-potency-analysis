@@ -29,6 +29,7 @@ query ReportMetadata($code: String!, $fightIDs: [Int]) {
       }
       rdpsRankings: rankings(fightIDs: $fightIDs, playerMetric: rdps)
       ndpsRankings: rankings(fightIDs: $fightIDs, playerMetric: ndps)
+      dpsRankings: rankings(fightIDs: $fightIDs, playerMetric: dps)
       masterData {
         logVersion
         gameVersion
@@ -50,6 +51,7 @@ query ReportRankings($code: String!, $fightIDs: [Int]) {
     report(code: $code) {
       rdpsRankings: rankings(fightIDs: $fightIDs, playerMetric: rdps)
       ndpsRankings: rankings(fightIDs: $fightIDs, playerMetric: ndps)
+      dpsRankings: rankings(fightIDs: $fightIDs, playerMetric: dps)
     }
   }
 }
@@ -58,6 +60,16 @@ query ReportRankings($code: String!, $fightIDs: [Int]) {
 _REPORT_DATE_QUERY = """
 query ReportDate($code: String!) {
   reportData { report(code: $code) { startTime } }
+}
+"""
+
+_CHECKPOINT_FIGHTS_QUERY = """
+query CheckpointFights($code: String!) {
+  reportData {
+    report(code: $code) {
+      fights { id encounterID startTime endTime kill friendlyPlayers }
+    }
+  }
 }
 """
 
@@ -182,12 +194,13 @@ def _report_from(data: dict[str, Any]) -> dict[str, Any]:
     return report
 
 
-def _saved_rankings(rdps: Any, ndps: Any) -> dict[str, Any]:
+def _saved_rankings(rdps: Any, ndps: Any, dps: Any = None) -> dict[str, Any]:
     """Label cached metrics so an older rDPS response is never shown as nDPS."""
     return {
         "metric": "ndps",
         "rankings": ndps if ndps is not None else {},
         "rdps": rdps if rdps is not None else {},
+        **({"dps": dps} if dps is not None else {}),
     }
 
 
@@ -209,7 +222,8 @@ def refresh_report_rankings(
         )
     return _write_json(
         directory / "rankings.json",
-        _saved_rankings(report.get("rdpsRankings"), report.get("ndpsRankings")),
+        _saved_rankings(report.get("rdpsRankings"), report.get("ndpsRankings"),
+                        report.get("dpsRankings")),
     )
 
 
@@ -414,7 +428,7 @@ def refresh_encounter_overkill_events(
 
 
 def _download_events(
-    client: FFLogsClient,
+    client: _GraphQLClient,
     reference: ReportReference,
     data_type: str,
     *,
@@ -446,6 +460,62 @@ def _download_events(
         if not isinstance(next_timestamp, (int, float)) or next_timestamp == start_time:
             raise FFLogsError(f"invalid {data_type} pagination timestamp")
         start_time = float(next_timestamp)
+
+
+def _checkpoint_context(client: _GraphQLClient, reference: ReportReference,
+                        fight: dict[str, Any]) -> dict[str, Any]:
+    """Fetch an exact carry only after a verified phase-one kill without a wipe."""
+    report = _report_from(client.graphql(
+        _CHECKPOINT_FIGHTS_QUERY, {"code": reference.report_code},
+    ))
+    fights = report.get("fights")
+    if not isinstance(fights, list):
+        raise FFLogsError("report fight timeline is missing for Lindwurm II")
+    start = fight.get("startTime")
+    if not isinstance(start, (int, float)):
+        raise FFLogsError("Lindwurm II has no valid start time")
+    earlier = [row for row in fights if isinstance(row, dict)
+               and isinstance(row.get("startTime"), (int, float))
+               and row["startTime"] < start]
+    if not earlier:
+        return {"carry": "unknown"}
+    previous = max(earlier, key=lambda row: row["startTime"])
+    if previous.get("encounterID") == 105 and previous.get("kill") is False:
+        return {"carry": False}
+    if (previous.get("encounterID") != 104 or previous.get("kill") is not True
+            or not isinstance(previous.get("id"), int)
+            or not isinstance(previous.get("endTime"), (int, float))
+            or previous["endTime"] > start
+            or reference.source_id not in (previous.get("friendlyPlayers") or [])):
+        return {"carry": "unknown"}
+    prior = ReportReference(reference.report_code, previous["id"], reference.source_id)
+    casts = _download_events(client, prior, "Casts")
+    damage = _download_events(client, prior, "DamageDone")
+    if not casts or not damage:
+        return {"carry": "unknown"}
+    return {
+        "carry": True,
+        "reportCode": reference.report_code,
+        "sourceID": reference.source_id,
+        "fightID": reference.fight_id,
+        "previousFight": previous,
+        "casts": casts,
+        "damage": damage,
+    }
+
+
+def refresh_checkpoint_context(
+    reference: ReportReference, directory: Path, *,
+    client_id: str | None = None, client_secret: str | None = None,
+    transport: httpx.BaseTransport | None = None,
+) -> Path:
+    """Fetch the phase-one pull for an existing Lindwurm II saved fight."""
+    fight = json.loads((directory / "fight.json").read_text(encoding="utf-8"))
+    if fight.get("encounterID") != 105:
+        raise ValueError("checkpoint context applies only to Lindwurm II")
+    with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        context = _checkpoint_context(client, reference, fight)
+    return _write_json(directory / "checkpoint-context.json", context)
 
 
 def download_report_events(
@@ -481,6 +551,8 @@ def download_report_events(
             raise FFLogsError("report master data was missing")
         rdps = report.get("rdpsRankings")
         ndps = report.get("ndpsRankings")
+        checkpoint = (_checkpoint_context(client, reference, fights[0])
+                      if fights[0].get("encounterID") == 105 else None)
 
         combatants = report.get("combatants")
         if not isinstance(combatants, dict):
@@ -525,7 +597,9 @@ def download_report_events(
     targetability_path = _write_json(directory / "targetability-events.json", targetability_events)
     overkill_path = _write_json(directory / "encounter-overkill-events.json", encounter_overkills)
     combatant_path = _write_json(directory / "combatant-info-events.json", combatant_events)
-    rankings_path = _write_json(directory / "rankings.json", _saved_rankings(rdps, ndps))
+    rankings_path = _write_json(directory / "rankings.json", _saved_rankings(rdps, ndps, report.get("dpsRankings")))
+    if checkpoint is not None:
+        _write_json(directory / "checkpoint-context.json", checkpoint)
     return DownloadResult(
         directory=directory,
         fight=fight_path,

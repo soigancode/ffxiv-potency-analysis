@@ -16,6 +16,13 @@ class ReportReference:
     source_id: int
 
 
+@dataclass(frozen=True, slots=True)
+class ReportSelection:
+    report_code: str
+    fight_id: int | None
+    source_id: int | None
+
+
 def valid_report_code(code: str) -> bool:
     """Accept standard and FF Logs anonymous report codes."""
     return _REPORT_CODE.fullmatch(code) is not None
@@ -47,6 +54,17 @@ def _positive_integer(query: dict[str, list[str]], name: str) -> int:
 def parse_report_url(value: str) -> ReportReference:
     """Extract the selected report, fight, and player source from a copied URL."""
 
+    selection = parse_report_selection_url(value)
+    if selection.fight_id is None:
+        raise ValueError("FF Logs URL must contain exactly one 'fight' parameter")
+    if selection.source_id is None:
+        raise ValueError("FF Logs URL must contain exactly one 'source' parameter")
+    return ReportReference(selection.report_code, selection.fight_id, selection.source_id)
+
+
+def parse_report_selection_url(value: str) -> ReportSelection:
+    """Accept a report URL with zero, one, or both selections."""
+
     parsed = urlparse(value)
     if parsed.scheme != "https" or parsed.hostname not in _ALLOWED_HOSTS:
         raise ValueError("expected an https://www.fflogs.com/reports/... URL")
@@ -55,8 +73,15 @@ def parse_report_url(value: str) -> ReportReference:
         raise ValueError("FF Logs URL must point to /reports/<report-code>")
 
     query = parse_qs(parsed.query, keep_blank_values=True)
-    return ReportReference(
+    return ReportSelection(
         report_code=match.group(1),
-        fight_id=_positive_integer(query, "fight"),
-        source_id=_positive_integer(query, "source"),
+        fight_id=_positive_integer(query, "fight") if "fight" in query else None,
+        source_id=_positive_integer(query, "source") if "source" in query else None,
     )
+
+
+def parse_report_selection(value: str) -> ReportSelection:
+    """Accept a bare report ID or a report URL with optional selections."""
+    if valid_report_code(value):
+        return ReportSelection(value, None, None)
+    return parse_report_selection_url(value)

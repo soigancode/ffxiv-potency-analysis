@@ -61,6 +61,47 @@ def current_partition(encounter_id: int, selected: int | None = None) -> int | N
     return selected
 
 
+def fight_partition_patch(fight: dict[str, Any], rankings: dict[str, Any]) -> tuple[str, str]:
+    """Describe recorded ranking provenance; use played date where partitions are absent."""
+    fight_id = fight.get("id")
+    encounter_id = fight.get("encounterID")
+    rows = []
+    for metric in ("rankings", "rdps"):
+        value = rankings.get(metric)
+        data = value.get("data") if isinstance(value, dict) else None
+        if isinstance(data, list):
+            rows.extend(row for row in data if isinstance(row, dict)
+                        and row.get("fightID") in (None, fight_id))
+    partitions = {row["partition"] for row in rows
+                  if isinstance(row.get("partition"), int) and not isinstance(row["partition"], bool)}
+    brackets = {row["bracketData"] for row in rows
+                if isinstance(row.get("bracketData"), (int, float))
+                and not isinstance(row["bracketData"], bool)}
+    partition = next(iter(partitions)) if len(partitions) == 1 else None
+    patch = None
+    if encounter_id in SAVAGE_ENCOUNTERS and partition in SAVAGE_PARTITIONS:
+        patch = SAVAGE_PARTITIONS[partition][0]
+    elif encounter_id in EXTREME_ENCOUNTERS and partition in EXTREME_PARTITIONS[encounter_id]:
+        patch = EXTREME_PARTITIONS[encounter_id][partition]
+    elif encounter_id not in DUNGEON_RELEASES and len(brackets) == 1:
+        patch = next(iter(brackets))
+    elif encounter_id == 1085:
+        patch = 7.5
+    else:
+        start = fight.get("startTime")
+        report_start = fight.get("reportStartTime")
+        if isinstance(start, (int, float)) and isinstance(report_start, (int, float)):
+            played_at = start + report_start
+            if played_at >= _PATCH_75_START_MS:
+                patch = 7.5
+            elif played_at >= DUNGEON_RELEASES[4550].timestamp() * 1000:
+                patch = 7.45
+            elif played_at >= _PATCH_74_START_MS:
+                patch = 7.4
+    return (str(partition) if partition is not None else "n/a",
+            str(patch) if patch is not None else "n/a")
+
+
 def require_current_patch(fight: dict[str, Any], rankings: dict[str, Any]) -> None:
     """Check ranking provenance, retaining the 7.5 date fallback for old saves."""
     encounter_id = fight.get("encounterID")

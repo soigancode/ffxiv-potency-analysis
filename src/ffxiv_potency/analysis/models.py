@@ -33,6 +33,7 @@ class PetDeploymentSummary:
     timestamp_seconds: float
     gauge: str
     gauge_spent: int
+    gauge_assumed: bool = False
     potency_min: float = 0.0
     potency_max: float = 0.0
     mch_missing_finishers: tuple[str, ...] = ()
@@ -159,6 +160,7 @@ class AnalysisResult:
     unmatched: tuple[tuple[str, int], ...]
     ghosted: tuple[tuple[str, int], ...]
     rdps: float | None = None
+    dps: float | None = None
     luck_score: float = 0.0
     adjusted_luck_score: float = 0.0
     luck_baseline: float = 0.0

@@ -9,6 +9,7 @@ Wildfire carry Medicated too. Player potion factor: 3837 / 3546.
 
 import json
 from pathlib import Path
+from statistics import median
 
 import pytest
 
@@ -138,3 +139,34 @@ def test_detonator_marks_early_wildfire_without_changing_potency(
 
     cli._print_analysis(result)
     assert "potency (detonated early)" in capsys.readouterr().out
+
+
+def test_mch_tyrant_shot_timing_matches_damage_reference(
+    tmp_path: Path, mch_actions: Path, extract_fight,
+) -> None:
+    """Report aDfQWqPzcZAmYNFx has 2.64s and 2.68s Shot clusters."""
+    extract_fight(
+        "mch_tyrant_auto_attack_timing.zip",
+        "aDfQWqPzcZAmYNFx/fight-2/source-7/",
+    )
+    result = analyze_saved_fight(tmp_path, mch_actions)
+    (shot,) = result.auto_attacks
+    assert shot.hits == 233
+    assert shot.estimated_delay_seconds == pytest.approx(2.682)
+    assert shot.weapon_delay_seconds == 2.64
+
+    # Independent damage comparison: ordinary unbuffed Shots against the
+    # known 220-potency Heated Split Shot, excluding Crit, DH and overkill.
+    events = json.loads((tmp_path / "damage-events.json").read_text())
+    normal = {8: [], 7411: []}
+    for event in events:
+        ability = event.get("abilityGameID")
+        if (ability in normal and event.get("type") == "calculateddamage"
+                and event.get("sourceID") == 7 and event.get("hitType") == 1
+                and not event.get("directHit") and event.get("multiplier", 1) == 1
+                and not event.get("buffs") and not event.get("overkill")):
+            normal[ability].append(event["amount"])
+    assert (len(normal[8]), len(normal[7411])) == (69, 16)
+    observed_potency = median(normal[8]) / median(normal[7411]) * 220
+    assert observed_potency == pytest.approx(58.84, abs=0.01)
+    assert shot.potency_per_hit == pytest.approx(observed_potency, abs=1)

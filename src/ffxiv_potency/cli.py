@@ -6,12 +6,12 @@ import os
 import re
 import shutil
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import AbstractContextManager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Self
+from typing import Self, TypedDict
 
 import httpx
 from dotenv import load_dotenv
@@ -32,13 +32,14 @@ from .fflogs import (
     refresh_report_rankings,
 )
 from .fflogs.download import (
+    refresh_checkpoint_context,
     refresh_encounter_overkill_events,
     refresh_player_status_events,
     refresh_report_date,
     refresh_revival_buff_events,
     refresh_targetability_events,
 )
-from .fflogs.partitions import current_partition, require_current_patch
+from .fflogs.partitions import current_partition, fight_partition_patch, require_current_patch
 from .fflogs.rankings import (
     accessible_ranked_sources,
     ranked_source,
@@ -49,9 +50,12 @@ from .fflogs.rankings import (
 )
 from .fflogs.reference import (
     ReportReference,
+    parse_report_selection,
     report_code_from_directory,
     report_directory_name,
+    valid_report_code,
 )
+from .fflogs.selection import ReportFight, report_fights
 from .jobguide.raid_buffs import update_raid_effects
 from .jobguide.schema import ACTION_SCHEMA_VERSION
 from .jobguide.snapshot import LATEST_KNOWN_PATCH, update_job_guide
@@ -78,6 +82,10 @@ _SAVED_FIGHT_FILES = ("fight.json", "master-data.json", "damage-events.json", "c
 _FIGHT_DIRECTORY = re.compile(r"fight-(\d+)")
 _SOURCE_DIRECTORY = re.compile(r"source-(\d+)")
 _RANK_RANGE = re.compile(r"(\d+)-(\d+)")
+
+
+class _RankingStatusOptions(TypedDict, total=False):
+    on_status: Callable[[str], None]
 
 
 class _Progress(AbstractContextManager["_Progress"]):
@@ -129,8 +137,8 @@ def build_parser() -> argparse.ArgumentParser:
     clear.add_argument("--output", type=Path, default=Path("data/logs"), help="logs directory")
     clear.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
 
-    fflogs = commands.add_parser("fflogs", help="download one selected FF Logs fight")
-    fflogs.add_argument("url", help="'limit', a report URL, or a job such as BRD/MCH")
+    fflogs = commands.add_parser("fflogs", help="download an FF Logs fight")
+    fflogs.add_argument("url", help="'limit', a report URL or ID, or a job such as BRD/MCH")
     fflogs.add_argument("fight", nargs="?", help="fight abbreviation such as m9s")
     fflogs.add_argument(
         "rank", nargs="?", help="one rank, an inclusive range, or comma-separated ranks"
@@ -142,14 +150,14 @@ def build_parser() -> argparse.ArgumentParser:
     fflogs.add_argument("--output", type=Path, default=Path("data/logs"), help="output root")
 
     compare = commands.add_parser("compare", help="download and compare FF Logs sources")
-    compare.add_argument("urls", nargs="+", help="two to ten copied report URLs")
+    compare.add_argument("urls", nargs="+", help="two to ten report URLs or IDs")
     compare.add_argument(
         "--actions", type=Path, help=f"override the job's default {LATEST_KNOWN_PATCH} actions.json"
     )
     compare.add_argument("--output", type=Path, default=Path("data/logs"), help="output root")
 
     analyse = commands.add_parser("analyse", help="download if needed and calculate potency")
-    analyse.add_argument("source", help="saved source directory or copied FF Logs URL")
+    analyse.add_argument("source", help="saved source directory or FF Logs report URL or ID")
     analyse.add_argument(
         "--actions", type=Path, help=f"override the job's default {LATEST_KNOWN_PATCH} actions.json"
     )
@@ -227,7 +235,8 @@ def _penalty_impact(penalty: DamagePenaltySummary) -> str:
 
 
 def _print_analysis(
-    result: AnalysisResult, *, anonymous: bool = False, rank: int | None = None
+    result: AnalysisResult, *, directory: Path | None = None,
+    anonymous: bool = False, rank: int | None = None,
 ) -> None:
     print()
     print(f"Player: {_display_player_name(result.source_name, anonymous=anonymous)}")
@@ -235,6 +244,11 @@ def _print_analysis(
         print(f"Rank: {rank}")
     wipe = " (wipe)" if result.kill is False else ""
     print(f"Fight: {_format_fight(result)}, {_format_duration(result.duration_seconds)}{wipe}")
+    if directory is not None:
+        partition, patch = _fight_provenance(directory)
+        print(f"Date: {_fight_date(directory, full_year=True)} (UTC)")
+        print(f"Partition: {partition}")
+        print(f"Patch: {patch}")
     bonus = (f"{result.party_bonus_percent}%"
              if result.party_bonus_percent is not None else "5% (assumed; older saved fight)")
     print(f"Party main-stat bonus: {bonus}")
@@ -530,7 +544,8 @@ def _print_analysis(
             )
             print(
                 f"  {_format_timestamp(deployment.timestamp_seconds)} {deployment.actor}: "
-                f"{deployment.gauge_spent} {deployment.gauge}, "
+                f"{deployment.gauge_spent} {deployment.gauge}"
+                f"{' (assumed carry-over; unconfirmed by this report)' if deployment.gauge_assumed else ''}, "
                 f"{_format_potency(deployment.potency_min, deployment.potency_max)} total potency"
                 f"{missing}{overdrive}"
             )
@@ -557,7 +572,7 @@ def _comparison_player_field(name: str, directory: Path) -> str:
     return styled + " " * (24 - len(displayed))
 
 
-def _fight_date(directory: Path) -> str:
+def _fight_date(directory: Path, *, full_year: bool = False) -> str:
     """Format the fight start date in UTC from FF Logs' absolute report time."""
     try:
         fight = json.loads((directory / "fight.json").read_text(encoding="utf-8"))
@@ -572,10 +587,21 @@ def _fight_date(directory: Path) -> str:
         return "n/a"
     try:
         return datetime.fromtimestamp((report_start + fight_start) / 1000, UTC).strftime(
-            "%d/%m/%y"
+            "%d/%m/%Y" if full_year else "%d/%m/%y"
         )
     except (OSError, OverflowError, ValueError):
         return "n/a"
+
+
+def _fight_provenance(directory: Path) -> tuple[str, str]:
+    try:
+        fight = json.loads((directory / "fight.json").read_text(encoding="utf-8"))
+        rankings_path = directory / "rankings.json"
+        rankings = (json.loads(rankings_path.read_text(encoding="utf-8"))
+                    if rankings_path.is_file() else {})
+    except (OSError, UnicodeError, ValueError):
+        return "n/a", "n/a"
+    return fight_partition_patch(fight, rankings)
 
 
 def _compare_directories(
@@ -593,7 +619,7 @@ def _compare_directories(
     compared_ranks = []
     skipped: list[tuple[int, str]] = []
     if progress is not None:
-        progress.update("Calculating", 0, len(directories))
+        progress.update("Calculating potency", 0, len(directories))
     for index, directory in enumerate(directories, 1):
         try:
             _verify_supported_fight(directory)
@@ -608,7 +634,7 @@ def _compare_directories(
             if rank_positions is not None:
                 compared_ranks.append(rank_positions[index - 1])
         if progress is not None:
-            progress.update("Calculating", index, len(directories))
+            progress.update("Calculating potency", index, len(directories))
     if not results:
         raise ValueError("none of the selected fights could be analyzed")
     encounters = {
@@ -624,16 +650,33 @@ def _compare_directories(
         progress.clear()
     _print_comparison(results)
     print(f"Fight: {_format_fight(results[0])}")
-    labels = ("Duration", "rDPS", "nDPS", "Potency", "PPS", "Luck", "aLuck", "Date")
+    provenance = [_fight_provenance(directory) for directory in compared_directories]
+    shared_provenance = rank_positions is not None and len(set(provenance)) == 1
+    if shared_provenance:
+        partition, patch = provenance[0]
+        print(f"Partition: {partition}")
+        print(f"Patch: {patch}")
+    use_dps = results[0].encounter_id in {4549, 4551}
+    labels = ("Duration", *(("DPS",) if use_dps else ("rDPS", "nDPS")),
+              "Potency", "PPS", "Luck", "aLuck",
+              *(("Partition", "Patch") if not shared_provenance else ()), "Date")
     rows: list[tuple[str, ...]] = []
     for index, result in enumerate(results):
+        partition, patch = provenance[index]
+        assumed_battery = any(deployment.gauge_assumed for deployment in result.pet_deployments)
+        marker = "~" if assumed_battery else ""
         rows.append((
             _format_duration(result.duration_seconds),
-            f"{result.rdps:,.1f}" if result.rdps is not None else "n/a",
-            f"{result.ndps:,.1f}" if result.ndps is not None else "n/a",
-            _format_potency(result.potency_min, result.potency_max),
-            _format_pps(result.pps_min, result.pps_max),
-            f"{result.luck_score:.2%}", f"{result.adjusted_luck_score:.2%}",
+            *((f"{result.dps:,.1f}" if result.dps is not None else "n/a",)
+              if use_dps else (
+                  f"{result.rdps:,.1f}" if result.rdps is not None else "n/a",
+                  f"{result.ndps:,.1f}" if result.ndps is not None else "n/a",
+              )),
+            marker + _format_potency(result.potency_min, result.potency_max),
+            marker + _format_pps(result.pps_min, result.pps_max),
+            marker + f"{result.luck_score:.2%}",
+            marker + f"{result.adjusted_luck_score:.2%}",
+            *((partition, patch) if not shared_provenance else ()),
             _fight_date(compared_directories[index]),
         ))
     widths = tuple(max(len(label), *(len(row[column]) for row in rows))
@@ -650,6 +693,9 @@ def _compare_directories(
         print(f"{rank}{player}{separator}" + separator.join(
             f"{value:>{width}}" for value, width in zip(row, widths)
         ))
+    if any(deployment.gauge_assumed for result in results
+           for deployment in result.pet_deployments):
+        print("~ Potency, PPS, Luck, and aLuck include an unconfirmed 100 Battery Gauge carry-over.")
     print()
     return tuple(skipped)
 
@@ -737,6 +783,87 @@ def _saved_directory(output: Path, reference: ReportReference) -> Path:
     )
 
 
+def _choose_number(label: str, count: int) -> int:
+    while True:
+        try:
+            answer = input(f"Choose {label} [1-{count}]: ").strip()
+        except EOFError as exc:
+            raise ValueError(
+                "report selection needs interactive input; use a URL with fight and source"
+            ) from exc
+        if answer.isdecimal() and 1 <= int(answer) <= count:
+            return int(answer) - 1
+        print(f"Enter a number from 1 to {count}.")
+
+
+def _ranking_status_options(progress: _Progress) -> _RankingStatusOptions:
+    return {"on_status": progress.message} if progress.enabled else {}
+
+
+def _report_fight_label(fight: ReportFight) -> str:
+    duration = (f", {_format_duration(fight.duration_seconds)}"
+                if fight.duration_seconds is not None else "")
+    wipe = " (wipe)" if fight.kill is False else ""
+    return f"{fight.name} (fight {fight.id}{duration}){wipe}"
+
+
+def _select_report_reference(url: str) -> ReportReference:
+    selection = parse_report_selection(url)
+    if selection.fight_id is not None and selection.source_id is not None:
+        return ReportReference(selection.report_code, selection.fight_id, selection.source_id)
+
+    supported = set(CURRENT_FIGHTS.values())
+    with _Progress() as progress:
+        progress.message("Loading report fights and players...")
+        fights = report_fights(selection.report_code)
+    choices = [
+        fight for fight in fights
+        if fight.encounter_id in supported
+        and (selection.source_id is None or any(
+            player.id == selection.source_id for player in fight.players
+        ))
+    ]
+    if selection.fight_id is None:
+        if not choices:
+            detail = (" with the selected player" if selection.source_id is not None else "")
+            raise ValueError(f"this report has no supported fights{detail}")
+        if len(choices) == 1:
+            fight = choices[0]
+            print(f"Fight: {_report_fight_label(fight)}")
+        else:
+            print("Fights:")
+            for number, fight in enumerate(choices, 1):
+                print(f"  {number}. {_report_fight_label(fight)}")
+            fight = choices[_choose_number("fight", len(choices))]
+    else:
+        fight = next((row for row in choices if row.id == selection.fight_id), None)
+        if fight is None:
+            raise ValueError(f"fight {selection.fight_id} is not a supported fight in this report")
+
+    players = [
+        player for player in fight.players
+        if player.job.casefold() in SUPPORTED_JOBS.values()
+    ]
+    if selection.source_id is not None:
+        player = next((row for row in players if row.id == selection.source_id), None)
+        if player is None:
+            raise ValueError(
+                f"source {selection.source_id} is not a supported player in fight {fight.id}"
+            )
+        return ReportReference(selection.report_code, fight.id, player.id)
+    if not players:
+        raise ValueError(f"fight {fight.id} has no supported BRD or MCH players")
+    if len(players) == 1:
+        player = players[0]
+        print(f"Player: {player.name} ({player.job}, source {player.id})")
+    else:
+        print("Players:")
+        for number, player in enumerate(players, 1):
+            print(f"  {number}. {player.name} ({player.job}, source {player.id})")
+        player = players[_choose_number("player", len(players))]
+    return ReportReference(selection.report_code, fight.id, player.id)
+
+
 def _reference_from_directory(directory: Path) -> ReportReference | None:
     """Recover an FF Logs reference from the downloader's canonical path."""
     fight_match = _FIGHT_DIRECTORY.fullmatch(directory.parent.name)
@@ -763,6 +890,11 @@ def _resolve_analysis_directory(
 
     if all((directory / filename).is_file() for filename in _SAVED_FIGHT_FILES):
         fight = json.loads((directory / "fight.json").read_text(encoding="utf-8"))
+        if (fight.get("encounterID") == 105 and reference is not None
+                and os.environ.get("FFLOGS_CLIENT_ID")
+                and os.environ.get("FFLOGS_CLIENT_SECRET")
+                and not (directory / "checkpoint-context.json").is_file()):
+            refresh_checkpoint_context(reference, directory)
         if (reference is not None and os.environ.get("FFLOGS_CLIENT_ID")
                 and os.environ.get("FFLOGS_CLIENT_SECRET")
                 and ("friendlyPlayers" not in fight
@@ -777,6 +909,7 @@ def _resolve_analysis_directory(
             isinstance(cached_rankings, dict)
             and cached_rankings.get("metric") == "ndps"
             and "rdps" in cached_rankings
+            and (fight.get("encounterID") not in {4549, 4551} or "dps" in cached_rankings)
         ):
             refresh_report_rankings(reference, directory)
         if (include_targetability and reference is not None
@@ -817,7 +950,7 @@ def _download_and_compare(
     unique_urls = list(dict.fromkeys(urls))
     directories_by_url: dict[str, Path] = {}
     failures_by_url: dict[str, str] = {}
-    progress.update("Downloading", 0, len(urls))
+    progress.update("Loading fight data", 0, len(urls))
     with ThreadPoolExecutor(max_workers=min(3, len(unique_urls))) as executor:
         pending = {
             executor.submit(_resolve_analysis_directory, url, output, announce=False): url
@@ -832,7 +965,7 @@ def _download_and_compare(
                     raise
                 failures_by_url[url] = str(exc)
             completed = sum(url in directories_by_url or url in failures_by_url for url in urls)
-            progress.update("Downloading", completed, len(urls))
+            progress.update("Loading fight data", completed, len(urls))
     skipped = tuple(
         (rank_positions[index], failures_by_url[url])
         for index, url in enumerate(urls) if url in failures_by_url
@@ -922,28 +1055,43 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         if args.command == "compare":
             if not 2 <= len(args.urls) <= 10:
-                raise ValueError("compare requires two to ten FF Logs URLs")
+                raise ValueError("compare requires two to ten FF Logs URLs or IDs")
+            urls = []
+            for source in args.urls:
+                reference = _select_report_reference(source)
+                urls.append(
+                    f"https://www.fflogs.com/reports/{reference.report_code}"
+                    f"?fight={reference.fight_id}&source={reference.source_id}"
+                )
             with _Progress() as progress:
-                _download_and_compare(args.urls, args.output, args.actions, progress)
+                _download_and_compare(urls, args.output, args.actions, progress)
             return 0
 
         if args.command == "analyse":
+            source = args.source
+            if source.startswith("https://") or (valid_report_code(source)
+                                                 and not Path(source).exists()):
+                reference = _select_report_reference(source)
+                source = (
+                    f"https://www.fflogs.com/reports/{reference.report_code}"
+                    f"?fight={reference.fight_id}&source={reference.source_id}"
+                )
             with _Progress() as progress:
-                progress.update("Downloading", 0, 1)
+                progress.update("Loading fight data", 0, 1)
                 directory = _resolve_analysis_directory(
-                    args.source, args.output, announce=not progress.enabled,
+                    source, args.output, announce=not progress.enabled,
                     include_targetability=True,
                 )
-                progress.update("Downloading", 1, 1)
+                progress.update("Loading fight data", 1, 1)
                 job = _source_job(directory)
                 actions_path = _actions_for_job(job, args.actions)
                 _verify_supported_fight(directory)
-                progress.update("Calculating", 0, 1)
+                progress.update("Calculating potency", 0, 1)
                 result = analyze_saved_fight(directory, actions_path)
-                progress.update("Calculating", 1, 1)
+                progress.update("Calculating potency", 1, 1)
             reference = _reference_from_directory(directory)
             _print_analysis(
-                result,
+                result, directory=directory,
                 anonymous=reference is not None and reference.report_code.startswith("a:"),
             )
             return 0
@@ -976,9 +1124,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                     first, last = map(int, rank_range.groups())
                     validate_rank_range(first, last)
                     with _Progress() as progress:
-                        progress.message("Processing...")
+                        progress.message("Connecting to FF Logs...")
                         ranked, skipped = ranked_sources_in_range(
                             encounter_id, job, first, last, partition=args.partition,
+                            **_ranking_status_options(progress),
                         )
                         _compare_ranked_references(ranked, skipped, args.output, progress)
                     return 0
@@ -989,9 +1138,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                     positions = tuple(int(piece) for piece in pieces)
                     validate_rank_positions(positions)
                     with _Progress() as progress:
-                        progress.message("Processing...")
+                        progress.message("Connecting to FF Logs...")
                         ranked, skipped = ranked_sources_at_positions(
                             encounter_id, job, positions, partition=args.partition,
+                            **_ranking_status_options(progress),
                         )
                         _compare_ranked_references(ranked, skipped, args.output, progress)
                     return 0
@@ -1000,33 +1150,36 @@ def main(argv: Sequence[str] | None = None) -> int:
                         raise ValueError("rank must be a positive number")
                     rank = int(args.rank)
                     with _Progress() as progress:
-                        progress.message("Processing...")
+                        progress.message("Connecting to FF Logs...")
                         reference = ranked_source(
                             encounter_id, job, rank, partition=args.partition,
+                            **_ranking_status_options(progress),
                         )
                         url = (
                             f"https://www.fflogs.com/reports/{reference.report_code}"
                             f"?fight={reference.fight_id}&source={reference.source_id}"
                         )
-                        progress.update("Downloading", 0, 1)
+                        progress.update("Loading fight data", 0, 1)
                         directory = _resolve_analysis_directory(
                             url, args.output, announce=not progress.enabled,
                             include_targetability=True,
                         )
-                        progress.update("Downloading", 1, 1)
+                        progress.update("Loading fight data", 1, 1)
                         actions_path = _actions_for_job(job, None)
                         _verify_supported_fight(directory)
-                        progress.update("Calculating", 0, 1)
+                        progress.update("Calculating potency", 0, 1)
                         result = analyze_saved_fight(directory, actions_path)
-                        progress.update("Calculating", 1, 1)
+                        progress.update("Calculating potency", 1, 1)
                     _print_analysis(
-                        result, rank=rank, anonymous=reference.report_code.startswith("a:"),
+                        result, directory=directory, rank=rank,
+                        anonymous=reference.report_code.startswith("a:"),
                     )
                     return 0
                 with _Progress() as progress:
-                    progress.message("Processing...")
+                    progress.message("Connecting to FF Logs...")
                     ranked, skipped = accessible_ranked_sources(
                         encounter_id, job, partition=args.partition,
+                        **_ranking_status_options(progress),
                     )
                     _compare_ranked_references(ranked, skipped, args.output, progress)
                 return 0
@@ -1034,8 +1187,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise ValueError("a rank requires a job and fight abbreviation")
             if args.partition is not None:
                 raise ValueError("--partition requires a job and fight abbreviation")
-            reference = parse_report_url(args.url)
-            download = download_report_events(reference, args.output)
+            reference = _select_report_reference(args.url)
+            with _Progress() as progress:
+                progress.update("Loading fight data", 0, 1)
+                download = download_report_events(reference, args.output)
+                progress.update("Loading fight data", 1, 1)
             print(f"Saved fight data: {download.directory}")
             print(f"Damage events: {download.damage_event_count}")
             print(f"Cast events: {download.cast_event_count}")
