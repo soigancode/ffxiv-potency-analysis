@@ -7,16 +7,18 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from ..patches import LATEST_KNOWN_PATCH
+from ..fflogs.partitions import EXTREME_ENCOUNTERS
 from ..jobguide.schema import ACTION_SCHEMA_VERSION
+from ..patches import LATEST_KNOWN_PATCH
 from .auto_attacks import _is_auto_attack, _summarize_auto_attacks
 from .brd.barrage import _barrage_shadowbite_packets
 from .brd.buffs import _brd_self_multiplier, brd_self_buff_windows
 from .brd.dots import reconstruct_brd_dots, summarize_brd_dots
 from .brd.songs import _brd_coda, _brd_song_durations
 from .brd.variable_potency import _brd_damage_estimates
-from .consumables import food_active, food_gaps, identify_consumable
+from .consumables import food_active, food_gaps, identify_consumable, initial_food_aura
 from .damage import landed_fraction
+from .echo import echo_status, is_echo_partition, normalize_echo_damage
 from .errors import AnalysisError
 from .events import _event_name, _has_buff, _load_json
 from .luck import (
@@ -36,6 +38,7 @@ from .models import (
     PotionSummary,
     ReducedDamageHit,
 )
+from .party import party_bonus_percent
 from .penalties import (
     load_damage_penalties,
     penalty_multiplier,
@@ -101,6 +104,10 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     )
     overkill_path = directory / "encounter-overkill-events.json"
     encounter_overkills = _load_json(overkill_path, list) if overkill_path.is_file() else []
+    combatants_path = directory / "combatant-info-events.json"
+    combatants = _load_json(combatants_path, list) if combatants_path.is_file() else None
+    rankings_path = directory / "rankings.json"
+    rankings = _load_json(rankings_path, dict) if rankings_path.is_file() else {}
     action_document = _load_json(actions_path, dict)
     schema_version = action_document.get("schema_version")
     if schema_version is not None and schema_version != ACTION_SCHEMA_VERSION:
@@ -148,10 +155,40 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     if not isinstance(job, str) or not job:
         raise AnalysisError(f"{actions_path} is missing job")
     pet_profiles = _load_pet_profiles(job)
-    combat_profile = _load_combat_profile(job, action_document)
     encounter_id = fight.get("encounterID")
     penalty_rules = load_damage_penalties(encounter_id if isinstance(encounter_id, int) else None)
     raid_effects = _load_raid_effects(actions_path)
+
+    sorted_casts = sorted(
+        (e for e in casts if isinstance(e, dict)), key=lambda e: e.get("timestamp", 0)
+    )
+    player_source_counts = Counter(
+        event.get("sourceID")
+        for event in sorted_casts
+        if actors.get(event.get("sourceID"), {}).get("type") == "Player"
+    )
+    source_id = player_source_counts.most_common(1)[0][0] if player_source_counts else None
+    source_name = actors.get(source_id, {}).get("name", f"Source {source_id}")
+    initial_echo = echo_status(
+        encounter_id if isinstance(encounter_id, int) else None, source_id, combatants,
+    )
+    if encounter_id in EXTREME_ENCOUNTERS:
+        if initial_echo == "unknown":
+            raise AnalysisError(
+                "cannot verify whether this Extreme fight had Echo; "
+                "the selected player's initial auras are missing"
+            )
+        if initial_echo == "observed":
+            raise AnalysisError("Echo is not supported for Extreme trials")
+    if is_echo_partition(fight.get("id"), rankings) and initial_echo != "observed":
+        raise AnalysisError(
+            "Echo partition requires the selected player's initial Echo aura; "
+            "refresh the fight context before analysis"
+        )
+    if initial_echo == "observed":
+        # Echo is absent from FF Logs' hit multiplier. Normalize the copied
+        # outgoing events before DoT, overkill, and variable-potency analysis.
+        raw_damage = normalize_echo_damage(raw_damage)
 
     # FF Logs emits zero-amount damage rows for immune targets (hitType 10),
     # sometimes alongside a positive hit on another target from the same cast.
@@ -163,6 +200,19 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         and event.get("hitType") != 10
         and event.get("amount") != 0
     ]
+    if encounter_id in EXTREME_ENCOUNTERS:
+        # The common status ID can appear on hits even when the report's
+        # ability list does not include a named Damage Down entry.
+        unknown_damage_down = (
+            {1002911}
+            | {ability_id for ability_id, name in ability_names.items() if name == "Damage Down"}
+        ) - penalty_rules.keys()
+        if any(_has_buff(event, status_id) for event in landed
+               for status_id in unknown_damage_down):
+            raise AnalysisError(
+                "Damage Down potency is not configured for this Extreme fight; "
+                "a fight log with its damage strength is needed before analysis"
+            )
     landed_by_packet: dict[tuple[Any, Any], list[dict[str, Any]]] = defaultdict(list)
     for event in landed:
         if event.get("packetID") is not None:
@@ -198,6 +248,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     matched_events = 0
     potted_min = potted_max = potion_gain_min = potion_gain_max = 0.0
     damage_down_losses: dict[int, list[float]] = defaultdict(lambda: [0.0, 0.0])
+    revival_losses: dict[int, list[float]] = defaultdict(lambda: [0.0, 0.0])
     luck_weighted_bonus = luck_weighted_maximum = luck_weighted_raid_adjustment = 0.0
     luck_weighted_expected = critical_rate_sum = direct_rate_sum = cdh_rate_sum = 0.0
     eligible_hit_count = 0
@@ -212,6 +263,22 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 fraction_lost = 1 / multiplier - 1
                 damage_down_losses[status_id][0] += penalized_min * fraction_lost
                 damage_down_losses[status_id][1] += penalized_max * fraction_lost
+
+    def record_revival_loss(
+        event: dict[str, Any], penalized_min: float, penalized_max: float,
+        *, potted: bool | None = None,
+    ) -> None:
+        """Remove only the active main-stat penalty from each landed player hit."""
+        status_id = next(
+            (status for status in (1000044, 1000043) if _has_buff(event, status)), None,
+        )
+        if status_id is None:
+            return
+        multiplier = revival_multiplier(event, combat_profile, potted=potted)
+        if multiplier < 1:
+            fraction_lost = 1 / multiplier - 1
+            revival_losses[status_id][0] += penalized_min * fraction_lost
+            revival_losses[status_id][1] += penalized_max * fraction_lost
 
     def record_luck(event: dict[str, Any], potency_weight: float) -> None:
         """Accumulate the same weighted outcome for actions, pets, and auto-attacks."""
@@ -248,30 +315,26 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         cdh_rate_sum += critical_rate * combat_profile.direct_rate
         eligible_hit_count += 1
 
-    sorted_casts = sorted(
-        (e for e in casts if isinstance(e, dict)), key=lambda e: e.get("timestamp", 0)
+    # Old audit fixtures retain the previous 5% assumption, labelled in the report.
+    party_bonus = party_bonus_percent(fight, master_data, source_id)
+    combat_profile = _load_combat_profile(
+        job, action_document, party_bonus_percent=party_bonus if party_bonus is not None else 5,
     )
-    player_source_counts = Counter(
-        event.get("sourceID")
-        for event in sorted_casts
-        if actors.get(event.get("sourceID"), {}).get("type") == "Player"
-    )
-    source_id = player_source_counts.most_common(1)[0][0] if player_source_counts else None
-    source_name = actors.get(source_id, {}).get("name", f"Source {source_id}")
     missing_food = food_gaps(
-        buffs, source_id, combat_profile.food_buff_id, float(start), float(end)
+        buffs, source_id, combat_profile.food_buff_id, float(start), float(end),
+        initially_fed=initial_food_aura(combatants, source_id, combat_profile.food_buff_id),
     )
     food = identify_consumable(
         buffs, sorted_casts, ability_names, source_id,
         combat_profile.food_buff_id, combat_profile.food_name,
     )
+    if missing_food == ((float(start), float(end)),):
+        food = None
     potion_item = identify_consumable(
         buffs, sorted_casts, ability_names, source_id,
         combat_profile.potion_buff_id, combat_profile.potion_action_names[0],
         cast_names=combat_profile.potion_action_names,
     )
-    rankings_path = directory / "rankings.json"
-    rankings = _load_json(rankings_path, dict) if rankings_path.is_file() else {}
     ndps = (
         _find_ranking_amount(rankings.get("rankings"), source_id, str(source_name))
         if rankings.get("metric") == "ndps"
@@ -510,6 +573,8 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             values = values[0] * potion_multiplier, values[1] * potion_multiplier
 
         record_damage_down_loss(event, *values)
+        if source_actor is None:
+            record_revival_loss(event, *values, potted=potted)
 
         if name == "Wildfire" and wildfire is not None and event.get("tick"):
             wildfire.set_landed_potency(event, sum(values) / 2)
@@ -658,6 +723,10 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
                 if matching is not None:
                     target_id = matching.get("targetID")
                     target = actors.get(target_id)
+            if name in channel_casts and target_id == cast.get("sourceID"):
+                # Channel initiation targets the player; only its later ticks
+                # reveal a damage target. None landed for this ghosted cast.
+                return
             if isinstance(target, dict) and isinstance(target.get("name"), str):
                 ghosted_targets[name].append((seconds, target["name"]))
             target_resources = cast.get("targetResources")
@@ -815,6 +884,7 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             potency_weight *= penalty_multiplier(event, penalty_rules)
             potency_weight *= revival_multiplier(event, combat_profile)
             record_damage_down_loss(event, potency_weight, potency_weight)
+            record_revival_loss(event, potency_weight, potency_weight)
             record_luck(event, potency_weight)
     gear_baseline = (
         luck_weighted_expected / luck_weighted_maximum if luck_weighted_maximum else 0.0
@@ -880,6 +950,8 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         if isinstance(fight.get("encounterID"), int)
         else None,
         source_name=str(source_name),
+        party_bonus_percent=party_bonus,
+        echo_status=initial_echo,
         ndps=ndps,
         rdps=rdps,
         duration_seconds=duration,
@@ -918,7 +990,9 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             *summarize_damage_penalties(
                 landed, penalty_rules, float(start), damage_down_losses,
             ),
-            *summarize_revival_penalties(landed, ability_names, float(start), combat_profile),
+            *summarize_revival_penalties(
+                landed, ability_names, float(start), combat_profile, revival_losses,
+            ),
         ),
         status_windows=summarize_status_windows(
             debuffs, life, ability_names, source_id, float(start), float(end), sorted_casts,
@@ -950,9 +1024,9 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             )
             for event in landed
             if isinstance(event.get("timestamp"), (int, float))
-            and isinstance(event.get("amount"), int)
+            and isinstance(event.get("amount"), (int, float))
             and event["amount"] > 0
-            and isinstance(event.get("overkill"), int)
+            and isinstance(event.get("overkill"), (int, float))
             and event["overkill"] > 0
         ),
         luck_score=luck_weighted_bonus / luck_weighted_maximum if luck_weighted_maximum else 0.0,

@@ -82,3 +82,22 @@ def test_oauth_rate_limit_is_reported_without_exposing_credentials() -> None:
     with pytest.raises(FFLogsError, match="retry after 60 seconds") as raised:
         FFLogsClient("private-id", "private-secret", transport=httpx.MockTransport(handler))
     assert "private-secret" not in str(raised.value)
+
+
+def test_graphql_read_timeout_identifies_request() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/token":
+            return httpx.Response(200, json={"access_token": "token"})
+        raise httpx.ReadTimeout("The read operation timed out", request=request)
+
+    with (FFLogsClient("id", "secret", transport=httpx.MockTransport(handler)) as client,
+          pytest.raises(FFLogsError, match="GraphQL response timed out after 30 seconds")):
+        client.graphql("query { reportData { __typename } }", {})
+
+
+def test_authentication_read_timeout_identifies_request() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("The read operation timed out", request=request)
+
+    with pytest.raises(FFLogsError, match="authentication response timed out after 30 seconds"):
+        FFLogsClient("id", "secret", transport=httpx.MockTransport(handler))

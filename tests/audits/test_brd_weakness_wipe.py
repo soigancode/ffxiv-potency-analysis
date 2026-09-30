@@ -21,6 +21,8 @@ def test_dancing_mad_wipe_shots_and_weakness_snapshots(
     assert result.auto_attacks[0].weapon_delay_seconds == 3.04
     assert result.auto_attacks[0].estimated_delay_seconds == pytest.approx(3.08, abs=0.01)
     weakness_summary = next(row for row in result.damage_penalties if row.name == "Weakness")
+    assert weakness_summary.lost_potency_min is not None
+    assert weakness_summary.lost_potency_min > 0
     normal_factor = 100 + 237 * (6838 - 440) // 440
     weak_factor = 100 + 237 * (6838 * 75 // 100 - 440) // 440
     assert weakness_summary.multiplier == pytest.approx(weak_factor / normal_factor)
@@ -53,7 +55,8 @@ def test_dancing_mad_wipe_shots_and_weakness_snapshots(
     assert "Fight: Dancing Mad (1085), 11m18s (wipe)" in output
     assert "Dead: 08m55s–09m04s (revived: Weakness applied)" in output
     assert "Weakness: 09m04s–10m44s (expired)" in output
-    assert "Weakness: 09m04s–10m44s (expired)\n    main stat -25%; ~26.0% potency reduction; 162 landed hits affected" in output
+    assert "Weakness: 09m04s–10m44s (expired)\n    main stat -25%; ~26.0% potency reduction; 162 landed hits affected; " in output
+    assert "potency lost" in output
     assert "Dead: 10m54s–11m18s (fight ended)" in output
 
 

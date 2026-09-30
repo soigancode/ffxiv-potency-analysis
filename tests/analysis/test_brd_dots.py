@@ -35,6 +35,36 @@ def test_iron_jaws_clipped_to_one_damage_contributes_one_percent_potency() -> No
     assert jaws.direct_potency == pytest.approx(1)
 
 
+def test_zero_damage_overkill_refresh_retains_snapshot_for_later_tiny_tick() -> None:
+    names = {1: "Stormbite", 2: "Iron Jaws"}
+    events = [
+        {"type": "damage", "sourceID": 2, "targetID": 10, "timestamp": 100,
+         "packetID": 11, "abilityGameID": 1, "amount": 100, "buffs": "original."},
+        {"type": "damage", "sourceID": 2, "targetID": 10, "timestamp": 200,
+         "packetID": 12, "abilityGameID": 2, "amount": 0, "overkill": 200,
+         "buffs": "refreshed."},
+        {"type": "damage", "sourceID": 2, "targetID": 10, "timestamp": 300,
+         "packetID": 12, "abilityGameID": 1, "amount": 1, "overkill": 99,
+         "buffs": "refreshed.", "tick": True},
+    ]
+    tick, = reconstruct_brd_dots(events, names, 2)
+    assert tick.matched and tick.snapshot_timestamp == 200
+    assert tick.snapshot_buffs == "refreshed."
+    assert tick.landed_fraction == pytest.approx(0.01)
+    actions = {
+        "Stormbite": {"potency": {"base": 100, "damage_over_time": {
+            "potency_per_tick": 25,
+        }}},
+        "Iron Jaws": {"potency": {"base": 100}},
+    }
+    summary = summarize_brd_dots([], events, [], names, actions, 2, potion_multiplier=1.0)
+    assert next(row for row in summary if row.name == "Iron Jaws").direct_potency == 0
+    assert next(row for row in summary if row.name == "Stormbite").tick_potency == pytest.approx(0.25)
+
+    events[1].pop("overkill")
+    assert not reconstruct_brd_dots(events, names, 2)[0].matched
+
+
 def test_dancing_mad_dot_snapshots() -> None:
     archive = Path(__file__).parents[1] / "fixtures/logs/brd_dancing_mad.zip"
     root = "7CANHrvwKT6tp2Gx/fight-7/source-2/"

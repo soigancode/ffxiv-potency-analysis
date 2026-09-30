@@ -25,6 +25,7 @@ query ReportMetadata($code: String!, $fightIDs: [Int]) {
         endTime
         encounterID
         kill
+        friendlyPlayers
       }
       rdpsRankings: rankings(fightIDs: $fightIDs, playerMetric: rdps)
       ndpsRankings: rankings(fightIDs: $fightIDs, playerMetric: ndps)
@@ -34,6 +35,9 @@ query ReportMetadata($code: String!, $fightIDs: [Int]) {
         lang
         actors { id gameID name type subType petOwner server }
         abilities { gameID name type }
+      }
+      combatants: events(fightIDs: $fightIDs, dataType: CombatantInfo, limit: 300) {
+        data nextPageTimestamp
       }
     }
   }
@@ -54,6 +58,19 @@ query ReportRankings($code: String!, $fightIDs: [Int]) {
 _REPORT_DATE_QUERY = """
 query ReportDate($code: String!) {
   reportData { report(code: $code) { startTime } }
+}
+"""
+
+_FIGHT_CONTEXT_QUERY = """
+query FightContext($code: String!, $fightIDs: [Int]) {
+  reportData {
+    report(code: $code) {
+      fights(fightIDs: $fightIDs) { id friendlyPlayers }
+      combatants: events(fightIDs: $fightIDs, dataType: CombatantInfo, limit: 300) {
+        data nextPageTimestamp
+      }
+    }
+  }
 }
 """
 
@@ -148,6 +165,7 @@ class DownloadResult:
     encounter_overkill_events: Path | None = None
     life_events: Path | None = None
     revival_buff_events: Path | None = None
+    combatant_info_events: Path | None = None
 
 
 def _write_json(path: Path, value: Any) -> Path:
@@ -212,6 +230,34 @@ def refresh_report_date(
     fight = json.loads(path.read_text(encoding="utf-8"))
     fight["reportStartTime"] = started
     return _write_json(path, fight)
+
+
+def refresh_fight_context(
+    reference: ReportReference, directory: Path, *,
+    client_id: str | None = None, client_secret: str | None = None,
+    transport: httpx.BaseTransport | None = None,
+) -> None:
+    """Recover fight participants and initial auras for an older saved download."""
+    with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        report = _report_from(client.graphql(
+            _FIGHT_CONTEXT_QUERY, {"code": reference.report_code, "fightIDs": [reference.fight_id]},
+        ))
+    fights = report.get("fights")
+    fight = next((row for row in fights if isinstance(row, dict)
+                  and row.get("id") == reference.fight_id), None) if isinstance(fights, list) else None
+    if fight is None or not isinstance(fight.get("friendlyPlayers"), list):
+        raise FFLogsError("fight participants were missing from FF Logs")
+    combatants = report.get("combatants")
+    if not isinstance(combatants, dict):
+        raise FFLogsError("initial combatant auras were incomplete")
+    events = combatants.get("data")
+    if not isinstance(events, list) or combatants.get("nextPageTimestamp") is not None:
+        raise FFLogsError("initial combatant auras were incomplete")
+    path = directory / "fight.json"
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    saved["friendlyPlayers"] = fight["friendlyPlayers"]
+    _write_json(path, saved)
+    _write_json(directory / "combatant-info-events.json", events)
 
 
 def refresh_targetability_events(
@@ -428,11 +474,20 @@ def download_report_events(
         fights = report.get("fights")
         if not isinstance(fights, list) or len(fights) != 1:
             raise FFLogsError(f"fight {reference.fight_id} was not found")
+        if not isinstance(fights[0].get("friendlyPlayers"), list):
+            raise FFLogsError("fight participants were missing from FF Logs")
         master_data = report.get("masterData")
         if not isinstance(master_data, dict):
             raise FFLogsError("report master data was missing")
         rdps = report.get("rdpsRankings")
         ndps = report.get("ndpsRankings")
+
+        combatants = report.get("combatants")
+        if not isinstance(combatants, dict):
+            raise FFLogsError("initial combatant auras were incomplete")
+        combatant_events = combatants.get("data")
+        if not isinstance(combatant_events, list) or combatants.get("nextPageTimestamp") is not None:
+            raise FFLogsError("initial combatant auras were incomplete")
 
         damage_events = _download_events(client, reference, "DamageDone")
         cast_events = _download_events(client, reference, "Casts")
@@ -469,6 +524,7 @@ def download_report_events(
     revival_buff_path = _write_json(directory / "revival-buff-events.json", revival_buff_events)
     targetability_path = _write_json(directory / "targetability-events.json", targetability_events)
     overkill_path = _write_json(directory / "encounter-overkill-events.json", encounter_overkills)
+    combatant_path = _write_json(directory / "combatant-info-events.json", combatant_events)
     rankings_path = _write_json(directory / "rankings.json", _saved_rankings(rdps, ndps))
     return DownloadResult(
         directory=directory,
@@ -485,4 +541,5 @@ def download_report_events(
         revival_buff_events=revival_buff_path,
         targetability_events=targetability_path,
         encounter_overkill_events=overkill_path,
+        combatant_info_events=combatant_path,
     )

@@ -9,6 +9,7 @@ import sys
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import AbstractContextManager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Self
 
@@ -27,6 +28,7 @@ from .fflogs import (
     FFLogsError,
     download_report_events,
     parse_report_url,
+    refresh_fight_context,
     refresh_report_rankings,
 )
 from .fflogs.download import (
@@ -36,11 +38,13 @@ from .fflogs.download import (
     refresh_revival_buff_events,
     refresh_targetability_events,
 )
-from .fflogs.partitions import require_current_patch
+from .fflogs.partitions import current_partition, require_current_patch
 from .fflogs.rankings import (
     accessible_ranked_sources,
     ranked_source,
+    ranked_sources_at_positions,
     ranked_sources_in_range,
+    validate_rank_positions,
     validate_rank_range,
 )
 from .fflogs.reference import (
@@ -64,6 +68,11 @@ CURRENT_FIGHTS = {
     "m12sp2": 105,
     "umad": 1085,
     "dmu": 1085,
+    "doomtrain": 1083,
+    "enuo": 1084,
+    "amt": 4550,
+    "mistwake": 4549,
+    "clyteum": 4551,
 }
 _SAVED_FIGHT_FILES = ("fight.json", "master-data.json", "damage-events.json", "cast-events.json")
 _FIGHT_DIRECTORY = re.compile(r"fight-(\d+)")
@@ -123,7 +132,13 @@ def build_parser() -> argparse.ArgumentParser:
     fflogs = commands.add_parser("fflogs", help="download one selected FF Logs fight")
     fflogs.add_argument("url", help="'limit', a report URL, or a job such as BRD/MCH")
     fflogs.add_argument("fight", nargs="?", help="fight abbreviation such as m9s")
-    fflogs.add_argument("rank", nargs="?", help="analyse one rank or compare an inclusive range, e.g. 5000-5500")
+    fflogs.add_argument(
+        "rank", nargs="?", help="one rank, an inclusive range, or comma-separated ranks"
+    )
+    fflogs.add_argument(
+        "--partition", type=int,
+        help="global leaderboard partition (Savage: 1, 2, 7, 8, 13, 14; Extremes: 1, 2, 7, 8 or 7, 8; Dancing Mad: 1, 2)",
+    )
     fflogs.add_argument("--output", type=Path, default=Path("data/logs"), help="output root")
 
     compare = commands.add_parser("compare", help="download and compare FF Logs sources")
@@ -171,7 +186,16 @@ def _format_rate_comparison(rate: float, baseline: float) -> str:
 
 def _format_fight(result: AnalysisResult) -> str:
     suffix = f" ({result.encounter_id})" if result.encounter_id is not None else ""
-    return f"{result.fight_name}{suffix}"
+    name = result.fight_name
+    if result.encounter_id == 4549:
+        name = "Mistwake"
+    elif result.encounter_id == 4550:
+        name = "Another Merchant's Tale"
+    elif result.encounter_id == 4551:
+        name = "The Clyteum"
+    elif result.encounter_id == 1083:
+        name = "Doomtrain"
+    return f"{name}{suffix}"
 
 
 def _display_player_name(name: str, *, anonymous: bool = False) -> str:
@@ -211,7 +235,18 @@ def _print_analysis(
         print(f"Rank: {rank}")
     wipe = " (wipe)" if result.kill is False else ""
     print(f"Fight: {_format_fight(result)}, {_format_duration(result.duration_seconds)}{wipe}")
-    if result.food is not None:
+    bonus = (f"{result.party_bonus_percent}%"
+             if result.party_bonus_percent is not None else "5% (assumed; older saved fight)")
+    print(f"Party main-stat bonus: {bonus}")
+    if result.echo_status == "observed":
+        print("Echo: 12% (damage normalised by 1.12)")
+    elif result.echo_status == "absent":
+        print("Echo: 0%")
+    elif result.echo_status == "unknown":
+        print("Echo: unknown (initial combatant auras unavailable)")
+    if result.food is None:
+        print("Food: None")
+    else:
         note = "" if result.food.recorded else " (configured; not identified in fight events)"
         print(f"Food: {result.food.name}{note}")
         for begin, finish in result.food_missing_windows:
@@ -286,7 +321,8 @@ def _print_analysis(
             if estimate.apex_uses:
                 uncertain = sum(len(use.plausible_gauges) != 1 for use in estimate.apex_uses)
                 print(f"  Apex Arrow: {len(estimate.apex_uses)} uses, {estimate.estimated_hits} hits, "
-                      f"{uncertain} uses with ambiguous potency")
+                      f"{uncertain} uses with ambiguous potency "
+                      f"({estimate.uncertain_hits} affected hits)")
                 for use in estimate.apex_uses:
                     if len(use.plausible_gauges) == 1:
                         note = f"{use.gauge} gauge"
@@ -302,6 +338,9 @@ def _print_analysis(
                     )
                     print(f"    {_format_timestamp(use.seconds)}: {use.hits} {hits_label}, "
                           f"{note}{potency_label}")
+                if estimate.weak_reference_hits:
+                    print(f"    {estimate.weak_reference_hits} hits had fewer than 3 "
+                          "same-target reference hits")
                 continue
             ambiguous_label = "hit" if estimate.uncertain_hits == 1 else "hits"
             line = (
@@ -334,7 +373,7 @@ def _print_analysis(
             print(
                 f"  {_format_timestamp(hit.seconds)} {hit.action}"
                 f"{' on ' + hit.target if hit.target else ''}: "
-                f"{hit.damage:,}/{hit.damage + hit.overkill:,} damage "
+                f"{hit.damage:,.0f}/{hit.damage + hit.overkill:,.0f} damage "
                 f"({percentage:.{precision}f}% potency counted)"
             )
     if result.ghosted:
@@ -364,29 +403,30 @@ def _print_analysis(
             target = targets.get((time, name))
             print(f"  {_format_timestamp(time)} {name}"
                   f"{' on ' + target if target else ''}{note}")
-    print("\nPotions:")
-    print(f"  Uses: {result.potion.uses}")
-    if result.potion.uses and result.potion.item is not None:
-        note = "" if result.potion.item.recorded else " (configured; not identified in fight events)"
-        print(f"  Item: {result.potion.item.name}{note}")
-    for index, window in enumerate(result.potion.windows, 1):
-        if window.start_seconds is not None and window.end_seconds is not None:
-            print(
-                f"  Window {index}: {_format_timestamp(window.start_seconds)}–{_format_timestamp(window.end_seconds)}"
-            )
-        elif window.observed_start_seconds is not None and window.observed_end_seconds is not None:
-            print(
-                f"  Window {index}: start unknown; Medicated observed "
-                f"{_format_timestamp(window.observed_start_seconds)}–{_format_timestamp(window.observed_end_seconds)}"
-            )
-    print(
-        "  Potted base potency: "
-        f"{_format_potency(result.potion.potted_potency_min, result.potion.potted_potency_max)}"
-    )
-    print(
-        "  Potency gained: "
-        f"{_format_potency(result.potion.gained_potency_min, result.potion.gained_potency_max)}"
-    )
+    if result.potion.uses:
+        print("\nPotions:")
+        print(f"  Uses: {result.potion.uses}")
+        if result.potion.item is not None:
+            note = "" if result.potion.item.recorded else " (configured; not identified in fight events)"
+            print(f"  Item: {result.potion.item.name}{note}")
+        for index, window in enumerate(result.potion.windows, 1):
+            if window.start_seconds is not None and window.end_seconds is not None:
+                print(
+                    f"  Window {index}: {_format_timestamp(window.start_seconds)}–{_format_timestamp(window.end_seconds)}"
+                )
+            elif window.observed_start_seconds is not None and window.observed_end_seconds is not None:
+                print(
+                    f"  Window {index}: start unknown; Medicated observed "
+                    f"{_format_timestamp(window.observed_start_seconds)}–{_format_timestamp(window.observed_end_seconds)}"
+                )
+        print(
+            "  Potted base potency: "
+            f"{_format_potency(result.potion.potted_potency_min, result.potion.potted_potency_max)}"
+        )
+        print(
+            "  Potency gained: "
+            f"{_format_potency(result.potion.gained_potency_min, result.potion.gained_potency_max)}"
+        )
     outcomes = result.hit_outcomes
     print("\nObserved hit outcomes:")
     print(f"  Normal Hit: {outcomes.normal}")
@@ -517,6 +557,27 @@ def _comparison_player_field(name: str, directory: Path) -> str:
     return styled + " " * (24 - len(displayed))
 
 
+def _fight_date(directory: Path) -> str:
+    """Format the fight start date in UTC from FF Logs' absolute report time."""
+    try:
+        fight = json.loads((directory / "fight.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return "n/a"
+    if not isinstance(fight, dict):
+        return "n/a"
+    report_start = fight.get("reportStartTime")
+    fight_start = fight.get("startTime")
+    if (not isinstance(report_start, (int, float)) or isinstance(report_start, bool)
+            or not isinstance(fight_start, (int, float)) or isinstance(fight_start, bool)):
+        return "n/a"
+    try:
+        return datetime.fromtimestamp((report_start + fight_start) / 1000, UTC).strftime(
+            "%d/%m/%y"
+        )
+    except (OSError, OverflowError, ValueError):
+        return "n/a"
+
+
 def _compare_directories(
     directories: Sequence[Path], override: Path | None, progress: _Progress | None = None,
     *, rank_positions: Sequence[int] | None = None, skip_analysis_errors: bool = False,
@@ -563,24 +624,32 @@ def _compare_directories(
         progress.clear()
     _print_comparison(results)
     print(f"Fight: {_format_fight(results[0])}")
-    rank_header = f"{'Rank':>4} " if rank_positions is not None else ""
-    print(
-        f"{rank_header}{'Player':<24} {'Duration':>9} {'rDPS':>10} {'nDPS':>10} "
-        f"{'Potency':>12} {'PPS':>9} "
-        f"{'Luck':>8} {'aLuck':>8}"
-    )
+    labels = ("Duration", "rDPS", "nDPS", "Potency", "PPS", "Luck", "aLuck", "Date")
+    rows: list[tuple[str, ...]] = []
     for index, result in enumerate(results):
-        potency = _format_potency(result.potency_min, result.potency_max)
-        pps = _format_pps(result.pps_min, result.pps_max)
-        duration = _format_duration(result.duration_seconds)
-        ndps = f"{result.ndps:,.1f}" if result.ndps is not None else "n/a"
-        rdps = f"{result.rdps:,.1f}" if result.rdps is not None else "n/a"
-        rank = f"{compared_ranks[index]:>4} " if rank_positions is not None else ""
+        rows.append((
+            _format_duration(result.duration_seconds),
+            f"{result.rdps:,.1f}" if result.rdps is not None else "n/a",
+            f"{result.ndps:,.1f}" if result.ndps is not None else "n/a",
+            _format_potency(result.potency_min, result.potency_max),
+            _format_pps(result.pps_min, result.pps_max),
+            f"{result.luck_score:.2%}", f"{result.adjusted_luck_score:.2%}",
+            _fight_date(compared_directories[index]),
+        ))
+    widths = tuple(max(len(label), *(len(row[column]) for row in rows))
+                   for column, label in enumerate(labels))
+    separator = "  "
+    rank_header = f"{'Rank':>4}{separator}" if rank_positions is not None else ""
+    print(f"{rank_header}{'Player':<24}{separator}" + separator.join(
+        label if label == "Date" else f"{label:>{width}}"
+        for label, width in zip(labels, widths)
+    ))
+    for index, (result, row) in enumerate(zip(results, rows)):
+        rank = f"{compared_ranks[index]:>4}{separator}" if rank_positions is not None else ""
         player = _comparison_player_field(result.source_name, compared_directories[index])
-        print(
-            f"{rank}{player} {duration:>9} {rdps:>10} {ndps:>10} {potency:>12} "
-            f"{pps:>9} {result.luck_score:>8.2%} {result.adjusted_luck_score:>8.2%}"
-        )
+        print(f"{rank}{player}{separator}" + separator.join(
+            f"{value:>{width}}" for value, width in zip(row, widths)
+        ))
     print()
     return tuple(skipped)
 
@@ -693,6 +762,12 @@ def _resolve_analysis_directory(
         reference = _reference_from_directory(directory)
 
     if all((directory / filename).is_file() for filename in _SAVED_FIGHT_FILES):
+        fight = json.loads((directory / "fight.json").read_text(encoding="utf-8"))
+        if (reference is not None and os.environ.get("FFLOGS_CLIENT_ID")
+                and os.environ.get("FFLOGS_CLIENT_SECRET")
+                and ("friendlyPlayers" not in fight
+                     or not (directory / "combatant-info-events.json").is_file())):
+            refresh_fight_context(reference, directory)
         rankings_path = directory / "rankings.json"
         try:
             cached_rankings = json.loads(rankings_path.read_text(encoding="utf-8"))
@@ -791,6 +866,30 @@ def _download_and_compare(
     return ()
 
 
+def _compare_ranked_references(
+    ranked: tuple[tuple[int, ReportReference], ...],
+    skipped: tuple[tuple[int, str], ...],
+    output: Path, progress: _Progress,
+) -> None:
+    """Compare selected leaderboard entries and show skipped ranks."""
+    urls = [
+        f"https://www.fflogs.com/reports/{reference.report_code}"
+        f"?fight={reference.fight_id}&source={reference.source_id}"
+        for _, reference in ranked
+    ]
+    analysis_skipped = _download_and_compare(
+        urls, output, None, progress,
+        rank_positions=tuple(rank for rank, _ in ranked),
+        skip_analysis_errors=True,
+    )
+    skipped_ranks = (*skipped, *analysis_skipped)
+    if skipped_ranks:
+        print("Skipped ranks: " + ", ".join(
+            f"{rank} ({reason})" for rank, reason in skipped_ranks
+        ))
+        print()
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     load_dotenv()
     args = build_parser().parse_args(argv)
@@ -851,7 +950,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         if args.command == "fflogs":
             if args.url.casefold() == "limit":
-                if args.fight is not None or args.rank is not None:
+                if args.fight is not None or args.rank is not None or args.partition is not None:
                     raise ValueError("fflogs limit takes no fight or rank")
                 with FFLogsClient.from_environment() as client:
                     usage = client.rate_limit()
@@ -871,47 +970,30 @@ def main(argv: Sequence[str] | None = None) -> int:
                     raise ValueError(
                         f"unknown fight {args.fight!r}; choose: {', '.join(CURRENT_FIGHTS)}"
                     )
+                current_partition(encounter_id, args.partition)
                 rank_range = _RANK_RANGE.fullmatch(args.rank) if args.rank is not None else None
                 if rank_range is not None:
                     first, last = map(int, rank_range.groups())
                     validate_rank_range(first, last)
                     with _Progress() as progress:
                         progress.message("Processing...")
-                        ranked, skipped = ranked_sources_in_range(encounter_id, job, first, last)
-                        urls = [
-                            f"https://www.fflogs.com/reports/{reference.report_code}"
-                            f"?fight={reference.fight_id}&source={reference.source_id}"
-                            for _, reference in ranked
-                        ]
-                        analysis_skipped = _download_and_compare(
-                            urls, args.output, None, progress,
-                            rank_positions=tuple(rank for rank, _ in ranked),
-                            skip_analysis_errors=True,
+                        ranked, skipped = ranked_sources_in_range(
+                            encounter_id, job, first, last, partition=args.partition,
                         )
-                    skipped_ranks = (*skipped, *analysis_skipped)
-                    args.output.mkdir(parents=True, exist_ok=True)
-                    manifest = args.output / f"ranks-{job}-{args.fight.casefold()}-{first}-{last}.json"
-                    manifest.write_text(json.dumps({
-                        "job": job,
-                        "fight": args.fight.casefold(),
-                        "encounter_id": encounter_id,
-                        "first_rank": first,
-                        "last_rank": last,
-                        "reports": [
-                            {"rank": rank, "report_code": ref.report_code,
-                             "fight_id": ref.fight_id, "source_id": ref.source_id}
-                            for rank, ref in ranked
-                        ],
-                        "skipped": [
-                            {"rank": rank, "reason": reason}
-                            for rank, reason in skipped_ranks
-                        ],
-                    }, indent=2) + "\n", encoding="utf-8")
-                    if skipped_ranks:
-                        print("Skipped ranks: " + ", ".join(
-                            f"{rank} ({reason})" for rank, reason in skipped_ranks
-                        ))
-                        print()
+                        _compare_ranked_references(ranked, skipped, args.output, progress)
+                    return 0
+                if args.rank is not None and "," in args.rank:
+                    pieces = args.rank.split(",")
+                    if any(not piece.isdecimal() for piece in pieces):
+                        raise ValueError("ranks must be comma-separated positive numbers")
+                    positions = tuple(int(piece) for piece in pieces)
+                    validate_rank_positions(positions)
+                    with _Progress() as progress:
+                        progress.message("Processing...")
+                        ranked, skipped = ranked_sources_at_positions(
+                            encounter_id, job, positions, partition=args.partition,
+                        )
+                        _compare_ranked_references(ranked, skipped, args.output, progress)
                     return 0
                 if args.rank is not None:
                     if not args.rank.isdecimal() or int(args.rank) < 1:
@@ -919,7 +1001,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     rank = int(args.rank)
                     with _Progress() as progress:
                         progress.message("Processing...")
-                        reference = ranked_source(encounter_id, job, rank)
+                        reference = ranked_source(
+                            encounter_id, job, rank, partition=args.partition,
+                        )
                         url = (
                             f"https://www.fflogs.com/reports/{reference.report_code}"
                             f"?fight={reference.fight_id}&source={reference.source_id}"
@@ -941,26 +1025,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                     return 0
                 with _Progress() as progress:
                     progress.message("Processing...")
-                    ranked, skipped = accessible_ranked_sources(encounter_id, job)
-                    urls = [
-                        (
-                            f"https://www.fflogs.com/reports/{reference.report_code}"
-                            f"?fight={reference.fight_id}&source={reference.source_id}"
-                        )
-                        for _, reference in ranked
-                    ]
-                    _download_and_compare(
-                        urls, args.output, None, progress,
-                        rank_positions=tuple(rank for rank, _ in ranked),
+                    ranked, skipped = accessible_ranked_sources(
+                        encounter_id, job, partition=args.partition,
                     )
-                if skipped:
-                    print("Skipped inaccessible ranks: " + ", ".join(
-                        str(rank) for rank, _ in skipped
-                    ))
-                print()
+                    _compare_ranked_references(ranked, skipped, args.output, progress)
                 return 0
             if args.rank is not None:
                 raise ValueError("a rank requires a job and fight abbreviation")
+            if args.partition is not None:
+                raise ValueError("--partition requires a job and fight abbreviation")
             reference = parse_report_url(args.url)
             download = download_report_events(reference, args.output)
             print(f"Saved fight data: {download.directory}")

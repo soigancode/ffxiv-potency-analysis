@@ -5,7 +5,43 @@ import httpx
 import pytest
 
 from ffxiv_potency.fflogs import ReportReference, download_report_events, refresh_report_rankings
-from ffxiv_potency.fflogs.download import refresh_report_date, refresh_revival_buff_events
+from ffxiv_potency.fflogs.download import (
+    refresh_fight_context,
+    refresh_report_date,
+    refresh_revival_buff_events,
+)
+
+
+def test_refresh_fight_context_preserves_saved_fight_and_initial_auras(tmp_path: Path) -> None:
+    saved = tmp_path / "fight.json"
+    saved.write_text('{"id":9,"encounterID":103,"startTime":100}', encoding="utf-8")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/token":
+            return httpx.Response(200, json={"access_token": "test-token"})
+        body = json.loads(request.content)
+        assert "FightContext" in body["query"]
+        assert "friendlyPlayers" in body["query"]
+        assert "dataType: CombatantInfo" in body["query"]
+        assert body["variables"] == {"code": "abc123", "fightIDs": [9]}
+        return httpx.Response(200, json={"data": {"reportData": {"report": {
+            "fights": [{"id": 9, "friendlyPlayers": [18, 21, 22, 23]}],
+            "combatants": {"data": [{"sourceID": 18, "auras": [{"ability": 1000042}]}],
+                           "nextPageTimestamp": None},
+        }}}})
+
+    refresh_fight_context(
+        ReportReference("abc123", 9, 18), tmp_path,
+        client_id="test", client_secret="secret", transport=httpx.MockTransport(handler),
+    )
+
+    assert json.loads(saved.read_text()) == {
+        "id": 9, "encounterID": 103, "startTime": 100,
+        "friendlyPlayers": [18, 21, 22, 23],
+    }
+    assert json.loads((tmp_path / "combatant-info-events.json").read_text()) == [
+        {"sourceID": 18, "auras": [{"ability": 1000042}]},
+    ]
 
 
 @pytest.mark.parametrize("report_code, directory_name", [
@@ -47,6 +83,7 @@ def test_downloads_metadata_and_paginated_events(
                                         "endTime": 8000,
                                         "encounterID": 1,
                                         "kill": True,
+                                        "friendlyPlayers": [18, 21],
                                     }
                                 ],
                                 "ndpsRankings": {
@@ -83,13 +120,19 @@ def test_downloads_metadata_and_paginated_events(
                                         }
                                     ]
                                 },
-                                "masterData": {
+                                    "masterData": {
                                     "logVersion": 1,
                                     "gameVersion": 1,
                                     "lang": "en",
                                     "actors": [],
-                                    "abilities": [],
-                                },
+                                        "abilities": [],
+                                    },
+                                    "combatants": {
+                                        "data": [{"sourceID": 18, "auras": [
+                                            {"ability": 1000042, "stacks": 1},
+                                        ]}],
+                                        "nextPageTimestamp": None,
+                                    },
                             }
                         }
                     }
@@ -199,6 +242,9 @@ def test_downloads_metadata_and_paginated_events(
     assert json.loads(result.encounter_overkill_events.read_text())[0]["sourceID"] == 9
     assert json.loads(result.fight.read_text())["name"] == "Test Boss"
     assert json.loads(result.fight.read_text())["reportStartTime"] == 1000
+    assert json.loads(result.fight.read_text())["friendlyPlayers"] == [18, 21]
+    assert result.combatant_info_events is not None
+    assert json.loads(result.combatant_info_events.read_text())[0]["auras"][0]["ability"] == 1000042
     assert json.loads(result.master_data.read_text())["lang"] == "en"
     assert json.loads(result.rankings.read_text())["metric"] == "ndps"
     assert (

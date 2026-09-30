@@ -12,7 +12,7 @@ from .reference import ReportReference, valid_report_code
 MAX_RANK_RANGE = 25
 
 _RANKINGS_QUERY = """
-query EncounterRankings($encounterID: Int!, $specName: String!, $partition: Int!) {
+query EncounterRankings($encounterID: Int!, $specName: String!, $partition: Int) {
   worldData {
     encounter(id: $encounterID) {
       id
@@ -26,6 +26,18 @@ query EncounterRankings($encounterID: Int!, $specName: String!, $partition: Int!
 _PAGED_RANKINGS_QUERY = _RANKINGS_QUERY.replace(
     "$specName: String!", "$specName: String!, $page: Int!"
 ).replace("page: 1)", "page: $page)")
+
+# Endgame dungeons publish character Damage rankings, while their saved rDPS
+# ranking records contain no character entries. Criterion and raids use rDPS.
+_ENDGAME_DUNGEONS = frozenset({4549, 4551})
+
+
+def _character_ranking_query(encounter_id: int, *, paged: bool) -> str:
+    query = _PAGED_RANKINGS_QUERY if paged else _RANKINGS_QUERY
+    if encounter_id in _ENDGAME_DUNGEONS:
+        return query.replace("metric: rdps", "metric: dps")
+    return query
+
 
 _REPORT_SOURCES_QUERY = """
 query RankingReportSources($code: String!, $fightIDs: [Int]) {
@@ -154,12 +166,15 @@ def _resolve_row(
 def top_ranked_sources(
     encounter_id: int, job: str, *, client_id: str | None = None,
     client_secret: str | None = None, transport: httpx.BaseTransport | None = None,
+    partition: int | None = None,
 ) -> tuple[ReportReference, ...]:
     """Get the first ten ranking slots; fail if a slot has no accessible report."""
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
         rows = _ranking_rows(client.graphql(
-            _RANKINGS_QUERY, {"encounterID": encounter_id, "specName": job.capitalize(),
-                              "partition": current_partition(encounter_id)}
+            _character_ranking_query(encounter_id, paged=False), {
+                "encounterID": encounter_id, "specName": job.capitalize(),
+                "partition": current_partition(encounter_id, partition),
+            }
         ), encounter_id)
         if len(rows) < 2:
             raise FFLogsError(f"fewer than two ranked {job} logs exist for encounter {encounter_id}")
@@ -173,6 +188,7 @@ def top_ranked_sources(
 def ranked_source(
     encounter_id: int, job: str, rank: int, *, client_id: str | None = None,
     client_secret: str | None = None, transport: httpx.BaseTransport | None = None,
+    partition: int | None = None,
 ) -> ReportReference:
     """Resolve any positive leaderboard position without loading other reports."""
     if rank < 1:
@@ -180,9 +196,9 @@ def ranked_source(
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
         position = 0
         for page in count(1):
-            rows = _ranking_rows(client.graphql(_PAGED_RANKINGS_QUERY, {
+            rows = _ranking_rows(client.graphql(_character_ranking_query(encounter_id, paged=True), {
                 "encounterID": encounter_id, "specName": job.capitalize(), "page": page,
-                "partition": current_partition(encounter_id),
+                "partition": current_partition(encounter_id, partition),
             }), encounter_id)
             if not rows:
                 break
@@ -195,6 +211,7 @@ def ranked_source(
 def accessible_ranked_sources(
     encounter_id: int, job: str, *, client_id: str | None = None,
     client_secret: str | None = None, transport: httpx.BaseTransport | None = None,
+    partition: int | None = None,
 ) -> tuple[tuple[tuple[int, ReportReference], ...], tuple[tuple[int, str], ...]]:
     """Collect ten accessible rankings, preserving skipped leaderboard positions."""
     found: list[tuple[int, ReportReference]] = []
@@ -203,9 +220,9 @@ def accessible_ranked_sources(
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
         position = 0
         for page in range(1, 6):
-            rows = _ranking_rows(client.graphql(_PAGED_RANKINGS_QUERY, {
+            rows = _ranking_rows(client.graphql(_character_ranking_query(encounter_id, paged=True), {
                 "encounterID": encounter_id, "specName": job.capitalize(), "page": page,
-                "partition": current_partition(encounter_id),
+                "partition": current_partition(encounter_id, partition),
             }), encounter_id)
             if not rows:
                 break
@@ -237,10 +254,66 @@ def validate_rank_range(first: int, last: int) -> None:
         raise ValueError(f"rank range can contain at most {MAX_RANK_RANGE} positions")
 
 
+def validate_rank_positions(positions: tuple[int, ...]) -> None:
+    """Require two to 25 distinct positive leaderboard positions."""
+    if (not 2 <= len(positions) <= MAX_RANK_RANGE
+            or any(position < 1 for position in positions)
+            or len(set(positions)) != len(positions)):
+        raise ValueError(
+            f"rank selection requires 2 to {MAX_RANK_RANGE} distinct positive positions"
+        )
+
+
+def ranked_sources_at_positions(
+    encounter_id: int, job: str, positions: tuple[int, ...], *,
+    client_id: str | None = None, client_secret: str | None = None,
+    transport: httpx.BaseTransport | None = None, partition: int | None = None,
+) -> tuple[tuple[tuple[int, ReportReference], ...], tuple[tuple[int, str], ...]]:
+    """Resolve selected ranks in input order, fetching only their ranking pages."""
+    validate_rank_positions(positions)
+    found: list[tuple[int, ReportReference]] = []
+    skipped: list[tuple[int, str]] = []
+    cache: dict[tuple[str, int], tuple[list[dict[str, Any]], set[int]]] = {}
+    with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        variables = {
+            "encounterID": encounter_id, "specName": job.capitalize(),
+            "partition": current_partition(encounter_id, partition),
+        }
+        first = _ranking_rows(client.graphql(
+            _character_ranking_query(encounter_id, paged=True), {**variables, "page": 1},
+        ), encounter_id)
+        if not first:
+            raise FFLogsError(f"no ranked {job} logs exist for encounter {encounter_id}")
+        page_size = len(first)
+        pages = {1: first}
+        for position in positions:
+            page, index = divmod(position - 1, page_size)
+            page += 1
+            if page not in pages:
+                pages[page] = _ranking_rows(client.graphql(
+                    _character_ranking_query(encounter_id, paged=True),
+                    {**variables, "page": page},
+                ), encounter_id)
+            rows = pages[page]
+            if index >= len(rows):
+                raise FFLogsError(
+                    f"rank {position} does not exist for {job} in encounter {encounter_id}"
+                )
+            try:
+                found.append((position, _resolve_row(
+                    client, rows[index], position, encounter_id, job, cache,
+                )))
+            except FFLogsError as exc:
+                skipped.append((position, str(exc)))
+    if not found:
+        raise FFLogsError(f"no accessible {job} logs at the selected ranks")
+    return tuple(found), tuple(skipped)
+
+
 def ranked_sources_in_range(
     encounter_id: int, job: str, first: int, last: int, *,
     client_id: str | None = None, client_secret: str | None = None,
-    transport: httpx.BaseTransport | None = None,
+    transport: httpx.BaseTransport | None = None, partition: int | None = None,
 ) -> tuple[tuple[tuple[int, ReportReference], ...], tuple[tuple[int, str], ...]]:
     """Resolve every leaderboard position in an inclusive range across pages."""
     validate_rank_range(first, last)
@@ -248,9 +321,9 @@ def ranked_sources_in_range(
     skipped: list[tuple[int, str]] = []
     cache: dict[tuple[str, int], tuple[list[dict[str, Any]], set[int]]] = {}
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
-        first_rows = _ranking_rows(client.graphql(_PAGED_RANKINGS_QUERY, {
+        first_rows = _ranking_rows(client.graphql(_character_ranking_query(encounter_id, paged=True), {
             "encounterID": encounter_id, "specName": job.capitalize(), "page": 1,
-            "partition": current_partition(encounter_id),
+            "partition": current_partition(encounter_id, partition),
         }), encounter_id)
         if not first_rows:
             raise FFLogsError(f"rank {last} does not exist for {job} in encounter {encounter_id}")
@@ -258,9 +331,9 @@ def ranked_sources_in_range(
         first_page = (first - 1) // page_size + 1
         position = (first_page - 1) * page_size
         for page in count(first_page):
-            rows = first_rows if page == 1 else _ranking_rows(client.graphql(_PAGED_RANKINGS_QUERY, {
+            rows = first_rows if page == 1 else _ranking_rows(client.graphql(_character_ranking_query(encounter_id, paged=True), {
                 "encounterID": encounter_id, "specName": job.capitalize(), "page": page,
-                "partition": current_partition(encounter_id),
+                "partition": current_partition(encounter_id, partition),
             }), encounter_id)
             if not rows:
                 break

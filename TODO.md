@@ -7,7 +7,7 @@
 
 ## FF Logs and reports
 
-- Audit 7.4 balance changes per job before allowing its older FF Logs partition and action data.
+- Cache per-player analysis results so ranking comparisons and later single-log views reuse calculations. Invalidate when the analyzer revision or any relevant log, action, gear, consumable, encounter, or raid-effect data changes; keep presentation formatting outside the cache.
 - Handle adds excluded from FF Logs rankings if a supported encounter uses them.
 - Let users select a fight and player from an unselected report URL or report ID.
 - Generate a navigable HTML report from exported analysis JSON.
@@ -19,7 +19,6 @@
 - When adding a tank or melee job, verify Astrologian's The Balance on a real log. The Spear is already covered for Bard.
 - Support older (synced) ultimates.
 - Support more gear profiles or user-provided stats. For older or synced content, distinguish the encounter's release patch from the patch and gear used to play it.
-- Calculate the party main-stat bonus from the jobs and roles in the fight instead of assuming a full 5% bonus. This is needed for dungeon logs.
 
 ## Data layout
 

@@ -85,6 +85,21 @@ def reconstruct_dot_ticks(
                 )
             )
             continue
+        # A refresh may deal zero direct damage with full overkill while its
+        # DoT continues under the new packet. Retain the refresh snapshot;
+        # the zero-damage hit itself still contributes no potency.
+        if (event.get("amount") == 0 and event.get("hitType") != 10
+                and rules.refresh_action is not None and name == rules.refresh_action
+                and isinstance(event.get("overkill"), (int, float))
+                and event["overkill"] > 0):
+            assert name is not None
+            buffs = str(event.get("buffs", ""))
+            for dot_name in rules.names:
+                key = (target, instance, dot_name)
+                old = applications.get(key)
+                if old and timestamp <= old[1] + rules.duration_ms + rules.grace_ms:
+                    applications[key] = (packet, timestamp, name, buffs)
+            continue
         if event.get("amount") == 0 or event.get("hitType") == 10:
             continue
         buffs = str(event.get("buffs", ""))

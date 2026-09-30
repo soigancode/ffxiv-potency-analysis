@@ -1,0 +1,400 @@
+{
+  "fight": "m9s",
+  "encounter_id": 101,
+  "job": "Machinist",
+  "partitions": [
+    {
+      "partition": 1,
+      "status": "ranked",
+      "player": "Chocolate Tea",
+      "report": "WP6tFpaZfrCxLvVg",
+      "fight_id": 18,
+      "jobs": [
+        "Ninja",
+        "Warrior",
+        "DarkKnight",
+        "Samurai",
+        "Astrologian",
+        "Scholar",
+        "LimitBreak",
+        "LimitBreak",
+        "Machinist",
+        "Pictomancer"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        1
+      ]
+    },
+    {
+      "partition": 2,
+      "status": "ranked",
+      "player": "Marsh Mellow'",
+      "report": "KLhFJxm3b1npGDjg",
+      "fight_id": 17,
+      "jobs": [
+        "BlackMage",
+        "Ninja",
+        "Paladin",
+        "Sage",
+        "Scholar",
+        "Viper",
+        "Machinist",
+        "Dancer",
+        "LimitBreak"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        2
+      ]
+    },
+    {
+      "partition": 3,
+      "status": "ranked",
+      "player": "\u5fae\u745e\u8482\u5c14",
+      "report": "Dq1ZnBxwA6vt2WTg",
+      "fight_id": 6,
+      "jobs": [
+        "Machinist",
+        "BlackMage",
+        "Warrior",
+        "Viper",
+        "Scholar",
+        "DarkKnight",
+        "Samurai",
+        "WhiteMage",
+        "LimitBreak",
+        "LimitBreak"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        3
+      ]
+    },
+    {
+      "partition": 4,
+      "status": "ranked",
+      "player": "\u57c3\u67ef",
+      "report": "LZWNPjDvBTK81anR",
+      "fight_id": 1,
+      "jobs": [
+        "WhiteMage",
+        "DarkKnight",
+        "Gunbreaker",
+        "Sage",
+        "Machinist",
+        "Monk",
+        "BlackMage",
+        "Paladin",
+        "LimitBreak",
+        "LimitBreak"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        4
+      ]
+    },
+    {
+      "partition": 5,
+      "status": "ranked",
+      "player": "\uc5f0\uc218\uc815",
+      "report": "CPHjNk1qa9vfyVgK",
+      "fight_id": 2,
+      "jobs": [
+        "Machinist",
+        "Monk",
+        "Paladin",
+        "DarkKnight",
+        "RedMage",
+        "Viper",
+        "Scholar",
+        "Astrologian",
+        "LimitBreak"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        5
+      ]
+    },
+    {
+      "partition": 6,
+      "status": "empty"
+    },
+    {
+      "partition": 7,
+      "status": "ranked",
+      "player": "Poruru Barnaby",
+      "report": "DFm9brj421X6T73k",
+      "fight_id": 1,
+      "jobs": [
+        "Machinist",
+        "DarkKnight",
+        "Paladin",
+        "Samurai",
+        "RedMage",
+        "WhiteMage",
+        "Scholar",
+        "Dragoon",
+        "LimitBreak"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        7
+      ]
+    },
+    {
+      "partition": 8,
+      "status": "ranked",
+      "player": "Tordrak Hjoldren",
+      "report": "GgvF6Vqbh3CQADRp",
+      "fight_id": 11,
+      "jobs": [
+        "Paladin",
+        "Scholar",
+        "Reaper",
+        "Machinist",
+        "LimitBreak",
+        "Bard",
+        "Summoner",
+        "Monk",
+        "Pictomancer"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        8
+      ]
+    },
+    {
+      "partition": 9,
+      "status": "ranked",
+      "player": "\u54cd\u6728\u5929\u97f3",
+      "report": "n3kg6YHB4f7rcv2m",
+      "fight_id": 1,
+      "jobs": [
+        "Pictomancer",
+        "Samurai",
+        "Scholar",
+        "Machinist",
+        "Paladin",
+        "WhiteMage",
+        "Warrior",
+        "BlackMage",
+        "LimitBreak"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        9
+      ]
+    },
+    {
+      "partition": 10,
+      "status": "ranked",
+      "player": "\u7ef4\u5c14\u6d77\u7c73\u5a1c",
+      "report": "RnLK12ZQMyqNCBwj",
+      "fight_id": 1,
+      "jobs": [
+        "Dancer",
+        "Viper",
+        "RedMage",
+        "Machinist",
+        "Warrior",
+        "Summoner",
+        "Scholar",
+        "Paladin",
+        "LimitBreak"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        10
+      ]
+    },
+    {
+      "partition": 11,
+      "status": "ranked",
+      "player": "Pokerface",
+      "report": "y6mJrcRbxk9jgFH7",
+      "fight_id": 2,
+      "jobs": [
+        "Machinist",
+        "DarkKnight",
+        "Viper",
+        "Scholar",
+        "Paladin",
+        "BlackMage",
+        "WhiteMage",
+        "Monk",
+        "LimitBreak"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        11
+      ]
+    },
+    {
+      "partition": 12,
+      "status": "empty"
+    },
+    {
+      "partition": 13,
+      "status": "ranked",
+      "player": "Yenn Ryder",
+      "report": "CcvRV1j2mYyD8FkG",
+      "fight_id": 4,
+      "jobs": [
+        "LimitBreak",
+        "Viper",
+        "Warrior",
+        "Machinist",
+        "Sage",
+        "Reaper",
+        "Paladin",
+        "BlackMage",
+        "WhiteMage"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [
+        214,
+        286,
+        287,
+        288,
+        289,
+        290,
+        291,
+        323
+      ],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        13
+      ]
+    },
+    {
+      "partition": 14,
+      "status": "ranked",
+      "player": "Kirin- Toudou-",
+      "report": "j7JXwaG1LgNFf8kc",
+      "fight_id": 5,
+      "jobs": [
+        "Dancer",
+        "Monk",
+        "Viper",
+        "Warrior",
+        "BlackMage",
+        "DarkKnight",
+        "Scholar",
+        "LimitBreak",
+        "LimitBreak",
+        "Machinist"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        33
+      ],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        14
+      ]
+    },
+    {
+      "partition": 15,
+      "status": "ranked",
+      "player": "\u842c\u4e8b\u7686\u865b",
+      "report": "mFWMYqaP6cpxQXdh",
+      "fight_id": 36,
+      "jobs": [
+        "Ninja",
+        "LimitBreak",
+        "LimitBreak",
+        "Paladin",
+        "Summoner",
+        "WhiteMage",
+        "Scholar",
+        "Machinist",
+        "Warrior",
+        "Dancer"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [
+        2,
+        574,
+        575,
+        576,
+        577,
+        578,
+        580,
+        592
+      ],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        15
+      ]
+    },
+    {
+      "partition": 16,
+      "status": "empty"
+    },
+    {
+      "partition": 17,
+      "status": "ranked",
+      "player": "\uc2ec\ub824",
+      "report": "CWRNpYPdJfD29m3Q",
+      "fight_id": 1,
+      "jobs": [
+        "Gunbreaker",
+        "Pictomancer",
+        "WhiteMage",
+        "Paladin",
+        "Dragoon",
+        "Scholar",
+        "Viper",
+        "Machinist",
+        "LimitBreak"
+      ],
+      "party_bonus_percent": null,
+      "initial_echo_player_ids": [
+        2,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "combatant_info_count": 8,
+      "report_partitions": [
+        17
+      ]
+    },
+    {
+      "partition": 18,
+      "status": "empty"
+    }
+  ]
+}

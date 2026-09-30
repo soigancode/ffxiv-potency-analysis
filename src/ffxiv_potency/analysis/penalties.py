@@ -256,6 +256,7 @@ def summarize_damage_penalties(
 def summarize_revival_penalties(
     landed: list[dict[str, Any]], ability_names: dict[int, str],
     fight_start: float, profile: _CombatProfile,
+    lost_potency: dict[int, list[float]],
 ) -> tuple[DamagePenaltySummary, ...]:
     """Show observed Weakness and Brink even when an older archive lacks raw events.
 
@@ -281,6 +282,7 @@ def summarize_revival_penalties(
             relevant[status_id][0],
             revival_multiplier({"buffs": f"{status_id}."}, profile, potted=False),
             min(times), max(times), counts[status_id], relevant[status_id][1],
+            *lost_potency.get(status_id, (0.0, 0.0)),
         )
         for status_id, times in sorted(observed.items())
     )

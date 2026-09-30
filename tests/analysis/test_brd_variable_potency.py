@@ -5,6 +5,27 @@ import pytest
 from ffxiv_potency.analysis.brd.variable_potency import _brd_damage_estimates
 
 
+@pytest.mark.parametrize("logged_multiplier", [1.0, 1.12])
+def test_fixed_echo_damage_factor_cancels_in_bard_reference_estimate(
+    logged_multiplier: float,
+) -> None:
+    names = {1: "Burst Shot", 2: "Pitch Perfect"}
+    references = [
+        {"type": "damage", "abilityGameID": 1, "amount": 24640,
+         "timestamp": index, "targetID": 10, "buffs": "1000042.", "hitType": 1,
+         "multiplier": logged_multiplier}
+        for index in range(4)
+    ]
+    hit = {"type": "damage", "abilityGameID": 2, "amount": 40320,
+           "timestamp": 800, "targetID": 10, "packetID": 10,
+           "buffs": "1000042.", "hitType": 1, "multiplier": logged_multiplier}
+
+    inferred, summaries = _brd_damage_estimates(references + [hit], [], [], names, 1.627)
+
+    assert inferred[id(hit)] == (360, False, 0.0)
+    assert summaries[0].uncertain_hits == 0
+
+
 def test_pitch_perfect_immune_target_can_consume_full_hit() -> None:
     names = {1: "Burst Shot", 2: "Pitch Perfect"}
     references = [
@@ -220,6 +241,56 @@ def test_apex_targets_share_one_gauge_estimate() -> None:
     assert len(summaries[0].apex_uses) == 1
     assert summaries[0].apex_uses[0].hits == 2
     assert summaries[0].apex_uses[0].gauge == 85
+
+
+def test_apex_unique_cast_fit_resolves_both_hits_despite_individual_overlap() -> None:
+    names = {1: "Burst Shot", 3: "Apex Arrow"}
+    references = [
+        {"type": "damage", "abilityGameID": 1, "amount": 22000,
+         "timestamp": index, "targetID": target, "hitType": 1}
+        for target, count in ((10, 4), (11, 2)) for index in range(count)
+    ]
+    first = {"type": "damage", "abilityGameID": 3, "amount": 55400,
+             "timestamp": 800, "targetID": 10, "packetID": 12, "hitType": 1}
+    second = {"type": "damage", "abilityGameID": 3, "amount": 59000,
+              "timestamp": 900, "targetID": 11, "packetID": 12, "hitType": 1}
+
+    inferred, summaries = _brd_damage_estimates(
+        references + [first, second], [], [], names, 1.627,
+    )
+
+    # Both hits also admit 85 gauge under the former per-hit 8% threshold;
+    # the first rules it out under the cast-wide 6.5% damage envelope.
+    assert abs(554 / 595 - 1) < 0.08
+    assert abs(590 / 595 - 1) < 0.08
+    assert inferred[id(first)] == (560, False, 0.0)
+    assert inferred[id(second)] == (560, False, 0.0)
+    apex = summaries[0]
+    assert (apex.estimated_hits, apex.uncertain_hits, apex.weak_reference_hits) == (2, 0, 1)
+    assert apex.apex_uses[0].plausible_gauges == (80,)
+
+
+@pytest.mark.parametrize("amount,plausible", [(59000, (80, 85, 90)), (76000, ())])
+def test_apex_unresolved_cast_marks_all_affected_hits(
+    amount: int, plausible: tuple[int, ...],
+) -> None:
+    names = {1: "Burst Shot", 3: "Apex Arrow"}
+    references = [
+        {"type": "damage", "abilityGameID": 1, "amount": 22000,
+         "timestamp": index, "targetID": 10, "hitType": 1}
+        for index in range(4)
+    ]
+    hits = [
+        {"type": "damage", "abilityGameID": 3, "amount": amount,
+         "timestamp": 800 + index, "targetID": 10, "packetID": 12, "hitType": 1}
+        for index in range(2)
+    ]
+
+    inferred, summaries = _brd_damage_estimates(references + hits, [], [], names, 1.627)
+
+    assert all(inferred[id(hit)][1] for hit in hits)
+    assert summaries[0].uncertain_hits == 2
+    assert summaries[0].apex_uses[0].plausible_gauges == plausible
 
 
 def test_radiant_encore_uses_distinct_songs_consumed_by_finale() -> None:

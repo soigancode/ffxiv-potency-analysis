@@ -5,6 +5,20 @@ from typing import Any
 from .models import ConsumableIdentity
 
 
+def initial_food_aura(
+    combatants: list[dict[str, Any]] | None, source_id: int | None, buff_id: int,
+) -> bool | None:
+    """Read the player's initial auras, if that snapshot is available."""
+    if source_id is None or combatants is None:
+        return None
+    initial = next((event for event in combatants
+                    if isinstance(event, dict) and event.get("sourceID") == source_id), None)
+    auras = initial.get("auras") if initial is not None else None
+    if not isinstance(auras, list):
+        return None
+    return any(isinstance(aura, dict) and aura.get("ability") == buff_id for aura in auras)
+
+
 def identify_consumable(
     buffs: list[dict[str, Any]],
     casts: list[dict[str, Any]],
@@ -43,9 +57,9 @@ def identify_consumable(
 
 def food_gaps(
     buffs: list[dict[str, Any]], source_id: int | None, buff_id: int,
-    fight_start: float, fight_end: float,
+    fight_start: float, fight_end: float, *, initially_fed: bool | None = None,
 ) -> tuple[tuple[float, float], ...]:
-    """Find intervals without food; pre-pull food is inferred from its removal."""
+    """Find unfed intervals from initial auras and subsequent food changes."""
     changes = sorted((
         (
             event["timestamp"], event["type"]
@@ -59,8 +73,12 @@ def food_gaps(
         and fight_start <= event["timestamp"] <= fight_end
     ), key=lambda change: change[0])
     if not changes or source_id is None:
-        return ()  # No recorded change: retain the configured food assumption.
-    active = changes[0][1] in {"removebuff", "refreshbuff"}
+        if source_id is not None and initially_fed is False:
+            return ((fight_start, fight_end),)
+        return ()  # An unavailable initial snapshot retains the configured assumption.
+    # A removal or refresh also establishes a pre-pull aura if the initial
+    # snapshot was absent or incomplete.
+    active = initially_fed is True or changes[0][1] in {"removebuff", "refreshbuff"}
     gap_start = fight_start if not active else None
     gaps = []
     for timestamp, kind in changes:

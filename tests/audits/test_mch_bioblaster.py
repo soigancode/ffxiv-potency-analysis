@@ -20,6 +20,7 @@ def test_bioblaster_applications_ticks_and_snapshots(tmp_path: Path, extract_fig
     action = next(row for row in result.actions if row.name == "Bioblaster")
 
     assert result.encounter_id == 4551
+    assert result.fight_name == "the Clyteum"
     assert result.unmatched == ()
     assert (action.uses, action.hits) == (10, 237)
     assert not any(name == "Bioblaster" for name, _ in result.ghosted)

@@ -51,8 +51,8 @@ class BrdOutsideExpectedHit:
 class ReducedDamageHit:
     seconds: float
     action: str
-    damage: int
-    overkill: int
+    damage: float
+    overkill: float
     target: str = ""
 
 
@@ -85,6 +85,7 @@ class BrdPotencyEstimateSummary:
     outside_expected_details: tuple[BrdOutsideExpectedHit, ...] = ()
     apex_uses: tuple[BrdApexUseEstimate, ...] = ()
     pitch_uncertain_hits: tuple[BrdPitchHitEstimate, ...] = ()
+    weak_reference_hits: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,6 +181,8 @@ class AnalysisResult:
     damage_penalties: tuple[DamagePenaltySummary, ...] = ()
     kill: bool | None = None
     status_windows: tuple[StatusWindow, ...] = ()
+    echo_status: str | None = None
+    party_bonus_percent: int | None = None
 
     @property
     def pps_min(self) -> float:

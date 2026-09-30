@@ -83,11 +83,16 @@ class FFLogsClient:
         self._token = self._authenticate(client_id, client_secret)
 
     def _authenticate(self, client_id: str, client_secret: str) -> str:
-        response = self._http.post(
-            TOKEN_URL,
-            data={"grant_type": "client_credentials"},
-            auth=(client_id, client_secret),
-        )
+        try:
+            response = self._http.post(
+                TOKEN_URL,
+                data={"grant_type": "client_credentials"},
+                auth=(client_id, client_secret),
+            )
+        except httpx.ReadTimeout as error:
+            raise FFLogsError(
+                "FF Logs authentication response timed out after 30 seconds; retry the command"
+            ) from error
         if response.status_code == 429:
             raise FFLogsError(_rate_limit_message(response.headers.get("Retry-After")))
         response.raise_for_status()
@@ -98,11 +103,16 @@ class FFLogsClient:
         return token
 
     def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
-        response = self._http.post(
-            GRAPHQL_URL,
-            headers={"Authorization": f"Bearer {self._token}"},
-            json={"query": query, "variables": variables},
-        )
+        try:
+            response = self._http.post(
+                GRAPHQL_URL,
+                headers={"Authorization": f"Bearer {self._token}"},
+                json={"query": query, "variables": variables},
+            )
+        except httpx.ReadTimeout as error:
+            raise FFLogsError(
+                "FF Logs GraphQL response timed out after 30 seconds; retry the command"
+            ) from error
         if response.status_code == 429:
             raise FFLogsError(_rate_limit_message(response.headers.get("Retry-After")))
         if response.status_code == 403:

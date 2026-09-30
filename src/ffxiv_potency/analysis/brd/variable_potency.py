@@ -91,7 +91,7 @@ def _brd_damage_estimates(
         if _event_name(event, names) in {"Pitch Perfect", "Apex Arrow", "Radiant Encore"}:
             packets[(event.get("packetID"), event.get("abilityGameID"))].append(event)
     estimates: dict[int, tuple[float, bool, float]] = {}
-    counts: dict[str, list[float]] = defaultdict(lambda: [0, 0, 0.0, 0])
+    counts: dict[str, list[float]] = defaultdict(lambda: [0, 0, 0.0, 0, 0])
     outside_details: dict[str, list[BrdOutsideExpectedHit]] = defaultdict(list)
     apex_uses: list[BrdApexUseEstimate] = []
     pitch_uncertain_hits: list[BrdPitchHitEstimate] = []
@@ -155,12 +155,17 @@ def _brd_damage_estimates(
             )
             if apex_candidates else None
         )
+        apex_plausible: tuple[int, ...] = ()
         if apex_choice is not None:
-            plausible = tuple(
+            apex_plausible = tuple(
                 int(20 + (candidate - 140) / 7)
                 for candidate in apex_candidates
                 if all(abs(effective / candidate - 1) <= 0.065 for _, effective, _ in measured)
             )
+            # One gauge applies to the whole cast. A unique joint fit settles
+            # hits that would remain ambiguous if classified in isolation.
+            if len(apex_plausible) == 1:
+                apex_choice = float(140 + 7 * (apex_plausible[0] - 20))
             cast_time = cast.get("timestamp") if cast is not None else None
             hit_time = hits[0].get("timestamp")
             timestamp = cast_time if isinstance(cast_time, (int, float)) else hit_time
@@ -169,7 +174,7 @@ def _brd_damage_estimates(
                     (timestamp - fight_start) / 1000,
                     len(measured),
                     int(20 + (apex_choice - 140) / 7),
-                    plausible,
+                    apex_plausible,
                     packet=packet,
                 ))
         for hit, effective, weak in measured:
@@ -204,14 +209,17 @@ def _brd_damage_estimates(
             tolerance = 0.065 if action == "Pitch Perfect" else 0.08
             known_coda = action == "Radiant Encore" and packet in encore_coda
             certain_falloff = known_coda and len(measured) > 1 and len(factors) == 1
-            uncertain = (
-                (weak and not (certain_falloff or (known_coda and len(candidates) == 1)))
-                or (not known_coda and abs(effective / chosen - 1) > tolerance)
-                or any(
-                    abs(effective / alternative - 1) <= tolerance
-                    for alternative in nearest if alternative != chosen
+            if action == "Apex Arrow":
+                uncertain = len(apex_plausible) != 1
+            else:
+                uncertain = (
+                    (weak and not (certain_falloff or (known_coda and len(candidates) == 1)))
+                    or (not known_coda and abs(effective / chosen - 1) > tolerance)
+                    or any(
+                        abs(effective / alternative - 1) <= tolerance
+                        for alternative in nearest if alternative != chosen
+                    )
                 )
-            )
             alternative = next((value for value in nearest if value != chosen), None)
             difference = abs(chosen - alternative) if uncertain and alternative is not None else 0.0
             outside_expected = abs(effective / chosen - 1) > tolerance
@@ -246,6 +254,8 @@ def _brd_damage_estimates(
             counts[action][0] += 1
             counts[action][1] += int(uncertain)
             counts[action][2] += difference
+            if action == "Apex Arrow":
+                counts[action][4] += int(weak)
             if action == "Pitch Perfect" and not hit.get("overkill") and outside_expected:
                 counts[action][3] += 1
                 outside_details[action].append(
@@ -263,6 +273,7 @@ def _brd_damage_estimates(
             tuple(sorted(apex_uses, key=lambda use: use.seconds)) if name == "Apex Arrow" else (),
             tuple(sorted(pitch_uncertain_hits, key=lambda hit: hit.seconds))
             if name == "Pitch Perfect" else (),
+            weak_reference_hits=int(row[4]),
         )
         for name, row in sorted(counts.items())
     )

@@ -9,6 +9,7 @@ from ffxiv_potency.fflogs import FFLogsError, ReportReference, top_ranked_source
 from ffxiv_potency.fflogs.rankings import (
     accessible_ranked_sources,
     ranked_source,
+    ranked_sources_at_positions,
     ranked_sources_in_range,
     validate_rank_range,
 )
@@ -68,7 +69,52 @@ def test_rank_range_requires_increasing_positions() -> None:
         ranked_sources_in_range(103, "machinist", 5000, 5025)
 
 
-def test_one_rank_resolves_only_its_report() -> None:
+def test_selected_positions_fetch_only_needed_pages_in_requested_order() -> None:
+    pages: list[int] = []
+    reports: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/token":
+            return httpx.Response(200, json={"access_token": "token"})
+        body = json.loads(request.content)
+        if "EncounterRankings" in body["query"]:
+            page = body["variables"]["page"]
+            pages.append(page)
+            rows = [{"name": f"Player {rank}", "report": {
+                "code": f"report{rank}", "fightID": 9,
+            }} for rank in range((page - 1) * 100 + 1, page * 100 + 1)]
+            if page == 2:
+                rows[52]["report"] = None
+            return httpx.Response(200, json={"data": {"worldData": {"encounter": {
+                "id": 103, "characterRankings": {"rankings": rows},
+            }}}})
+        code = body["variables"]["code"]
+        reports.append(code)
+        rank = int(code.removeprefix("report"))
+        return httpx.Response(200, json={"data": {"reportData": {"report": {
+            "fights": [{"id": 9, "encounterID": 103, "friendlyPlayers": [2]}],
+            "masterData": {"actors": [{"id": 2, "name": f"Player {rank}",
+                                      "type": "Player", "subType": "Machinist"}]},
+        }}}})
+
+    found, skipped = ranked_sources_at_positions(
+        103, "machinist", (153, 1, 2), client_id="id", client_secret="secret",
+        transport=httpx.MockTransport(handler),
+    )
+    assert pages == [1, 2]
+    assert reports == ["report1", "report2"]
+    assert [rank for rank, _ in found] == [1, 2]
+    assert skipped[0][0] == 153
+
+
+@pytest.mark.parametrize("positions", [(1,), (1, 1), (0, 2), tuple(range(1, 27))])
+def test_selected_positions_require_distinct_positive_ranks(positions: tuple[int, ...]) -> None:
+    with pytest.raises(ValueError, match="2 to 25 distinct positive"):
+        ranked_sources_at_positions(103, "machinist", positions)
+
+
+@pytest.mark.parametrize("partition", [None, 2])
+def test_one_rank_resolves_only_its_report(partition: int | None) -> None:
     requests: list[dict] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -91,9 +137,75 @@ def test_one_rank_resolves_only_its_report() -> None:
             ]},
         }}}})
 
-    assert ranked_source(1085, "bard", 2, client_id="id", client_secret="secret",
+    assert ranked_source(1085, "bard", 2, partition=partition,
+                         client_id="id", client_secret="secret",
                          transport=httpx.MockTransport(handler)) == ReportReference("def456", 2, 7)
+    assert requests[0]["variables"]["partition"] == (partition if partition is not None else 1)
     assert len(requests) == 2
+
+
+@pytest.mark.parametrize("encounter,metric", [(4549, "dps"), (4550, "rdps"), (4551, "dps")])
+def test_dungeon_rank_uses_supported_character_metric_without_partition(
+    encounter: int, metric: str,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/token":
+            return httpx.Response(200, json={"access_token": "token"})
+        body = json.loads(request.content)
+        if "EncounterRankings" in body["query"]:
+            assert body["variables"]["partition"] is None
+            assert "$partition: Int)" in body["query"]
+            assert f"metric: {metric}" in body["query"]
+            return httpx.Response(200, json={"data": {"worldData": {"encounter": {
+                "id": encounter, "characterRankings": {"rankings": [{
+                    "name": "First", "report": {"code": "abc123", "fightID": 2},
+                }]},
+            }}}})
+        return httpx.Response(200, json={"data": {"reportData": {"report": {
+            "fights": [{"id": 2, "encounterID": encounter, "friendlyPlayers": [7]}],
+            "masterData": {"actors": [
+                {"id": 7, "name": "First", "type": "Player", "subType": "Bard"},
+            ]},
+        }}}})
+
+    assert ranked_source(encounter, "bard", 1, client_id="id", client_secret="secret",
+                         transport=httpx.MockTransport(handler)) == ReportReference("abc123", 2, 7)
+
+
+@pytest.mark.parametrize("encounter,partition", [
+    (101, 13), (1083, 1), (1083, 8), (1084, 7), (1084, 8),
+])
+def test_rank_uses_selected_global_partition(encounter: int, partition: int) -> None:
+    partitions: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/token":
+            return httpx.Response(200, json={"access_token": "token"})
+        body = json.loads(request.content)
+        if "EncounterRankings" in body["query"]:
+            partitions.append(body["variables"]["partition"])
+            return httpx.Response(200, json={"data": {"worldData": {"encounter": {
+                "id": encounter, "characterRankings": {"rankings": [
+                    {"name": "Yenn Ryder", "report": {
+                        "code": "CcvRV1j2mYyD8FkG", "fightID": 4,
+                    }},
+                ]},
+            }}}})
+        return httpx.Response(200, json={"data": {"reportData": {"report": {
+            "fights": [{"id": 4, "encounterID": encounter, "friendlyPlayers": [287]}],
+            "masterData": {"actors": [{
+                "id": 287, "name": "Yenn Ryder", "type": "Player",
+                "subType": "Machinist",
+            }]},
+        }}}})
+
+    result = ranked_source(
+        encounter, "machinist", 1, partition=partition,
+        client_id="id", client_secret="secret",
+        transport=httpx.MockTransport(handler),
+    )
+    assert result == ReportReference("CcvRV1j2mYyD8FkG", 4, 287)
+    assert partitions == [partition]
 
 
 def test_one_rank_requires_positive_position() -> None:

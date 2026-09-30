@@ -126,7 +126,11 @@ def _determination_factor(determination: int, level_main: int, level_divisor: in
     return (1000 + 140 * (determination - level_main) // level_divisor) / 1000
 
 
-def _load_combat_profile(job: str, action_document: dict | None = None) -> _CombatProfile:
+def _load_combat_profile(
+    job: str, action_document: dict | None = None, *, party_bonus_percent: int = 5,
+) -> _CombatProfile:
+    if not isinstance(party_bonus_percent, int) or not 1 <= party_bonus_percent <= 5:
+        raise AnalysisError(f"invalid party bonus {party_bonus_percent!r}%")
     resource = reference_path(job.lower(), LATEST_KNOWN_PATCH, "combat_profile.json")
     if not resource.is_file():
         raise AnalysisError(f"no combat profile is configured for job {job!r}")
@@ -192,6 +196,13 @@ def _load_combat_profile(job: str, action_document: dict | None = None) -> _Comb
     )
     if required_ints["potted"] != required_ints["party"] + potion_gain:
         raise AnalysisError(f"potted Dexterity does not match the HQ potion for job {job!r}")
+    if required_ints["party"] != required_ints["solo"] * 105 // 100:
+        raise AnalysisError(f"configured party Dexterity must include a 5% bonus for job {job!r}")
+    party_stat = required_ints["solo"] * (100 + party_bonus_percent) // 100
+    potted_stat = party_stat + min(
+        party_stat * required_ints["potion_percent"] // 100,
+        required_ints["potion_cap"],
+    )
     for stat, label in (("critical_hit", "crit"), ("determination", "det")):
         unfed = required_ints[stat] - required_ints[f"food_{label}_cap"]
         if min(
@@ -237,11 +248,11 @@ def _load_combat_profile(job: str, action_document: dict | None = None) -> _Comb
         "coefficient": required_ints["coefficient"],
     }
     player_before = _player_main_stat_factor(
-        required_ints["party"], required_ints["level_main"],
+        party_stat, required_ints["level_main"],
         required_ints["player_damage_coefficient"],
     )
     player_after = _player_main_stat_factor(
-        required_ints["potted"], required_ints["level_main"],
+        potted_stat, required_ints["level_main"],
         required_ints["player_damage_coefficient"],
     )
     pet_multipliers = {}
@@ -278,8 +289,8 @@ def _load_combat_profile(job: str, action_document: dict | None = None) -> _Comb
         potion_action_names=tuple(action_names),
         potion_duration_seconds=required_ints["potion_duration"],
         player_potion_multiplier=player_after / player_before,
-        party_main_stat=required_ints["party"],
-        potted_main_stat=required_ints["potted"],
+        party_main_stat=party_stat,
+        potted_main_stat=potted_stat,
         player_damage_coefficient=required_ints["player_damage_coefficient"],
         pet_potion_multipliers=pet_multipliers,
         critical_damage_multiplier=_critical_damage_multiplier(

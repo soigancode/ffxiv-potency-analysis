@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 
 from ffxiv_potency.analysis import analyze_saved_fight
-from ffxiv_potency.analysis.consumables import food_active, food_gaps, identify_consumable
+from ffxiv_potency.analysis.consumables import (
+    food_active,
+    food_gaps,
+    identify_consumable,
+    initial_food_aura,
+)
 from ffxiv_potency.analysis.models import ConsumableIdentity
 from ffxiv_potency.cli import _print_analysis
 
@@ -53,6 +58,19 @@ def test_food_gap_starts_with_removal_and_ends_at_reapplication() -> None:
     assert food_active(87999, gaps)
     assert not food_active(88000, gaps)
     assert food_active(111000, gaps)
+
+
+def test_initial_food_aura_and_missing_observation() -> None:
+    combatants = [{"sourceID": 2, "auras": [{"ability": 1000048}]}]
+    assert initial_food_aura(combatants, 2, 1000048) is True
+    assert initial_food_aura([{"sourceID": 2, "auras": []}], 2, 1000048) is False
+    assert initial_food_aura([], 2, 1000048) is None
+    assert food_gaps([], 2, 1000048, 0, 100, initially_fed=False) == ((0, 100),)
+    assert food_gaps([], 2, 1000048, 0, 100, initially_fed=None) == ()
+    assert food_gaps([], 2, 1000048, 0, 100, initially_fed=True) == ()
+    applied = [{"timestamp": 40, "type": "applybuff", "targetID": 2,
+                "abilityGameID": 1000048}]
+    assert food_gaps(applied, 2, 1000048, 0, 100, initially_fed=False) == ((0, 40),)
 
 
 def test_real_food_expiry_changes_luck_baseline_without_changing_landed_potency(

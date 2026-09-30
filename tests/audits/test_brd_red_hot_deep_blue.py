@@ -51,8 +51,8 @@ def test_anonymous_brd_appears_as_anonymous_in_comparison(
     actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
     cli._compare_directories([directory, directory], actions, rank_positions=(9, 10))
     output = capsys.readouterr().out
-    assert "   9 Anonymous" in output
-    assert "  10 Anonymous" in output
+    assert "   9  Anonymous" in output
+    assert "  10  Anonymous" in output
     assert "Player (7)" not in output
 
 
@@ -84,8 +84,8 @@ def test_one_leaderboard_rank_shows_full_anonymous_analysis(
     )
     reference = ReportReference("a:DNaXrgHGZ8PbCkfL", 22, 7)
     actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
-    monkeypatch.setattr(cli, "ranked_source", lambda encounter, job, rank: (
-        reference if (encounter, job, rank) == (102, "bard", 9) else None
+    monkeypatch.setattr(cli, "ranked_source", lambda encounter, job, rank, *, partition: (
+        reference if (encounter, job, rank, partition) == (102, "bard", 9, None) else None
     ))
     def resolve(source: str, output: Path, **kwargs) -> Path:
         assert "a:DNaXrgHGZ8PbCkfL?fight=22&source=7" in source

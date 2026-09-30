@@ -44,6 +44,44 @@ def test_brd_adds_and_clipped_hit(
     assert "phase transition" not in output
 
 
+def test_brd_echo_normalization_matches_unboosted_fight(
+    tmp_path: Path, extract_fight,
+) -> None:
+    extract_fight("brd_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
+    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    ordinary = analyze_saved_fight(tmp_path, actions)
+
+    damage_path = tmp_path / "damage-events.json"
+    damage = json.loads(damage_path.read_text(encoding="utf-8"))
+    for event in damage:
+        if event.get("type") in {"damage", "calculateddamage"}:
+            for field in ("amount", "unmitigatedAmount", "overkill"):
+                if isinstance(event.get(field), (int, float)):
+                    event[field] *= 1.12
+    damage_path.write_text(json.dumps(damage), encoding="utf-8")
+    (tmp_path / "combatant-info-events.json").write_text(
+        json.dumps([{"sourceID": 4, "auras": [{"ability": 1000042}]}]), encoding="utf-8",
+    )
+    rankings_path = tmp_path / "rankings.json"
+    if rankings_path.is_file():
+        rankings = json.loads(rankings_path.read_text(encoding="utf-8"))
+        for value in (rankings.get("rankings"), rankings.get("rdps")):
+            if isinstance(value, dict):
+                for row in value.get("data", []):
+                    row["partition"] = 13
+        rankings_path.write_text(json.dumps(rankings), encoding="utf-8")
+
+    echoed = analyze_saved_fight(tmp_path, actions)
+    assert echoed.echo_status == "observed"
+    assert echoed.potency_min == pytest.approx(ordinary.potency_min)
+    assert echoed.potency_max == pytest.approx(ordinary.potency_max)
+    assert echoed.brd_potency_estimates == ordinary.brd_potency_estimates
+    assert echoed.reduced_damage_hits[0].damage == pytest.approx(
+        ordinary.reduced_damage_hits[0].damage
+    )
+    assert (echoed.rdps, echoed.ndps) == (ordinary.rdps, ordinary.ndps)
+
+
 def test_barrage_shadowbite_buffs_every_target(
     tmp_path: Path, extract_fight
 ) -> None:

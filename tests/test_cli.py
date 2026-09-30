@@ -1,6 +1,7 @@
 import io
 import json
 import shutil
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -354,7 +355,9 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert cli.main(["analyse", str(directory), "--actions", str(actions)]) == 0
     output = capsys.readouterr().out
     assert output.startswith("\nPlayer:") and output.endswith("\n\n")
-    assert ("Fight: Test Boss (1), 00m10s\nFood: Caramel Popcorn [HQ]\n"
+    assert ("Fight: Test Boss (1), 00m10s\n"
+            "Party main-stat bonus: 5% (assumed; older saved fight)\n"
+            "Food: Caramel Popcorn [HQ]\n"
             "nDPS: 12,345.6\nrDPS: 12,330.4") in output
     assert "Player: Test Player" in output
     assert "Landed potency: 350-400" in output
@@ -395,6 +398,19 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert expected_outcomes in output
     assert "Drill: 1 use, 1 hit, 600 total potency" in output
     assert "per use" not in output and "per hit" not in output
+
+    cli._print_analysis(replace(expected, party_bonus_percent=3, echo_status="observed"))
+    echo_output = capsys.readouterr().out
+    assert "Party main-stat bonus: 3%\n" in echo_output
+    assert "Echo: 12% (damage normalised by 1.12)\n" in echo_output
+
+    cli._print_analysis(replace(expected, potion=PotionSummary(0, 0, 0, 0, 0)))
+    unpotted_output = capsys.readouterr().out
+    assert "Potions:" not in unpotted_output
+    assert "Potted base potency:" not in unpotted_output
+    assert "Observed hit outcomes:" in unpotted_output
+    cli._print_analysis(replace(expected, echo_status="absent"))
+    assert "Echo: 0%\n" in capsys.readouterr().out
 
 
 def test_time_format_handles_short_and_long_fights() -> None:
@@ -507,6 +523,15 @@ def test_analyse_backfills_targetability_without_redownloading_fight(
 
     monkeypatch.setattr(cli, "refresh_targetability_events", fake_refresh)
     monkeypatch.setattr(cli, "refresh_encounter_overkill_events", fake_overkills)
+    def fake_context(reference, saved_directory: Path) -> None:
+        assert reference.fight_id == 9
+        fight_path = saved_directory / "fight.json"
+        fight = json.loads(fight_path.read_text(encoding="utf-8"))
+        fight["friendlyPlayers"] = [18]
+        fight_path.write_text(json.dumps(fight), encoding="utf-8")
+        (saved_directory / "combatant-info-events.json").write_text("[]", encoding="utf-8")
+
+    monkeypatch.setattr(cli, "refresh_fight_context", fake_context)
     def fake_status(reference, saved_directory: Path) -> None:
         assert reference.fight_id == 9
         assert saved_directory == directory
@@ -614,8 +639,14 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     assert "nDPS" in output and "15,000.0" in output
     assert "rDPS" in output and "15,100.0" in output
     assert "Player" in output and "Luck" in output and "51.54%" in output
+    assert next(line for line in output.splitlines() if line.startswith("Player")).endswith("Date")
+    assert all(line.endswith("01/05/26") for line in output.splitlines()
+               if line.startswith(("Alice", "Bob")))
     assert "Rank" not in output
     assert "aLuck" in output and "45.12%" in output
+    assert "nDPS  Potency" in output
+    assert "aLuck  Date" in output
+    assert "Party" not in output and "Echo" not in output
     assert "Crit" not in output and "DH" not in output and "CDH" not in output
     assert "Alice" in output and "1,000" in output and "10" in output
     assert "Bob" in output and "1,200" in output and "12" in output
@@ -626,9 +657,21 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
         rank_positions=(1, 9),
     )
     ranked_output = capsys.readouterr().out
-    assert "Rank Player" in ranked_output
-    assert any(line.startswith("   1 Alice") for line in ranked_output.splitlines())
-    assert any(line.startswith("   9 Bob") for line in ranked_output.splitlines())
+    assert "Rank  Player" in ranked_output
+    assert any(line.startswith("   1  Alice") for line in ranked_output.splitlines())
+    assert any(line.startswith("   9  Bob") for line in ranked_output.splitlines())
+    assert all(line.endswith("01/05/26") for line in ranked_output.splitlines()
+               if line.startswith(("   1  Alice", "   9  Bob")))
+
+    def wide_potency(directory: Path, actions_path: Path) -> AnalysisResult:
+        return replace(fake_analyze(directory, actions_path),
+                       potency_min=248364, potency_max=248364)
+
+    monkeypatch.setattr(cli, "analyze_saved_fight", wide_potency)
+    cli._compare_directories([tmp_path / "abc123/fight-9/source-18"], actions)
+    compact_output = capsys.readouterr().out
+    assert "15,000.0  248,364" in compact_output
+    assert "45.12%  01/05/26" in compact_output
 
     def fail_download(*args, **kwargs):
         raise AssertionError("complete compare sources should be reused")
@@ -636,6 +679,19 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     monkeypatch.setattr(cli, "download_report_events", fail_download)
     assert cli.main(["compare", *urls, "--actions", str(actions), "--output", str(tmp_path)]) == 0
     assert "Saved fight data:" not in capsys.readouterr().out
+
+
+def test_fight_date_uses_report_time_plus_fight_offset_and_handles_missing_date(
+    tmp_path: Path,
+) -> None:
+    fight = tmp_path / "fight.json"
+    fight.write_text(json.dumps({
+        "reportStartTime": 1777593600000,  # 01/05/26 00:00 UTC.
+        "startTime": 24 * 60 * 60 * 1000 + 500,
+    }), encoding="utf-8")
+    assert cli._fight_date(tmp_path) == "02/05/26"
+    fight.write_text('{"startTime": 500}', encoding="utf-8")
+    assert cli._fight_date(tmp_path) == "n/a"
 
 
 @pytest.mark.parametrize("count", [1, 11])
@@ -798,6 +854,8 @@ def test_cli_compare_rejects_different_encounters(monkeypatch, tmp_path: Path, c
         ("m12sp2", 105),
         ("umad", 1085),
         ("dmu", 1085),
+        ("doomtrain", 1083),
+        ("enuo", 1084),
     ],
 )
 @pytest.mark.parametrize(
@@ -811,8 +869,9 @@ def test_cli_rankings_shortcuts_compare_top_logs(
 
     seen = []
 
-    def fake_rankings(encounter_id: int, job: str):
+    def fake_rankings(encounter_id: int, job: str, *, partition: int | None):
         assert (encounter_id, job) == (encounter, expected_job)
+        assert partition is None
         return (
             ((1, ReportReference("abc123", 9, 18)),
              (3, ReportReference("def456", 4, 7))),
@@ -824,11 +883,13 @@ def test_cli_rankings_shortcuts_compare_top_logs(
         seen.append(source)
         return tmp_path / ("1" if "abc123" in source else "2")
 
-    def fake_compare(directories, override, *, rank_positions=None) -> None:
+    def fake_compare(directories, override, *, rank_positions=None, skip_analysis_errors=False):
         assert directories == [tmp_path / "1", tmp_path / "2"]
         assert override is None
         assert rank_positions == (1, 3)
+        assert skip_analysis_errors
         print("Fight: Test Boss (101)")
+        return ()
 
     monkeypatch.setattr(cli, "accessible_ranked_sources", fake_rankings)
     monkeypatch.setattr(cli, "_resolve_analysis_directory", fake_resolve)
@@ -836,9 +897,50 @@ def test_cli_rankings_shortcuts_compare_top_logs(
     assert cli.main(["fflogs", alias, fight, "--output", str(tmp_path)]) == 0
     output = capsys.readouterr().out
     assert "Fight: Test Boss (101)" in output
-    assert "Skipped inaccessible ranks: 2" in output
+    assert "Skipped ranks: 2 (report unavailable)" in output
+    assert list(tmp_path.glob("ranks-*.json")) == []
     assert any("abc123?fight=9&source=18" in url for url in seen)
     assert any("def456?fight=4&source=7" in url for url in seen)
+
+
+def test_top_ten_skips_one_unanalyzable_rank_and_shows_its_reason(
+    monkeypatch, tmp_path: Path, capsys,
+) -> None:
+    from ffxiv_potency.analysis import AnalysisError
+
+    def fake_rankings(encounter_id: int, job: str, *, partition: int | None):
+        assert (encounter_id, job, partition) == (1085, "bard", None)
+        return (
+            ((1, ReportReference("bad123", 24, 490)),
+             (2, ReportReference("good456", 7, 2))),
+            (),
+        )
+
+    def fake_resolve(source: str, output: Path, *, announce: bool = True) -> Path:
+        return tmp_path / ("bad" if "bad123" in source else "good")
+
+    def fake_analyze(directory: Path, actions: Path) -> AnalysisResult:
+        if directory.name == "bad":
+            raise AnalysisError("cannot match Stormbite tick to a landed DoT application")
+        return AnalysisResult(
+            fight_name="Dancing Mad", encounter_id=1085, source_name="Bard",
+            ndps=1, duration_seconds=100, raw_damage_events=1,
+            landed_damage_events=1, matched_damage_events=1,
+            potency_min=100, potency_max=100, actions=(), auto_attacks=(),
+            pet_deployments=(), hit_outcomes=HitOutcomeSummary(0, 0, 0, 0),
+            potion=PotionSummary(0, 0, 0, 0, 0), unmatched=(), ghosted=(),
+        )
+
+    monkeypatch.setattr(cli, "accessible_ranked_sources", fake_rankings)
+    monkeypatch.setattr(cli, "_resolve_analysis_directory", fake_resolve)
+    monkeypatch.setattr(cli, "_source_job", lambda _: "bard")
+    monkeypatch.setattr(cli, "_actions_for_job", lambda job, override: tmp_path / "actions.json")
+    monkeypatch.setattr(cli, "_verify_supported_fight", lambda _: None)
+    monkeypatch.setattr(cli, "analyze_saved_fight", fake_analyze)
+    assert cli.main(["fflogs", "brd", "umad", "--output", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "   2  Bard" in output
+    assert "Skipped ranks: 1 (cannot match Stormbite tick to a landed DoT application)" in output
 
 
 def test_cli_rejects_nonpositive_rank(capsys) -> None:
@@ -846,9 +948,27 @@ def test_cli_rejects_nonpositive_rank(capsys) -> None:
     assert "rank must be a positive number" in capsys.readouterr().err
 
 
+def test_cli_selects_global_echo_partition(monkeypatch, capsys) -> None:
+    def missing_rank(encounter_id: int, job: str, rank: int, *, partition: int) -> None:
+        assert (encounter_id, job, rank, partition) == (101, "machinist", 1, 13)
+        raise cli.FFLogsError("report unavailable")
+
+    monkeypatch.setattr(cli, "ranked_source", missing_rank)
+    assert cli.main(["fflogs", "mch", "m9s", "1", "--partition", "13"]) == 1
+    assert "report unavailable" in capsys.readouterr().err
+
+
+def test_cli_rejects_other_region_partition(capsys) -> None:
+    assert cli.main(["fflogs", "brd", "m9s", "--partition", "9"]) == 1
+    assert "partition 9 is not supported" in capsys.readouterr().err
+
+
 def test_cli_passes_rank_beyond_ten_to_leaderboard(monkeypatch, capsys) -> None:
-    def missing_rank(encounter_id: int, job: str, rank: int) -> None:
+    def missing_rank(
+        encounter_id: int, job: str, rank: int, *, partition: int | None,
+    ) -> None:
         assert (encounter_id, job, rank) == (1085, "bard", 42)
+        assert partition is None
         raise cli.FFLogsError("rank 42 does not exist for bard in encounter 1085")
 
     monkeypatch.setattr(cli, "ranked_source", missing_rank)
@@ -857,8 +977,11 @@ def test_cli_passes_rank_beyond_ten_to_leaderboard(monkeypatch, capsys) -> None:
 
 
 def test_cli_compares_inclusive_rank_range(monkeypatch, tmp_path: Path, capsys) -> None:
-    def fake_range(encounter_id: int, job: str, first: int, last: int):
+    def fake_range(
+        encounter_id: int, job: str, first: int, last: int, *, partition: int | None,
+    ):
         assert (encounter_id, job, first, last) == (103, "machinist", 5000, 5024)
+        assert partition is None
         return (
             ((5000, ReportReference("abc123", 9, 2)),
              (5024, ReportReference("def456", 3, 7))),
@@ -879,12 +1002,42 @@ def test_cli_compares_inclusive_rank_range(monkeypatch, tmp_path: Path, capsys) 
     assert cli.main(["fflogs", "mch", "m11s", "5000-5024", "--output", str(tmp_path)]) == 0
     output = capsys.readouterr().out
     assert "Skipped ranks: 5001 (report inaccessible), 5024 (could not determine weapon delay)" in output
-    manifest = json.loads((tmp_path / "ranks-machinist-m11s-5000-5024.json").read_text())
-    assert manifest["reports"] == [
-        {"rank": 5000, "report_code": "abc123", "fight_id": 9, "source_id": 2},
-        {"rank": 5024, "report_code": "def456", "fight_id": 3, "source_id": 7},
-    ]
-    assert [item["rank"] for item in manifest["skipped"]] == [5001, 5024]
+    assert list(tmp_path.glob("ranks-*.json")) == []
+
+
+def test_cli_compares_selected_rank_positions(monkeypatch, tmp_path: Path, capsys) -> None:
+    def fake_positions(encounter_id, job, positions, *, partition):
+        assert (encounter_id, job, positions, partition) == (
+            102, "machinist", (1, 2, 3, 153), None,
+        )
+        return (((1, ReportReference("abc123", 9, 2)),
+                 (153, ReportReference("def456", 3, 7))), ((2, "unavailable"),))
+
+    def fake_compare(urls, output, actions, progress, *, rank_positions, skip_analysis_errors):
+        assert rank_positions == (1, 153)
+        assert skip_analysis_errors
+        return ()
+
+    monkeypatch.setattr(cli, "ranked_sources_at_positions", fake_positions)
+    monkeypatch.setattr(cli, "_download_and_compare", fake_compare)
+    assert cli.main(["fflogs", "mch", "m10s", "1,2,3,153", "--output", str(tmp_path)]) == 0
+    assert "Skipped ranks: 2 (unavailable)" in capsys.readouterr().out
+    assert list(tmp_path.glob("ranks-*.json")) == []
+
+
+def test_cli_rejects_duplicate_selected_ranks(capsys) -> None:
+    assert cli.main(["fflogs", "mch", "m10s", "1,1"]) == 1
+    assert "distinct positive" in capsys.readouterr().err
+
+
+def test_cli_uses_dungeon_encounter_and_default_partition(monkeypatch, capsys) -> None:
+    def missing_rank(encounter_id: int, job: str, rank: int, *, partition: int | None):
+        assert (encounter_id, job, rank, partition) == (4551, "bard", 1, None)
+        raise cli.FFLogsError("no dungeon ranking available")
+
+    monkeypatch.setattr(cli, "ranked_source", missing_rank)
+    assert cli.main(["fflogs", "brd", "clyteum", "1"]) == 1
+    assert "no dungeon ranking available" in capsys.readouterr().err
 
 
 def test_rank_range_keeps_comparing_after_unavailable_download(monkeypatch, tmp_path: Path) -> None:
@@ -966,8 +1119,9 @@ def test_rankings_show_processing_before_lookup(monkeypatch, tmp_path: Path) -> 
     terminal = Terminal()
     monkeypatch.setattr(cli.sys, "stderr", terminal)
 
-    def fake_rankings(encounter_id: int, job: str):
+    def fake_rankings(encounter_id: int, job: str, *, partition: int | None):
         assert terminal.getvalue() == "\rProcessing..."
+        assert partition is None
         return (
             ((1, ReportReference("abc123", 9, 18)),
              (2, ReportReference("def456", 4, 7))),
@@ -977,9 +1131,12 @@ def test_rankings_show_processing_before_lookup(monkeypatch, tmp_path: Path) -> 
     def fake_resolve(source: str, output: Path, *, announce: bool = True) -> Path:
         return tmp_path / "saved"
 
-    def fake_compare(directories, override, progress, *, rank_positions=None) -> None:
+    def fake_compare(directories, override, progress, *, rank_positions=None,
+                     skip_analysis_errors=False):
         assert rank_positions == (1, 2)
+        assert skip_analysis_errors
         progress.clear()
+        return ()
 
     monkeypatch.setattr(cli, "accessible_ranked_sources", fake_rankings)
     monkeypatch.setattr(cli, "_resolve_analysis_directory", fake_resolve)

@@ -2,7 +2,16 @@
 
 Compare logs from the **same job and fight** by the potency of attacks that actually dealt damage. Potency removes the random damage roll and Crit/Direct Hit damage variance, making it easier to compare rotations. The tool also shows potency per second (PPS), hit luck, and FF Logs rDPS and nDPS.
 
-**Current support:** level 100 Bard (BRD) and Machinist (MCH), using patch 7.55 job data and configured gear stats. Analysis accepts fights played in patch 7.5; the supported leaderboard fights are the 7.4 Savage tier (M9S–M12S) and Dancing Mad Ultimate in 7.5. See [Limitations](#limitations) for gear and sync assumptions.
+**Current support:** level 100 with configured gear and patch 7.55 action data.
+
+Supported duties: Heavyweight Savage (M9S–M12S); Dancing Mad Ultimate; Doomtrain and Enuo (Extreme); Another Merchant's Tale (Criterion), Mistwake, and The Clyteum (dungeons).
+
+| Patch | Supported jobs |
+| --- | --- |
+| 7.4–7.45 | Bard (BRD), Machinist (MCH) |
+| 7.5 | Bard (BRD), Machinist (MCH) |
+
+Leaderboard support covers the global partitions, including Savage Echo. Dungeon fights use their played date to identify the patch. See [Limitations](#limitations) for gear and sync assumptions.
 
 ## Contents
 
@@ -45,7 +54,7 @@ The tool reads `.env` automatically. Keep it private. Required job data is inclu
 
 ### Rankings
 
-Compare the current top ten accessible logs for a job and fight, ordered by FF Logs rDPS:
+Compare the current top ten accessible logs for a job and fight, ordered by FF Logs rDPS. Mistwake and The Clyteum use DPS rankings:
 
 ```bash
 ffxiv-potency fflogs brd umad
@@ -58,24 +67,50 @@ Analyse **any leaderboard position** instead:
 ffxiv-potency fflogs brd umad 3
 ```
 
-Compare an inclusive range of ranks:
+Compare an inclusive range or select individual ranks:
 
 ```bash
 ffxiv-potency fflogs mch m11s 20-25
+ffxiv-potency fflogs mch m10s 1,2,3,153
 ```
 
-Compare logs from a specific range (min 2, max 25). The numbers represent the actual ranks on FF Logs. Inaccessible or ambiguous ranks are skipped. Anonymous reports work when the player can be identified from the selected fight. Downloads are reused.
+Ranges and comma-separated selections contain 2–25 distinct leaderboard positions. The numbers represent the actual ranks on FF Logs. Inaccessible or ambiguous ranks are skipped. Anonymous reports work when the player can be identified from the selected fight. Downloads are reused.
 
 | Fight | Encounter |
 | --- | --- |
-| `m9s` | Vamp Fatale |
-| `m10s` | Red Hot and Deep Blue |
-| `m11s` | The Tyrant |
-| `m12sp1` | Lindwurm |
-| `m12sp2` | Lindwurm II |
-| `umad` or `dmu` | Dancing Mad Ultimate |
+| `m9s` | Vamp Fatale (Savage) |
+| `m10s` | Red Hot and Deep Blue (Savage) |
+| `m11s` | The Tyrant (Savage) |
+| `m12sp1` | Lindwurm (Savage) |
+| `m12sp2` | Lindwurm II (Savage) |
+| `dmu` or `umad` | Dancing Mad Ultimate |
+| `doomtrain` | Doomtrain (Extreme) |
+| `enuo` | Enuo (Extreme) |
+| `amt` | Another Merchant's Tale |
+| `mistwake` | Mistwake |
+| `clyteum` | The Clyteum |
 
-Use `mch` or `brd` for the job; the full job names also work.
+Use `brd` or `mch` for the job; the full job names also work.
+
+The `--partition` option is optional. Savage defaults to the global 7.5 standard-composition leaderboard. To select another global leaderboard:
+
+```bash
+ffxiv-potency fflogs mch m9s 1 --partition 13
+ffxiv-potency fflogs brd m11s 20-25 --partition 2
+```
+
+| Savage partition | Patch | Composition | Echo |
+| ---: | --- | --- | --- |
+| 1 | 7.4 | Standard | No |
+| 2 | 7.4 | Non-standard | No |
+| 7 | 7.5 | Standard | No |
+| 8 | 7.5 | Non-standard | No |
+| 13 | 7.5 | Standard | Yes |
+| 14 | 7.5 | Non-standard | Yes |
+
+Dancing Mad Ultimate uses partition 1 by default; partition 2 has non-standard compositions. China and Korea partitions are not supported yet.
+
+Doomtrain follows the Savage 7.4 and 7.5 partition pairs; Enuo uses the 7.5 pair. Both default to 7. Unranked Extreme fights use their played date; Echo is unsupported.
 
 ### Analyse one log
 
@@ -99,7 +134,7 @@ ffxiv-potency compare \
   "https://www.fflogs.com/reports/REPORT2?fight=4&source=7"
 ```
 
-The comparison shows duration, rDPS, nDPS, landed potency, PPS, Luck, and adjusted Luck. Saved fights are reused.
+The comparison shows duration, rDPS, nDPS, landed potency, PPS, Luck, adjusted Luck, and the fight date in UTC (`dd/mm/yy`). Saved fights are reused.
 
 ## Understanding the results
 
@@ -131,6 +166,8 @@ P_{\mathrm{potted}} = P_{\mathrm{base}}\times
 ```
 
 The factor uses level 100's tiered main-stat calculation, so a 541 Dexterity gain is not treated as 10% extra damage. MCH pets use their own configured main-stat factor. DoT ticks and MCH Wildfire use the potion state snapshotted when their effect was applied.
+
+The values above describe a five-role party. For another composition, the tool recomputes party Dexterity and the potion factor from the fight roster.
 
 #### Damage penalties
 
@@ -234,7 +271,6 @@ For **Apex Arrow**, candidate potency is $140+7(g-20)$ for Soul Voice Gauge $g$ 
 
 ## Future features
 
-- Audit balance changes before supporting earlier FF Logs partitions and action data.
 - Add more jobs and support additional gear and level-sync profiles.
 - Interpret other damage-affecting traits from the job guide where their effects are needed.
 - Improve variable-potency estimates if FF Logs exposes the underlying resources.
