@@ -4,7 +4,7 @@
   "patch": "7.55",
   "source": {
     "url": "https://eu.finalfantasyxiv.com/jobguide/machinist/",
-    "retrieved_at": "2026-09-30T12:48:25.671970Z",
+    "retrieved_at": "2026-09-30T17:33:05.015523Z",
     "sha256": "7ec2dd51e5286fe567b18f045819766740556057fb4982757cf04a8c14e3bfc3"
   },
   "actions": [
@@ -736,7 +736,10 @@
     {
       "name": "Increased Action Damage",
       "level": 20,
-      "description": []
+      "description": [
+        "Increases base action damage and autoturret damage by 10%."
+      ],
+      "action_damage_multiplier": 1.1
     },
     {
       "name": "Increased Action Damage II",

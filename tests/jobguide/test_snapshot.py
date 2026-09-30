@@ -60,7 +60,10 @@ def test_update_downloads_and_exports_versioned_snapshot(tmp_path: Path) -> None
     assert len(document["actions"]) == 40
     assert document["schema_version"] == 3
     assert document["traits"][0]["name"] == "Increased Action Damage"
-    assert "action_damage_multiplier" not in document["traits"][0]
+    assert document["traits"][0]["description"] == [
+        "Increases base action damage and autoturret damage by 10%.",
+    ]
+    assert document["traits"][0]["action_damage_multiplier"] == 1.1
     assert document["traits"][1]["action_damage_multiplier"] == 1.2
 
 
@@ -174,3 +177,30 @@ def test_unrecognized_guide_wording_does_not_replace_existing_actions(tmp_path: 
         )
 
     assert actions.read_text(encoding="utf-8") == '{"previous": true}\n'
+
+
+def test_brd_heavier_shot_description_survives_malformed_official_html() -> None:
+    html = (FIXTURES / "brd_malformed_heavier_shot.html").read_text()
+    traits = parse_job_traits(html)
+    assert traits[0].name == "Heavier Shot"
+    assert traits[0].level == 2
+    assert traits[0].description == (
+        "Adds to Heavy Shot a 20% chance to grant Hawk's Eye.", "Duration: 30s",
+    )
+    expected = json.loads(
+        (Path(__file__).parents[2] / "data/bard/7.55/actions.json").read_text()
+    )
+    assert [t.to_dict() for t in traits] == expected["traits"]
+    assert [a.to_dict() for a in parse_job_actions(html)] == expected["actions"]
+
+
+def test_trait_missing_content_does_not_borrow_next_trait_description() -> None:
+    html = '''<table>
+    <tr id="trait_action__01"><td class="skill"><strong>First</strong></td>
+    <td class="jobclass"><div>Lv. 2</div></div></td></tr>
+    <tr id="trait_action__02"><td class="skill"><strong>Second</strong></td>
+    <td class="jobclass">Lv. 20</td><td class="content">Second effect.</td></tr>
+    </table>'''
+    traits = parse_job_traits(html)
+    assert traits[0].description == ()
+    assert traits[1].description == ("Second effect.",)

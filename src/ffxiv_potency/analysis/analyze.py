@@ -29,6 +29,7 @@ from .luck import (
     _raid_luck_adjustment,
     _summarize_hit_outcomes,
 )
+from .mch.battery import mch_battery_events
 from .mch.checkpoint import mch_checkpoint_gauges
 from .mch.queen import summarize_mch_queen_deployments
 from .mch.wildfire import MchWildfireTracker
@@ -392,6 +393,8 @@ def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         sorted_casts, actions, ability_names, landed_by_packet, pet_profiles, float(start),
         initial_gauges=starting_gauges,
         allow_unknown_initial_gauge=unknown_initial_gauge,
+        gauge_events_by_packet={"Battery Gauge": mch_battery_events(raw_damage, source_id)}
+        if job.casefold() == "machinist" else None,
     )
     guaranteed_packets = _guaranteed_outcome_packets(sorted_casts, actions, ability_names)
     channel_casts: dict[str, list[tuple[int, dict[str, Any]]]] = defaultdict(list)

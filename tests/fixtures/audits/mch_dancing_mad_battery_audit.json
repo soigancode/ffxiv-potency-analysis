@@ -1,0 +1,5925 @@
+{
+  "method": "Same-action non-critical Queen hits, separately potted/unpotted; DH /1.25, rolls +/-5%, rounded event multiplier +/-0.005, final floors +/-2 damage units. Enumerate timestamp-ordered ghost gain subsets and cap at 100. 572 leave-one-out uncontested Queens uniquely matched known Battery.",
+  "cases": [
+    {
+      "report": "28Tg1MkLwYP3XCvJ",
+      "fight": 19,
+      "source": 253,
+      "gauges": [
+        60,
+        100,
+        100,
+        100,
+        80,
+        100,
+        80,
+        100,
+        100,
+        90,
+        90,
+        50,
+        80,
+        100,
+        90,
+        90,
+        90,
+        80,
+        90,
+        80,
+        100,
+        60
+      ],
+      "ghosts": [
+        {
+          "time": 374.764,
+          "timestamp": 12645642,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 47668,
+          "target": 15,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 56.462
+        },
+        {
+          "time": 707.133,
+          "timestamp": 12978011,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 50106,
+          "target": 18,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 7.528
+        },
+        {
+          "time": 714.661,
+          "timestamp": 12985539,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 50157,
+          "target": 18,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 45.376
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 8,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 20883,
+              "multiplier": 1,
+              "value": 20883.0,
+              "time": 435.061,
+              "instance": 8
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 20543,
+              "multiplier": 1,
+              "value": 20543.0,
+              "time": 436.62,
+              "instance": 8
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 71750,
+              "multiplier": 1,
+              "value": 71750.0,
+              "time": 444.107,
+              "instance": 8
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                85.04476040021065,
+                94.91032205713645
+              ],
+              "queens": 1
+            },
+            "(True, 'Arm Punch')": {
+              "n": 7,
+              "interval": [
+                92.37192507334687,
+                93.67217885223424
+              ],
+              "queens": 3
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                89.08461118001651,
+                90.89721051075813
+              ],
+              "queens": 12
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 12,
+              "interval": [
+                89.32917828440218,
+                93.65823720491798
+              ],
+              "queens": 12
+            },
+            "(False, 'Arm Punch')": {
+              "n": 47,
+              "interval": [
+                89.08719190642906,
+                90.82869776066181
+              ],
+              "queens": 16
+            },
+            "(False, 'Roller Dash')": {
+              "n": 5,
+              "interval": [
+                87.09675827213141,
+                92.04963628583653
+              ],
+              "queens": 5
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                91.98246709767447,
+                100.2757168962155
+              ],
+              "queens": 2
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 1,
+              "interval": [
+                85.80508980843521,
+                95.74947783192853
+              ],
+              "queens": 1
+            }
+          }
+        },
+        {
+          "queen": 14,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 24484,
+              "multiplier": 1.08,
+              "value": 22670.37037037037,
+              "time": 731.206,
+              "instance": 14
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 23951,
+              "multiplier": 1.08,
+              "value": 22176.85185185185,
+              "time": 734.324,
+              "instance": 14
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 30584,
+              "multiplier": 1.08,
+              "value": 22654.814814814814,
+              "time": 735.881,
+              "instance": 14
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 68073,
+              "multiplier": 1.08,
+              "value": 63030.555555555555,
+              "time": 737.44,
+              "instance": 14
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 77846,
+              "multiplier": 1.08,
+              "value": 72079.62962962962,
+              "time": 739.495,
+              "instance": 14
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                85.04476040021065,
+                94.91032205713645
+              ],
+              "queens": 1
+            },
+            "(True, 'Arm Punch')": {
+              "n": 7,
+              "interval": [
+                92.37192507334687,
+                93.67217885223424
+              ],
+              "queens": 3
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                89.08461118001651,
+                90.89721051075813
+              ],
+              "queens": 12
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 12,
+              "interval": [
+                89.32917828440218,
+                93.65823720491798
+              ],
+              "queens": 12
+            },
+            "(False, 'Arm Punch')": {
+              "n": 47,
+              "interval": [
+                89.08719190642906,
+                90.82869776066181
+              ],
+              "queens": 16
+            },
+            "(False, 'Roller Dash')": {
+              "n": 5,
+              "interval": [
+                87.09675827213141,
+                92.04963628583653
+              ],
+              "queens": 5
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                91.98246709767447,
+                100.2757168962155
+              ],
+              "queens": 2
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 1,
+              "interval": [
+                85.80508980843521,
+                95.74947783192853
+              ],
+              "queens": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "8BmaGA6JvCHyDchw",
+      "fight": 42,
+      "source": 117,
+      "gauges": [
+        60,
+        90,
+        90,
+        60,
+        60,
+        50,
+        100,
+        50,
+        70,
+        100,
+        90,
+        90,
+        60,
+        100,
+        50,
+        80,
+        70,
+        50,
+        100,
+        100,
+        60,
+        100,
+        80,
+        90
+      ],
+      "ghosts": [
+        {
+          "time": 374.906,
+          "timestamp": 30873568,
+          "action": "Excavator",
+          "amount": 20,
+          "packet": 2936,
+          "target": 22,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 61.79
+        },
+        {
+          "time": 697.464,
+          "timestamp": 31196126,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 5191,
+          "target": 41,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 22.58
+        },
+        {
+          "time": 715.028,
+          "timestamp": 31213690,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 5294,
+          "target": 41,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 40.356
+        },
+        {
+          "time": 720.044,
+          "timestamp": 31218706,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 5321,
+          "target": 41,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 42.855
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 10,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21610,
+              "multiplier": 1,
+              "value": 21610.0,
+              "time": 435.181,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 25582,
+              "multiplier": 1,
+              "value": 20465.6,
+              "time": 436.74,
+              "instance": 10
+            },
+            {
+              "action": "Roller Dash",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 52285,
+              "multiplier": 1,
+              "value": 41828.0,
+              "time": 438.837,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21938,
+              "multiplier": 1,
+              "value": 21938.0,
+              "time": 442.004,
+              "instance": 10
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 75368,
+              "multiplier": 1,
+              "value": 60294.4,
+              "time": 443.564,
+              "instance": 10
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Arm Punch')": {
+              "n": 14,
+              "interval": [
+                91.03538203064271,
+                93.74632754134139
+              ],
+              "queens": 6
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 5,
+              "interval": [
+                91.18622293977745,
+                93.54911827372048
+              ],
+              "queens": 5
+            },
+            "(False, 'Arm Punch')": {
+              "n": 48,
+              "interval": [
+                88.06496617441891,
+                89.42078815128272
+              ],
+              "queens": 17
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 10,
+              "interval": [
+                87.97329877224522,
+                89.55862905860573
+              ],
+              "queens": 10
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 9,
+              "interval": [
+                87.4748082477551,
+                89.73503176327308
+              ],
+              "queens": 9
+            },
+            "(False, 'Roller Dash')": {
+              "n": 4,
+              "interval": [
+                88.04785595830373,
+                89.61718926014088
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 4,
+              "interval": [
+                90.96782472862763,
+                92.35042291910467
+              ],
+              "queens": 4
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                89.29198324932922,
+                99.64954251657852
+              ],
+              "queens": 1
+            }
+          }
+        },
+        {
+          "queen": 17,
+          "gauge": 70,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 14714,
+              "multiplier": 1.03,
+              "value": 14285.436893203883,
+              "time": 736.412,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 19607,
+              "multiplier": 1.03,
+              "value": 15228.73786407767,
+              "time": 737.968,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 15831,
+              "multiplier": 1.03,
+              "value": 15369.902912621359,
+              "time": 739.529,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 15574,
+              "multiplier": 1.03,
+              "value": 15120.388349514562,
+              "time": 741.087,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 15868,
+              "multiplier": 1.03,
+              "value": 15405.825242718447,
+              "time": 742.646,
+              "instance": 17
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 43632,
+              "multiplier": 1,
+              "value": 43632.0,
+              "time": 744.209,
+              "instance": 17
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Arm Punch')": {
+              "n": 14,
+              "interval": [
+                91.03538203064271,
+                93.74632754134139
+              ],
+              "queens": 6
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 5,
+              "interval": [
+                91.18622293977745,
+                93.54911827372048
+              ],
+              "queens": 5
+            },
+            "(False, 'Arm Punch')": {
+              "n": 48,
+              "interval": [
+                88.06496617441891,
+                89.42078815128272
+              ],
+              "queens": 17
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 10,
+              "interval": [
+                87.97329877224522,
+                89.55862905860573
+              ],
+              "queens": 10
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 9,
+              "interval": [
+                87.4748082477551,
+                89.73503176327308
+              ],
+              "queens": 9
+            },
+            "(False, 'Roller Dash')": {
+              "n": 4,
+              "interval": [
+                88.04785595830373,
+                89.61718926014088
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 4,
+              "interval": [
+                90.96782472862763,
+                92.35042291910467
+              ],
+              "queens": 4
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                89.29198324932922,
+                99.64954251657852
+              ],
+              "queens": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "C7PkpjdHThtXmxMK",
+      "fight": 23,
+      "source": 1145,
+      "gauges": [
+        60,
+        50,
+        50,
+        50,
+        50,
+        60,
+        90,
+        100,
+        70,
+        60,
+        100,
+        60,
+        50,
+        100,
+        50,
+        50,
+        60,
+        60,
+        80,
+        90,
+        90,
+        90,
+        60,
+        50,
+        50,
+        60,
+        60,
+        50
+      ],
+      "ghosts": [],
+      "damage_checks": []
+    },
+    {
+      "report": "Dk7tgXZhGdK9Lc6p",
+      "fight": 4,
+      "source": 3,
+      "gauges": [
+        60,
+        90,
+        100,
+        50,
+        90,
+        80,
+        70,
+        100,
+        70,
+        50,
+        100,
+        60,
+        60,
+        90,
+        50,
+        80,
+        90,
+        90,
+        80,
+        50,
+        80,
+        100,
+        100,
+        60,
+        80
+      ],
+      "ghosts": [],
+      "damage_checks": []
+    },
+    {
+      "report": "FDmkjVwq1yBadHG4",
+      "fight": 3,
+      "source": 67,
+      "gauges": [
+        60,
+        60,
+        100,
+        70,
+        90,
+        60,
+        50,
+        50,
+        80,
+        100,
+        100,
+        100,
+        50,
+        70,
+        50,
+        100,
+        100,
+        50,
+        70,
+        100,
+        80,
+        50,
+        60,
+        90,
+        70
+      ],
+      "ghosts": [
+        {
+          "time": 374.746,
+          "timestamp": 1987198,
+          "action": "Excavator",
+          "amount": 20,
+          "packet": 16325,
+          "target": 75,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 65.166
+        },
+        {
+          "time": 382.227,
+          "timestamp": 1994679,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 16374,
+          "target": 75,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 65.175
+        },
+        {
+          "time": 708.09,
+          "timestamp": 2320542,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 18853,
+          "target": 77,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 27.575
+        },
+        {
+          "time": 713.077,
+          "timestamp": 2325529,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 18890,
+          "target": 77,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 40.049
+        },
+        {
+          "time": 856.769,
+          "timestamp": 2469221,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 20082,
+          "target": 84,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 44.477
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 10,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Roller Dash",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 53740,
+              "multiplier": 1,
+              "value": 42992.0,
+              "time": 433.359,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 20858,
+              "multiplier": 1,
+              "value": 20858.0,
+              "time": 436.527,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 26715,
+              "multiplier": 1,
+              "value": 21372.0,
+              "time": 438.089,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 25862,
+              "multiplier": 1,
+              "value": 20689.6,
+              "time": 439.643,
+              "instance": 10
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 62999,
+              "multiplier": 1,
+              "value": 62999.0,
+              "time": 441.204,
+              "instance": 10
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Roller Dash')": {
+              "n": 7,
+              "interval": [
+                88.32977967306327,
+                89.7557965264921
+              ],
+              "queens": 7
+            },
+            "(False, 'Arm Punch')": {
+              "n": 54,
+              "interval": [
+                88.6769854431546,
+                89.65882041787886
+              ],
+              "queens": 18
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 11,
+              "interval": [
+                88.63432603555518,
+                89.7432763107888
+              ],
+              "queens": 11
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 15,
+              "interval": [
+                88.2252689881214,
+                89.64356193925092
+              ],
+              "queens": 15
+            },
+            "(True, 'Arm Punch')": {
+              "n": 12,
+              "interval": [
+                88.8072132486486,
+                94.36964504283965
+              ],
+              "queens": 4
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 4,
+              "interval": [
+                91.91292066868104,
+                94.26069646387884
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 3,
+              "interval": [
+                91.61882762583707,
+                99.54352365181077
+              ],
+              "queens": 3
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                85.54728052358385,
+                95.46377906488708
+              ],
+              "queens": 1
+            }
+          }
+        },
+        {
+          "queen": 17,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 22832,
+              "multiplier": 1.08,
+              "value": 21140.74074074074,
+              "time": 741.769,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 24894,
+              "multiplier": 1.08,
+              "value": 23050.0,
+              "time": 743.325,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 23931,
+              "multiplier": 1.08,
+              "value": 22158.333333333332,
+              "time": 746.444,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 30506,
+              "multiplier": 1.08,
+              "value": 22597.037037037036,
+              "time": 748.002,
+              "instance": 17
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Roller Dash')": {
+              "n": 7,
+              "interval": [
+                88.32977967306327,
+                89.7557965264921
+              ],
+              "queens": 7
+            },
+            "(False, 'Arm Punch')": {
+              "n": 54,
+              "interval": [
+                88.6769854431546,
+                89.65882041787886
+              ],
+              "queens": 18
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 11,
+              "interval": [
+                88.63432603555518,
+                89.7432763107888
+              ],
+              "queens": 11
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 15,
+              "interval": [
+                88.2252689881214,
+                89.64356193925092
+              ],
+              "queens": 15
+            },
+            "(True, 'Arm Punch')": {
+              "n": 12,
+              "interval": [
+                88.8072132486486,
+                94.36964504283965
+              ],
+              "queens": 4
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 4,
+              "interval": [
+                91.91292066868104,
+                94.26069646387884
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 3,
+              "interval": [
+                91.61882762583707,
+                99.54352365181077
+              ],
+              "queens": 3
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                85.54728052358385,
+                95.46377906488708
+              ],
+              "queens": 1
+            }
+          }
+        },
+        {
+          "queen": 20,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21016,
+              "multiplier": 1,
+              "value": 21016.0,
+              "time": 893.894,
+              "instance": 20
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 20695,
+              "multiplier": 1,
+              "value": 20695.0,
+              "time": 895.453,
+              "instance": 20
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22460,
+              "multiplier": 1,
+              "value": 22460.0,
+              "time": 897.013,
+              "instance": 20
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Roller Dash')": {
+              "n": 7,
+              "interval": [
+                88.32977967306327,
+                89.7557965264921
+              ],
+              "queens": 7
+            },
+            "(False, 'Arm Punch')": {
+              "n": 54,
+              "interval": [
+                88.6769854431546,
+                89.65882041787886
+              ],
+              "queens": 18
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 11,
+              "interval": [
+                88.63432603555518,
+                89.7432763107888
+              ],
+              "queens": 11
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 15,
+              "interval": [
+                88.2252689881214,
+                89.64356193925092
+              ],
+              "queens": 15
+            },
+            "(True, 'Arm Punch')": {
+              "n": 12,
+              "interval": [
+                88.8072132486486,
+                94.36964504283965
+              ],
+              "queens": 4
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 4,
+              "interval": [
+                91.91292066868104,
+                94.26069646387884
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 3,
+              "interval": [
+                91.61882762583707,
+                99.54352365181077
+              ],
+              "queens": 3
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                85.54728052358385,
+                95.46377906488708
+              ],
+              "queens": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "GDrjAz7F8TPHq3hk",
+      "fight": 6,
+      "source": 79,
+      "gauges": [
+        60,
+        60,
+        100,
+        70,
+        100,
+        90,
+        100,
+        50,
+        100,
+        90,
+        80,
+        80,
+        100,
+        100,
+        100,
+        50,
+        70,
+        60,
+        70,
+        50,
+        100,
+        100,
+        60,
+        80
+      ],
+      "ghosts": [],
+      "damage_checks": []
+    },
+    {
+      "report": "GaAKTpkz4dLq6Qrb",
+      "fight": 14,
+      "source": 14,
+      "gauges": [
+        60,
+        90,
+        100,
+        90,
+        50,
+        100,
+        70,
+        80,
+        100,
+        70,
+        100,
+        80,
+        90,
+        50,
+        60,
+        90,
+        50,
+        100,
+        50,
+        70,
+        80,
+        90,
+        50,
+        100,
+        70
+      ],
+      "ghosts": [
+        {
+          "time": 381.882,
+          "timestamp": 5754770,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 42374,
+          "target": 22,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 64.344
+        },
+        {
+          "time": 710.197,
+          "timestamp": 6083085,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 44896,
+          "target": 24,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 39.836
+        },
+        {
+          "time": 717.64,
+          "timestamp": 6090528,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 44941,
+          "target": 24,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 34.887
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 9,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Roller Dash",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 54070,
+              "multiplier": 1,
+              "value": 43256.0,
+              "time": 435.937,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22608,
+              "multiplier": 1,
+              "value": 22608.0,
+              "time": 439.23,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21357,
+              "multiplier": 1,
+              "value": 21357.0,
+              "time": 440.965,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 27331,
+              "multiplier": 1,
+              "value": 21864.8,
+              "time": 442.705,
+              "instance": 9
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 71659,
+              "multiplier": 1,
+              "value": 71659.0,
+              "time": 446.315,
+              "instance": 9
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Arm Punch')": {
+              "n": 17,
+              "interval": [
+                92.85432182351613,
+                94.64450600184671
+              ],
+              "queens": 6
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 4,
+              "interval": [
+                92.43731518613035,
+                94.67680886734851
+              ],
+              "queens": 4
+            },
+            "(False, 'Arm Punch')": {
+              "n": 52,
+              "interval": [
+                89.44648537079397,
+                90.7555320461959
+              ],
+              "queens": 18
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 10,
+              "interval": [
+                87.8162210157695,
+                90.74972385145543
+              ],
+              "queens": 10
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 10,
+              "interval": [
+                89.57271899702604,
+                90.58743096303958
+              ],
+              "queens": 10
+            },
+            "(False, 'Roller Dash')": {
+              "n": 4,
+              "interval": [
+                88.22948748321883,
+                93.78030503394163
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 6,
+              "interval": [
+                92.75027546563649,
+                94.55130579051058
+              ],
+              "queens": 6
+            },
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                86.89835766942761,
+                95.39998321161754
+              ],
+              "queens": 2
+            }
+          }
+        },
+        {
+          "queen": 16,
+          "gauge": 90,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 28640,
+              "multiplier": 1.14,
+              "value": 20098.24561403509,
+              "time": 727.529,
+              "instance": 16
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22702,
+              "multiplier": 1.14,
+              "value": 19914.0350877193,
+              "time": 732.206,
+              "instance": 16
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22455,
+              "multiplier": 1.14,
+              "value": 19697.368421052633,
+              "time": 733.766,
+              "instance": 16
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Arm Punch')": {
+              "n": 17,
+              "interval": [
+                92.85432182351613,
+                94.64450600184671
+              ],
+              "queens": 6
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 4,
+              "interval": [
+                92.43731518613035,
+                94.67680886734851
+              ],
+              "queens": 4
+            },
+            "(False, 'Arm Punch')": {
+              "n": 52,
+              "interval": [
+                89.44648537079397,
+                90.7555320461959
+              ],
+              "queens": 18
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 10,
+              "interval": [
+                87.8162210157695,
+                90.74972385145543
+              ],
+              "queens": 10
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 10,
+              "interval": [
+                89.57271899702604,
+                90.58743096303958
+              ],
+              "queens": 10
+            },
+            "(False, 'Roller Dash')": {
+              "n": 4,
+              "interval": [
+                88.22948748321883,
+                93.78030503394163
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 6,
+              "interval": [
+                92.75027546563649,
+                94.55130579051058
+              ],
+              "queens": 6
+            },
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                86.89835766942761,
+                95.39998321161754
+              ],
+              "queens": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "GxpWJjDFcT72LC3B",
+      "fight": 75,
+      "source": 271,
+      "gauges": [
+        60,
+        90,
+        100,
+        50,
+        100,
+        60,
+        50,
+        50,
+        70,
+        100,
+        90,
+        70,
+        50,
+        100,
+        50,
+        90,
+        100,
+        50,
+        80,
+        50,
+        80,
+        60,
+        90,
+        60,
+        50,
+        70
+      ],
+      "ghosts": [
+        {
+          "time": 374.897,
+          "timestamp": 21875498,
+          "action": "Excavator",
+          "amount": 20,
+          "packet": 97469,
+          "target": 22,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 71.864
+        },
+        {
+          "time": 1117.435,
+          "timestamp": 22618036,
+          "action": "Excavator",
+          "amount": 20,
+          "packet": 103364,
+          "target": 287,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": null
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 10,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 20656,
+              "multiplier": 1,
+              "value": 20656.0,
+              "time": 435.412,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 20903,
+              "multiplier": 1,
+              "value": 20903.0,
+              "time": 436.974,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22127,
+              "multiplier": 1,
+              "value": 22127.0,
+              "time": 440.944,
+              "instance": 10
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 58807,
+              "multiplier": 1,
+              "value": 58807.0,
+              "time": 442.51,
+              "instance": 10
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 90973,
+              "multiplier": 1,
+              "value": 72778.4,
+              "time": 444.566,
+              "instance": 10
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Roller Dash')": {
+              "n": 3,
+              "interval": [
+                85.64716102029536,
+                94.3092656263775
+              ],
+              "queens": 3
+            },
+            "(False, 'Arm Punch')": {
+              "n": 66,
+              "interval": [
+                89.69633140249255,
+                90.72255332643144
+              ],
+              "queens": 21
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 14,
+              "interval": [
+                89.79379479818462,
+                93.27753317671952
+              ],
+              "queens": 14
+            },
+            "(True, 'Arm Punch')": {
+              "n": 16,
+              "interval": [
+                92.84996049701932,
+                94.35632460145796
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 3,
+              "interval": [
+                91.17823097061851,
+                98.3216555320189
+              ],
+              "queens": 3
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 3,
+              "interval": [
+                89.09195937853553,
+                94.21921505555247
+              ],
+              "queens": 3
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 15,
+              "interval": [
+                88.2449777972166,
+                90.99388078494134
+              ],
+              "queens": 15
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                84.57040882001388,
+                94.37635822677373
+              ],
+              "queens": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "H2KFZXJ9fxT4WcRV",
+      "fight": 6,
+      "source": 3,
+      "gauges": [
+        60,
+        80,
+        80,
+        100,
+        70,
+        90,
+        50,
+        90,
+        90,
+        60,
+        50,
+        90,
+        80,
+        50,
+        50,
+        90,
+        70,
+        50,
+        100,
+        60,
+        60,
+        100,
+        60,
+        50,
+        60,
+        70
+      ],
+      "ghosts": [
+        {
+          "time": 706.724,
+          "timestamp": 4083854,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 8908,
+          "target": 27,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 56.518
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 17,
+          "gauge": 70,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 14950,
+              "multiplier": 1.03,
+              "value": 14514.563106796117,
+              "time": 731.883,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 17917,
+              "multiplier": 1.03,
+              "value": 13916.116504854368,
+              "time": 733.439,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 18619,
+              "multiplier": 1.03,
+              "value": 14461.35922330097,
+              "time": 734.997,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 19461,
+              "multiplier": 1.03,
+              "value": 15115.33980582524,
+              "time": 736.553,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 18464,
+              "multiplier": 1.03,
+              "value": 14340.970873786408,
+              "time": 738.114,
+              "instance": 17
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                86.03964492590084,
+                92.30246158030735
+              ],
+              "queens": 2
+            },
+            "(True, 'Arm Punch')": {
+              "n": 10,
+              "interval": [
+                89.49078863496243,
+                92.44242983855172
+              ],
+              "queens": 4
+            },
+            "(False, 'Arm Punch')": {
+              "n": 60,
+              "interval": [
+                86.65403143015084,
+                87.75353016688061
+              ],
+              "queens": 21
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 14,
+              "interval": [
+                86.4849422356007,
+                87.84548819086835
+              ],
+              "queens": 14
+            },
+            "(False, 'Roller Dash')": {
+              "n": 7,
+              "interval": [
+                85.58442356120632,
+                88.7693829772645
+              ],
+              "queens": 7
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 9,
+              "interval": [
+                85.23536165327211,
+                87.85086023911732
+              ],
+              "queens": 9
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 3,
+              "interval": [
+                85.594821771757,
+                94.58832949137657
+              ],
+              "queens": 3
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                88.7724189201747,
+                98.88604144755358
+              ],
+              "queens": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "KwJMQkaA41CBRV7D",
+      "fight": 11,
+      "source": 293,
+      "gauges": [
+        60,
+        100,
+        90,
+        80,
+        80,
+        100,
+        90,
+        100,
+        100,
+        100,
+        70,
+        70,
+        90,
+        100,
+        100,
+        100,
+        90,
+        100,
+        100,
+        100,
+        80
+      ],
+      "ghosts": [
+        {
+          "time": 377.259,
+          "timestamp": 17840881,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 26951,
+          "target": 307,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 54.349
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 8,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 25801,
+              "multiplier": 1,
+              "value": 20640.8,
+              "time": 433.21,
+              "instance": 8
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22154,
+              "multiplier": 1,
+              "value": 22154.0,
+              "time": 434.768,
+              "instance": 8
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21164,
+              "multiplier": 1,
+              "value": 21164.0,
+              "time": 436.773,
+              "instance": 8
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 61115,
+              "multiplier": 1,
+              "value": 61115.0,
+              "time": 438.689,
+              "instance": 8
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 70629,
+              "multiplier": 1,
+              "value": 70629.0,
+              "time": 440.787,
+              "instance": 8
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                91.58945629533864,
+                99.89335496274931
+              ],
+              "queens": 2
+            },
+            "(True, 'Arm Punch')": {
+              "n": 16,
+              "interval": [
+                92.89185759773994,
+                94.74355745823888
+              ],
+              "queens": 6
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 4,
+              "interval": [
+                92.1741208331674,
+                97.88377501592426
+              ],
+              "queens": 4
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 4,
+              "interval": [
+                89.76291744064255,
+                96.39734226991844
+              ],
+              "queens": 4
+            },
+            "(False, 'Arm Punch')": {
+              "n": 46,
+              "interval": [
+                88.82870683818551,
+                90.91069381997707
+              ],
+              "queens": 14
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 11,
+              "interval": [
+                89.34084157964756,
+                91.14567439084762
+              ],
+              "queens": 11
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 10,
+              "interval": [
+                89.17132358747811,
+                90.92210277393158
+              ],
+              "queens": 10
+            },
+            "(False, 'Roller Dash')": {
+              "n": 3,
+              "interval": [
+                89.68824308791142,
+                92.93837609098122
+              ],
+              "queens": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "LKMgVWGYbptD2ycd",
+      "fight": 6,
+      "source": 1863,
+      "gauges": [
+        60,
+        90,
+        100,
+        80,
+        80,
+        80,
+        100,
+        50,
+        100,
+        90,
+        90,
+        100,
+        100,
+        100,
+        60,
+        100,
+        100,
+        100,
+        80,
+        90,
+        70,
+        70
+      ],
+      "ghosts": [
+        {
+          "time": 382.462,
+          "timestamp": 25916018,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 28412,
+          "target": 1749,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 63.971
+        },
+        {
+          "time": 715.272,
+          "timestamp": 26248828,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 30900,
+          "target": 1751,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 47.819
+        },
+        {
+          "time": 857.13,
+          "timestamp": 26390686,
+          "action": "Excavator",
+          "amount": 20,
+          "packet": 32036,
+          "target": 1757,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 58.847
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 9,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Roller Dash",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 44346,
+              "multiplier": 1,
+              "value": 44346.0,
+              "time": 437.631,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21017,
+              "multiplier": 1,
+              "value": 21017.0,
+              "time": 442.365,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 27157,
+              "multiplier": 1,
+              "value": 21725.6,
+              "time": 443.931,
+              "instance": 9
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 75434,
+              "multiplier": 1,
+              "value": 60347.2,
+              "time": 445.496,
+              "instance": 9
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 70515,
+              "multiplier": 1,
+              "value": 70515.0,
+              "time": 447.552,
+              "instance": 9
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 53,
+              "interval": [
+                89.74966437653005,
+                91.10244203473509
+              ],
+              "queens": 15
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 13,
+              "interval": [
+                89.21547502862381,
+                92.76343879701224
+              ],
+              "queens": 13
+            },
+            "(True, 'Arm Punch')": {
+              "n": 11,
+              "interval": [
+                92.21412297234902,
+                95.42340700235437
+              ],
+              "queens": 4
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 1,
+              "interval": [
+                85.60319032422038,
+                95.43789543789545
+              ],
+              "queens": 1
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 9,
+              "interval": [
+                88.80238611581896,
+                91.29317301758455
+              ],
+              "queens": 9
+            },
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                92.88514422795623,
+                95.23303207513733
+              ],
+              "queens": 1
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 3,
+              "interval": [
+                88.42209869729884,
+                95.46742673677659
+              ],
+              "queens": 3
+            },
+            "(False, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                81.50122403853747,
+                90.99444591377942
+              ],
+              "queens": 1
+            }
+          }
+        },
+        {
+          "queen": 14,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 25055,
+              "multiplier": 1.1,
+              "value": 22777.272727272724,
+              "time": 728.594,
+              "instance": 14
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 24161,
+              "multiplier": 1.1,
+              "value": 21964.545454545452,
+              "time": 730.157,
+              "instance": 14
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 23003,
+              "multiplier": 1.1,
+              "value": 20911.81818181818,
+              "time": 731.722,
+              "instance": 14
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 89137,
+              "multiplier": 1.16,
+              "value": 61473.793103448275,
+              "time": 736.414,
+              "instance": 14
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 53,
+              "interval": [
+                89.74966437653005,
+                91.10244203473509
+              ],
+              "queens": 15
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 13,
+              "interval": [
+                89.21547502862381,
+                92.76343879701224
+              ],
+              "queens": 13
+            },
+            "(True, 'Arm Punch')": {
+              "n": 11,
+              "interval": [
+                92.21412297234902,
+                95.42340700235437
+              ],
+              "queens": 4
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 1,
+              "interval": [
+                85.60319032422038,
+                95.43789543789545
+              ],
+              "queens": 1
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 9,
+              "interval": [
+                88.80238611581896,
+                91.29317301758455
+              ],
+              "queens": 9
+            },
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                92.88514422795623,
+                95.23303207513733
+              ],
+              "queens": 1
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 3,
+              "interval": [
+                88.42209869729884,
+                95.46742673677659
+              ],
+              "queens": 3
+            },
+            "(False, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                81.50122403853747,
+                90.99444591377942
+              ],
+              "queens": 1
+            }
+          }
+        },
+        {
+          "queen": 17,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21799,
+              "multiplier": 1,
+              "value": 21799.0,
+              "time": 893.244,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 27484,
+              "multiplier": 1,
+              "value": 21987.2,
+              "time": 896.372,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22206,
+              "multiplier": 1,
+              "value": 22206.0,
+              "time": 897.934,
+              "instance": 17
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 79626,
+              "multiplier": 1,
+              "value": 63700.8,
+              "time": 899.5,
+              "instance": 17
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 67996,
+              "multiplier": 1,
+              "value": 67996.0,
+              "time": 901.552,
+              "instance": 17
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 53,
+              "interval": [
+                89.74966437653005,
+                91.10244203473509
+              ],
+              "queens": 15
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 13,
+              "interval": [
+                89.21547502862381,
+                92.76343879701224
+              ],
+              "queens": 13
+            },
+            "(True, 'Arm Punch')": {
+              "n": 11,
+              "interval": [
+                92.21412297234902,
+                95.42340700235437
+              ],
+              "queens": 4
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 1,
+              "interval": [
+                85.60319032422038,
+                95.43789543789545
+              ],
+              "queens": 1
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 9,
+              "interval": [
+                88.80238611581896,
+                91.29317301758455
+              ],
+              "queens": 9
+            },
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                92.88514422795623,
+                95.23303207513733
+              ],
+              "queens": 1
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 3,
+              "interval": [
+                88.42209869729884,
+                95.46742673677659
+              ],
+              "queens": 3
+            },
+            "(False, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                81.50122403853747,
+                90.99444591377942
+              ],
+              "queens": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "LaYwZKfkTVDP8zpA",
+      "fight": 113,
+      "source": 2834,
+      "gauges": [
+        60,
+        50,
+        70,
+        100,
+        100,
+        100,
+        50,
+        60,
+        50,
+        70,
+        90,
+        60,
+        50,
+        70,
+        100,
+        50,
+        100,
+        50,
+        80,
+        50,
+        70,
+        80,
+        100,
+        70,
+        50,
+        50,
+        70
+      ],
+      "ghosts": [
+        {
+          "time": 707.601,
+          "timestamp": 257454825,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 57911,
+          "target": 1542,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 10.068
+        },
+        {
+          "time": 715.127,
+          "timestamp": 257462351,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 57953,
+          "target": 1542,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 40.298
+        },
+        {
+          "time": 717.669,
+          "timestamp": 257464893,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 57968,
+          "target": 1542,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 32.723
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 17,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 23242,
+              "multiplier": 1.09,
+              "value": 21322.93577981651,
+              "time": 730.937,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22411,
+              "multiplier": 1.09,
+              "value": 20560.550458715596,
+              "time": 732.495,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 28985,
+              "multiplier": 1.09,
+              "value": 21273.394495412842,
+              "time": 734.053,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22856,
+              "multiplier": 1.09,
+              "value": 20968.80733944954,
+              "time": 735.611,
+              "instance": 17
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 65502,
+              "multiplier": 1.09,
+              "value": 60093.577981651375,
+              "time": 737.171,
+              "instance": 17
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 112679,
+              "multiplier": 1.22,
+              "value": 73887.86885245903,
+              "time": 739.259,
+              "instance": 17
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Arm Punch')": {
+              "n": 12,
+              "interval": [
+                90.54991348830211,
+                91.59386807210069
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 3,
+              "interval": [
+                89.92242058113568,
+                99.13268778956152
+              ],
+              "queens": 3
+            },
+            "(False, 'Arm Punch')": {
+              "n": 67,
+              "interval": [
+                87.57403458895996,
+                88.62608783264695
+              ],
+              "queens": 21
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                86.72826344468137,
+                88.59986205537491
+              ],
+              "queens": 12
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 16,
+              "interval": [
+                87.3737993051298,
+                90.02638021416124
+              ],
+              "queens": 16
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                89.71137691516839,
+                100.11098986168237
+              ],
+              "queens": 1
+            },
+            "(False, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                87.24235963041933,
+                91.22366217050164
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                89.07794714246327,
+                95.19477752164732
+              ],
+              "queens": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "QrYPBXFk4ygdLRTA",
+      "fight": 18,
+      "source": 706,
+      "gauges": [
+        60,
+        100,
+        100,
+        60,
+        80,
+        80,
+        50,
+        90,
+        90,
+        70,
+        80,
+        100,
+        70,
+        50,
+        100,
+        100,
+        50,
+        80,
+        90,
+        100,
+        100,
+        70,
+        90,
+        60
+      ],
+      "ghosts": [
+        {
+          "time": 377.212,
+          "timestamp": 17989206,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 53308,
+          "target": 17,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 54.612
+        },
+        {
+          "time": 712.65,
+          "timestamp": 18324644,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 55892,
+          "target": 20,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 40.471
+        },
+        {
+          "time": 717.666,
+          "timestamp": 18329660,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 55915,
+          "target": 20,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 32.914
+        },
+        {
+          "time": 856.403,
+          "timestamp": 18468397,
+          "action": "Excavator",
+          "amount": 20,
+          "packet": 57111,
+          "target": 26,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 60.01
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 9,
+          "gauge": 90,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 25298,
+              "multiplier": 1.05,
+              "value": 19274.666666666664,
+              "time": 435.743,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 22060,
+              "multiplier": 1.05,
+              "value": 21009.52380952381,
+              "time": 437.301,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 21709,
+              "multiplier": 1.05,
+              "value": 20675.238095238095,
+              "time": 438.949,
+              "instance": 9
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 58,
+              "interval": [
+                89.05021378368927,
+                90.02909283258397
+              ],
+              "queens": 18
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                89.04258220701216,
+                90.52538232960468
+              ],
+              "queens": 12
+            },
+            "(True, 'Arm Punch')": {
+              "n": 7,
+              "interval": [
+                91.61881357773933,
+                94.39231152817443
+              ],
+              "queens": 2
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                89.02697420549978,
+                93.46571923459855
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                89.20933264824667,
+                99.04462953384818
+              ],
+              "queens": 2
+            },
+            "(False, 'Roller Dash')": {
+              "n": 5,
+              "interval": [
+                88.13571033720288,
+                92.90311205148551
+              ],
+              "queens": 5
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 13,
+              "interval": [
+                88.75449033447717,
+                90.2623780169403
+              ],
+              "queens": 13
+            }
+          }
+        },
+        {
+          "queen": 16,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 31112,
+              "multiplier": 1.14,
+              "value": 21832.982456140355,
+              "time": 739.892,
+              "instance": 16
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 25940,
+              "multiplier": 1.14,
+              "value": 22754.385964912282,
+              "time": 741.454,
+              "instance": 16
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 31418,
+              "multiplier": 1.14,
+              "value": 22047.719298245614,
+              "time": 743.011,
+              "instance": 16
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 30635,
+              "multiplier": 1.14,
+              "value": 21498.24561403509,
+              "time": 744.568,
+              "instance": 16
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 30059,
+              "multiplier": 1.1,
+              "value": 21861.090909090904,
+              "time": 746.127,
+              "instance": 16
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 65780,
+              "multiplier": 1.05,
+              "value": 62647.619047619046,
+              "time": 747.685,
+              "instance": 16
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 58,
+              "interval": [
+                89.05021378368927,
+                90.02909283258397
+              ],
+              "queens": 18
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                89.04258220701216,
+                90.52538232960468
+              ],
+              "queens": 12
+            },
+            "(True, 'Arm Punch')": {
+              "n": 7,
+              "interval": [
+                91.61881357773933,
+                94.39231152817443
+              ],
+              "queens": 2
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                89.02697420549978,
+                93.46571923459855
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                89.20933264824667,
+                99.04462953384818
+              ],
+              "queens": 2
+            },
+            "(False, 'Roller Dash')": {
+              "n": 5,
+              "interval": [
+                88.13571033720288,
+                92.90311205148551
+              ],
+              "queens": 5
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 13,
+              "interval": [
+                88.75449033447717,
+                90.2623780169403
+              ],
+              "queens": 13
+            }
+          }
+        },
+        {
+          "queen": 19,
+          "gauge": 90,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 18672,
+              "multiplier": 1,
+              "value": 18672.0,
+              "time": 895.706,
+              "instance": 19
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 18650,
+              "multiplier": 1,
+              "value": 18650.0,
+              "time": 897.267,
+              "instance": 19
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 19072,
+              "multiplier": 1,
+              "value": 19072.0,
+              "time": 898.825,
+              "instance": 19
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 58,
+              "interval": [
+                89.05021378368927,
+                90.02909283258397
+              ],
+              "queens": 18
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                89.04258220701216,
+                90.52538232960468
+              ],
+              "queens": 12
+            },
+            "(True, 'Arm Punch')": {
+              "n": 7,
+              "interval": [
+                91.61881357773933,
+                94.39231152817443
+              ],
+              "queens": 2
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                89.02697420549978,
+                93.46571923459855
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                89.20933264824667,
+                99.04462953384818
+              ],
+              "queens": 2
+            },
+            "(False, 'Roller Dash')": {
+              "n": 5,
+              "interval": [
+                88.13571033720288,
+                92.90311205148551
+              ],
+              "queens": 5
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 13,
+              "interval": [
+                88.75449033447717,
+                90.2623780169403
+              ],
+              "queens": 13
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "WMpByk8ZzJwcNKg3",
+      "fight": 3,
+      "source": 7,
+      "gauges": [
+        60,
+        100,
+        90,
+        50,
+        100,
+        100,
+        90,
+        50,
+        90,
+        50,
+        90,
+        90,
+        100,
+        100,
+        100,
+        100,
+        80,
+        90,
+        100,
+        90,
+        100,
+        60
+      ],
+      "ghosts": [
+        {
+          "time": 717.588,
+          "timestamp": 2165202,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 17914,
+          "target": 21,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 41.657
+        },
+        {
+          "time": 720.128,
+          "timestamp": 2167742,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 17928,
+          "target": 21,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 11.406
+        },
+        {
+          "time": 857.113,
+          "timestamp": 2304727,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 18991,
+          "target": 27,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 59.668
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 15,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 23650,
+              "multiplier": 1.1,
+              "value": 21500.0,
+              "time": 736.836,
+              "instance": 15
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 24828,
+              "multiplier": 1.1,
+              "value": 22570.90909090909,
+              "time": 738.396,
+              "instance": 15
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                92.61952644305585,
+                100.75594355372748
+              ],
+              "queens": 2
+            },
+            "(True, 'Arm Punch')": {
+              "n": 8,
+              "interval": [
+                92.5686513921808,
+                95.22277250809105
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                88.26529103345713,
+                97.33472817148967
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                90.32129885210453,
+                94.87301454060456
+              ],
+              "queens": 2
+            },
+            "(False, 'Arm Punch')": {
+              "n": 48,
+              "interval": [
+                89.65314520870076,
+                90.76082165212024
+              ],
+              "queens": 16
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                88.5600011148738,
+                90.83809138572119
+              ],
+              "queens": 12
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 8,
+              "interval": [
+                89.10514582156374,
+                91.15754209644716
+              ],
+              "queens": 8
+            },
+            "(False, 'Roller Dash')": {
+              "n": 4,
+              "interval": [
+                83.84742951907133,
+                90.81714615964815
+              ],
+              "queens": 4
+            }
+          }
+        },
+        {
+          "queen": 18,
+          "gauge": 90,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 19305,
+              "multiplier": 1,
+              "value": 19305.0,
+              "time": 900.387,
+              "instance": 18
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 25334,
+              "multiplier": 1,
+              "value": 20267.2,
+              "time": 903.505,
+              "instance": 18
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 18878,
+              "multiplier": 1,
+              "value": 18878.0,
+              "time": 905.065,
+              "instance": 18
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 19450,
+              "multiplier": 1,
+              "value": 19450.0,
+              "time": 906.625,
+              "instance": 18
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 55772,
+              "multiplier": 1,
+              "value": 55772.0,
+              "time": 908.183,
+              "instance": 18
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 65879,
+              "multiplier": 1,
+              "value": 65879.0,
+              "time": 910.233,
+              "instance": 18
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                92.61952644305585,
+                100.75594355372748
+              ],
+              "queens": 2
+            },
+            "(True, 'Arm Punch')": {
+              "n": 8,
+              "interval": [
+                92.5686513921808,
+                95.22277250809105
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                88.26529103345713,
+                97.33472817148967
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                90.32129885210453,
+                94.87301454060456
+              ],
+              "queens": 2
+            },
+            "(False, 'Arm Punch')": {
+              "n": 48,
+              "interval": [
+                89.65314520870076,
+                90.76082165212024
+              ],
+              "queens": 16
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                88.5600011148738,
+                90.83809138572119
+              ],
+              "queens": 12
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 8,
+              "interval": [
+                89.10514582156374,
+                91.15754209644716
+              ],
+              "queens": 8
+            },
+            "(False, 'Roller Dash')": {
+              "n": 4,
+              "interval": [
+                83.84742951907133,
+                90.81714615964815
+              ],
+              "queens": 4
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "XfKyNjt4WJg8vY9Q",
+      "fight": 23,
+      "source": 103,
+      "gauges": [
+        60,
+        80,
+        100,
+        50,
+        80,
+        100,
+        90,
+        70,
+        100,
+        90,
+        50,
+        70,
+        100,
+        50,
+        70,
+        100,
+        50,
+        60,
+        50,
+        90,
+        50,
+        90,
+        80,
+        50,
+        100
+      ],
+      "ghosts": [
+        {
+          "time": 374.409,
+          "timestamp": 56049338,
+          "action": "Excavator",
+          "amount": 20,
+          "packet": 10656,
+          "target": 180,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 62.553
+        },
+        {
+          "time": 381.874,
+          "timestamp": 56056803,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 10710,
+          "target": 180,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 72.519
+        },
+        {
+          "time": 710.676,
+          "timestamp": 56385605,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 13184,
+          "target": 182,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 17.407
+        },
+        {
+          "time": 713.172,
+          "timestamp": 56388101,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 13197,
+          "target": 182,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 42.474
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 9,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 20621,
+              "multiplier": 1,
+              "value": 20621.0,
+              "time": 435.581,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 27833,
+              "multiplier": 1,
+              "value": 22266.4,
+              "time": 438.693,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22558,
+              "multiplier": 1,
+              "value": 22558.0,
+              "time": 440.336,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 26966,
+              "multiplier": 1,
+              "value": 21572.8,
+              "time": 441.893,
+              "instance": 9
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 79633,
+              "multiplier": 1,
+              "value": 63706.4,
+              "time": 443.45,
+              "instance": 9
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 52,
+              "interval": [
+                89.6509515912501,
+                90.88424579035528
+              ],
+              "queens": 19
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 13,
+              "interval": [
+                89.08692192274283,
+                91.55629700459112
+              ],
+              "queens": 13
+            },
+            "(True, 'Arm Punch')": {
+              "n": 12,
+              "interval": [
+                91.62265197199696,
+                95.1773707396244
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                89.02697420549978,
+                96.13344062410498
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                89.01685408235629,
+                96.83280708211454
+              ],
+              "queens": 2
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 9,
+              "interval": [
+                89.34469845285784,
+                91.36571846405847
+              ],
+              "queens": 9
+            },
+            "(False, 'Roller Dash')": {
+              "n": 6,
+              "interval": [
+                89.80494353628683,
+                94.46178259719652
+              ],
+              "queens": 6
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                85.14898762351457,
+                94.94808975448902
+              ],
+              "queens": 1
+            }
+          }
+        },
+        {
+          "queen": 16,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 24135,
+              "multiplier": 1.08,
+              "value": 22347.22222222222,
+              "time": 734.722,
+              "instance": 16
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 65405,
+              "multiplier": 1.08,
+              "value": 60560.18518518518,
+              "time": 737.834,
+              "instance": 16
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 79491,
+              "multiplier": 1.08,
+              "value": 73602.77777777777,
+              "time": 739.88,
+              "instance": 16
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 52,
+              "interval": [
+                89.6509515912501,
+                90.88424579035528
+              ],
+              "queens": 19
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 13,
+              "interval": [
+                89.08692192274283,
+                91.55629700459112
+              ],
+              "queens": 13
+            },
+            "(True, 'Arm Punch')": {
+              "n": 12,
+              "interval": [
+                91.62265197199696,
+                95.1773707396244
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                89.02697420549978,
+                96.13344062410498
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                89.01685408235629,
+                96.83280708211454
+              ],
+              "queens": 2
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 9,
+              "interval": [
+                89.34469845285784,
+                91.36571846405847
+              ],
+              "queens": 9
+            },
+            "(False, 'Roller Dash')": {
+              "n": 6,
+              "interval": [
+                89.80494353628683,
+                94.46178259719652
+              ],
+              "queens": 6
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                85.14898762351457,
+                94.94808975448902
+              ],
+              "queens": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "aYvQ8nWDfCtGpLdj",
+      "fight": 17,
+      "source": 53,
+      "gauges": [
+        60,
+        100,
+        100,
+        70,
+        100,
+        100,
+        90,
+        90,
+        100,
+        100,
+        90,
+        90,
+        90,
+        100,
+        60,
+        90,
+        90,
+        100,
+        90,
+        100,
+        60
+      ],
+      "ghosts": [
+        {
+          "time": 708.304,
+          "timestamp": 12242165,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 28571,
+          "target": 35,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 10.069
+        },
+        {
+          "time": 713.336,
+          "timestamp": 12247197,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 28603,
+          "target": 34,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 43.004
+        },
+        {
+          "time": 718.373,
+          "timestamp": 12252234,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 28634,
+          "target": 35,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 29.32
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 14,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 23101,
+              "multiplier": 1.1,
+              "value": 21000.90909090909,
+              "time": 740.117,
+              "instance": 14
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 23071,
+              "multiplier": 1.1,
+              "value": 20973.63636363636,
+              "time": 741.68,
+              "instance": 14
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22939,
+              "multiplier": 1.1,
+              "value": 20853.63636363636,
+              "time": 743.238,
+              "instance": 14
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 22000,
+              "multiplier": 1.05,
+              "value": 20952.38095238095,
+              "time": 746.356,
+              "instance": 14
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 66383,
+              "multiplier": 1.05,
+              "value": 63221.904761904756,
+              "time": 747.915,
+              "instance": 14
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 72768,
+              "multiplier": 1,
+              "value": 72768.0,
+              "time": 749.967,
+              "instance": 14
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Arm Punch')": {
+              "n": 7,
+              "interval": [
+                92.00785702931627,
+                93.93099974817426
+              ],
+              "queens": 4
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 3,
+              "interval": [
+                89.13345745924931,
+                96.26981205928575
+              ],
+              "queens": 3
+            },
+            "(False, 'Arm Punch')": {
+              "n": 45,
+              "interval": [
+                89.14159361920557,
+                90.4214052719739
+              ],
+              "queens": 16
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                89.04280341213324,
+                90.65819710885235
+              ],
+              "queens": 12
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 9,
+              "interval": [
+                88.77225593643504,
+                92.94877446160176
+              ],
+              "queens": 9
+            },
+            "(False, 'Roller Dash')": {
+              "n": 5,
+              "interval": [
+                87.48795704019587,
+                90.93224406633558
+              ],
+              "queens": 5
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 1,
+              "interval": [
+                91.03881896106084,
+                101.49839840242318
+              ],
+              "queens": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "ajXnKryCv7bT3MHN",
+      "fight": 14,
+      "source": 127,
+      "gauges": [
+        60,
+        100,
+        100,
+        70,
+        80,
+        60,
+        90,
+        60,
+        100,
+        100,
+        100,
+        100,
+        80,
+        90,
+        90,
+        50,
+        100,
+        90,
+        100,
+        60,
+        100,
+        100
+      ],
+      "ghosts": [
+        {
+          "time": 707.818,
+          "timestamp": 9071141,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 37885,
+          "target": 140,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 7.493
+        },
+        {
+          "time": 715.311,
+          "timestamp": 9078634,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 37938,
+          "target": 141,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 29.985
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 15,
+          "gauge": 90,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 30465,
+              "multiplier": 1.22,
+              "value": 19977.049180327867,
+              "time": 739.052,
+              "instance": 15
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 23305,
+              "multiplier": 1.22,
+              "value": 19102.459016393444,
+              "time": 740.612,
+              "instance": 15
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 29194,
+              "multiplier": 1.22,
+              "value": 19143.60655737705,
+              "time": 742.172,
+              "instance": 15
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 29442,
+              "multiplier": 1.22,
+              "value": 19306.229508196724,
+              "time": 743.734,
+              "instance": 15
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 21834,
+              "multiplier": 1.08,
+              "value": 20216.666666666664,
+              "time": 745.296,
+              "instance": 15
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 56521,
+              "multiplier": 1.05,
+              "value": 53829.52380952381,
+              "time": 746.857,
+              "instance": 15
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 89036,
+              "multiplier": 1.05,
+              "value": 67836.95238095238,
+              "time": 748.903,
+              "instance": 15
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                90.33513879485443,
+                94.99614949582461
+              ],
+              "queens": 2
+            },
+            "(False, 'Arm Punch')": {
+              "n": 58,
+              "interval": [
+                88.75376205392789,
+                89.5103921419711
+              ],
+              "queens": 18
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 14,
+              "interval": [
+                88.83070136267067,
+                90.06331969444747
+              ],
+              "queens": 14
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 12,
+              "interval": [
+                88.54519965631077,
+                90.8835676357496
+              ],
+              "queens": 12
+            },
+            "(False, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                83.51216022889844,
+                92.9542449087543
+              ],
+              "queens": 2
+            },
+            "(True, 'Arm Punch')": {
+              "n": 5,
+              "interval": [
+                88.55458373825722,
+                92.88860010107574
+              ],
+              "queens": 2
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                90.06574058194708,
+                96.24927785266712
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 1,
+              "interval": [
+                86.06380454721688,
+                96.03858745132982
+              ],
+              "queens": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "byFz6nxfvr1M7NVt",
+      "fight": 2,
+      "source": 2,
+      "gauges": [
+        60,
+        60,
+        100,
+        70,
+        50,
+        60,
+        60,
+        50,
+        100,
+        100,
+        100,
+        60,
+        50,
+        60,
+        60,
+        50,
+        50,
+        70,
+        100,
+        60,
+        60,
+        90,
+        60,
+        50,
+        50,
+        100,
+        90,
+        60
+      ],
+      "ghosts": [
+        {
+          "time": 377.127,
+          "timestamp": 1367816,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 58508,
+          "target": 19,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 57.122
+        },
+        {
+          "time": 382.206,
+          "timestamp": 1372895,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 58542,
+          "target": 19,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 74.498
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 10,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21191,
+              "multiplier": 1,
+              "value": 21191.0,
+              "time": 429.521,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21487,
+              "multiplier": 1,
+              "value": 21487.0,
+              "time": 431.083,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 25848,
+              "multiplier": 1,
+              "value": 20678.4,
+              "time": 432.645,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21230,
+              "multiplier": 1,
+              "value": 21230.0,
+              "time": 434.205,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 27445,
+              "multiplier": 1,
+              "value": 21956.0,
+              "time": 435.766,
+              "instance": 10
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 61988,
+              "multiplier": 1,
+              "value": 61988.0,
+              "time": 437.325,
+              "instance": 10
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 78,
+              "interval": [
+                88.4340203743189,
+                89.42255135325752
+              ],
+              "queens": 22
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 14,
+              "interval": [
+                87.70990983458059,
+                89.7132722435708
+              ],
+              "queens": 14
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 19,
+              "interval": [
+                87.8214144036929,
+                89.581962895901
+              ],
+              "queens": 19
+            },
+            "(True, 'Arm Punch')": {
+              "n": 15,
+              "interval": [
+                91.55100007117943,
+                92.69285654327204
+              ],
+              "queens": 5
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 4,
+              "interval": [
+                90.29714887534792,
+                93.76649346817683
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 4,
+              "interval": [
+                89.84171982045831,
+                97.84318663249736
+              ],
+              "queens": 4
+            },
+            "(False, 'Roller Dash')": {
+              "n": 4,
+              "interval": [
+                88.26239174497881,
+                97.15242881072028
+              ],
+              "queens": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "cCkGKrwD6pt132WP",
+      "fight": 7,
+      "source": 156,
+      "gauges": [
+        60,
+        100,
+        90,
+        50,
+        100,
+        90,
+        90,
+        50,
+        80,
+        100,
+        50,
+        50,
+        70,
+        60,
+        50,
+        90,
+        90,
+        60,
+        90,
+        50,
+        70,
+        50,
+        50,
+        80,
+        50,
+        90
+      ],
+      "ghosts": [
+        {
+          "time": 377.429,
+          "timestamp": 3193754,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 13348,
+          "target": 22,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 54.564
+        },
+        {
+          "time": 712.167,
+          "timestamp": 3528492,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 15771,
+          "target": 25,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 41.531
+        },
+        {
+          "time": 717.178,
+          "timestamp": 3533503,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 15797,
+          "target": 25,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 54.041
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 9,
+          "gauge": 80,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 21356,
+              "multiplier": 1,
+              "value": 17084.8,
+              "time": 435.347,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 17543,
+              "multiplier": 1,
+              "value": 17543.0,
+              "time": 437.133,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 16973,
+              "multiplier": 1,
+              "value": 16973.0,
+              "time": 438.964,
+              "instance": 9
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 62759,
+              "multiplier": 1,
+              "value": 50207.2,
+              "time": 440.525,
+              "instance": 9
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 55,
+              "interval": [
+                89.74571586511885,
+                90.76963766199418
+              ],
+              "queens": 20
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 15,
+              "interval": [
+                88.28685703136975,
+                91.07901293286425
+              ],
+              "queens": 15
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 15,
+              "interval": [
+                89.14321352132298,
+                91.02191117530975
+              ],
+              "queens": 15
+            },
+            "(True, 'Arm Punch')": {
+              "n": 15,
+              "interval": [
+                92.86424768257312,
+                94.9725735527449
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                91.76730197081466,
+                95.9080327357381
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 3,
+              "interval": [
+                91.38541524007559,
+                96.5583906097982
+              ],
+              "queens": 3
+            },
+            "(False, 'Roller Dash')": {
+              "n": 5,
+              "interval": [
+                88.75814928882923,
+                93.75650180728202
+              ],
+              "queens": 5
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                86.38945309561423,
+                96.40518761017375
+              ],
+              "queens": 1
+            }
+          }
+        },
+        {
+          "queen": 17,
+          "gauge": 90,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 21083,
+              "multiplier": 1.03,
+              "value": 20468.93203883495,
+              "time": 736.04,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 20770,
+              "multiplier": 1.03,
+              "value": 20165.04854368932,
+              "time": 737.605,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 19316,
+              "multiplier": 1.03,
+              "value": 18753.398058252427,
+              "time": 739.17,
+              "instance": 17
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 74360,
+              "multiplier": 1.08,
+              "value": 68851.85185185185,
+              "time": 742.788,
+              "instance": 17
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 55,
+              "interval": [
+                89.74571586511885,
+                90.76963766199418
+              ],
+              "queens": 20
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 15,
+              "interval": [
+                88.28685703136975,
+                91.07901293286425
+              ],
+              "queens": 15
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 15,
+              "interval": [
+                89.14321352132298,
+                91.02191117530975
+              ],
+              "queens": 15
+            },
+            "(True, 'Arm Punch')": {
+              "n": 15,
+              "interval": [
+                92.86424768257312,
+                94.9725735527449
+              ],
+              "queens": 4
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 2,
+              "interval": [
+                91.76730197081466,
+                95.9080327357381
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 3,
+              "interval": [
+                91.38541524007559,
+                96.5583906097982
+              ],
+              "queens": 3
+            },
+            "(False, 'Roller Dash')": {
+              "n": 5,
+              "interval": [
+                88.75814928882923,
+                93.75650180728202
+              ],
+              "queens": 5
+            },
+            "(True, 'Roller Dash')": {
+              "n": 1,
+              "interval": [
+                86.38945309561423,
+                96.40518761017375
+              ],
+              "queens": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "cWtZKjXfMdLzJxAm",
+      "fight": 18,
+      "source": 120,
+      "gauges": [
+        60,
+        60,
+        100,
+        70,
+        100,
+        80,
+        60,
+        100,
+        90,
+        100,
+        100,
+        70,
+        100,
+        100,
+        100,
+        50,
+        90,
+        100,
+        80,
+        90,
+        80,
+        90,
+        70
+      ],
+      "ghosts": [
+        {
+          "time": 382.246,
+          "timestamp": 29657206,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 26137,
+          "target": 78,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 64.222
+        },
+        {
+          "time": 700.284,
+          "timestamp": 29975244,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 28510,
+          "target": 108,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 7.454
+        },
+        {
+          "time": 707.738,
+          "timestamp": 29982698,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 28580,
+          "target": 108,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 12.687
+        },
+        {
+          "time": 715.247,
+          "timestamp": 29990207,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 28631,
+          "target": 108,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 40.538
+        },
+        {
+          "time": 720.425,
+          "timestamp": 29995385,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 28663,
+          "target": 107,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 12.426
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 9,
+          "gauge": 90,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 19267,
+              "multiplier": 1,
+              "value": 19267.0,
+              "time": 432.358,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 25558,
+              "multiplier": 1,
+              "value": 20446.4,
+              "time": 433.922,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 19119,
+              "multiplier": 1,
+              "value": 19119.0,
+              "time": 435.478,
+              "instance": 9
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 52782,
+              "multiplier": 1,
+              "value": 52782.0,
+              "time": 439.26,
+              "instance": 9
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 76997,
+              "multiplier": 1,
+              "value": 61597.6,
+              "time": 441.306,
+              "instance": 9
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 51,
+              "interval": [
+                90.05148646404253,
+                90.80490170148991
+              ],
+              "queens": 17
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 11,
+              "interval": [
+                89.28652721453423,
+                91.62530920858161
+              ],
+              "queens": 11
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 11,
+              "interval": [
+                89.20270419309496,
+                92.42569120908185
+              ],
+              "queens": 11
+            },
+            "(True, 'Arm Punch')": {
+              "n": 17,
+              "interval": [
+                92.76394426473415,
+                94.38755259188694
+              ],
+              "queens": 6
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 4,
+              "interval": [
+                93.00781924144066,
+                94.59812115494493
+              ],
+              "queens": 4
+            },
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                91.50179292359387,
+                97.07462435994292
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                90.72829925910494,
+                94.39048264437919
+              ],
+              "queens": 2
+            },
+            "(False, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                83.12564163310434,
+                91.5983425901437
+              ],
+              "queens": 2
+            }
+          }
+        },
+        {
+          "queen": 15,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 26390,
+              "multiplier": 1.17,
+              "value": 22555.55555555556,
+              "time": 737.992,
+              "instance": 15
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 34230,
+              "multiplier": 1.17,
+              "value": 23405.128205128207,
+              "time": 739.556,
+              "instance": 15
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 26352,
+              "multiplier": 1.17,
+              "value": 22523.076923076926,
+              "time": 741.122,
+              "instance": 15
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 74871,
+              "multiplier": 1.17,
+              "value": 63992.307692307695,
+              "time": 744.254,
+              "instance": 15
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 105315,
+              "multiplier": 1.1,
+              "value": 76592.72727272726,
+              "time": 746.308,
+              "instance": 15
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 51,
+              "interval": [
+                90.05148646404253,
+                90.80490170148991
+              ],
+              "queens": 17
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 11,
+              "interval": [
+                89.28652721453423,
+                91.62530920858161
+              ],
+              "queens": 11
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 11,
+              "interval": [
+                89.20270419309496,
+                92.42569120908185
+              ],
+              "queens": 11
+            },
+            "(True, 'Arm Punch')": {
+              "n": 17,
+              "interval": [
+                92.76394426473415,
+                94.38755259188694
+              ],
+              "queens": 6
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 4,
+              "interval": [
+                93.00781924144066,
+                94.59812115494493
+              ],
+              "queens": 4
+            },
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                91.50179292359387,
+                97.07462435994292
+              ],
+              "queens": 2
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                90.72829925910494,
+                94.39048264437919
+              ],
+              "queens": 2
+            },
+            "(False, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                83.12564163310434,
+                91.5983425901437
+              ],
+              "queens": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "gHkaDrPjN7JBYx8F",
+      "fight": 377,
+      "source": 11583,
+      "gauges": [
+        60,
+        60,
+        60,
+        80,
+        60,
+        70,
+        90,
+        50,
+        60,
+        50,
+        70,
+        60,
+        70,
+        50,
+        90,
+        50,
+        60,
+        80,
+        80,
+        90,
+        80,
+        80,
+        70,
+        60,
+        90,
+        60,
+        70
+      ],
+      "ghosts": [
+        {
+          "time": 711.817,
+          "timestamp": 623708363,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 52359,
+          "target": 184,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 40.565
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 19,
+          "gauge": 80,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 19252,
+              "multiplier": 1.08,
+              "value": 17825.925925925923,
+              "time": 728.785,
+              "instance": 19
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 18916,
+              "multiplier": 1.08,
+              "value": 17514.814814814814,
+              "time": 730.343,
+              "instance": 19
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 18642,
+              "multiplier": 1.08,
+              "value": 17261.11111111111,
+              "time": 731.901,
+              "instance": 19
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 19407,
+              "multiplier": 1.08,
+              "value": 17969.44444444444,
+              "time": 733.458,
+              "instance": 19
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 23613,
+              "multiplier": 1.08,
+              "value": 17491.11111111111,
+              "time": 735.017,
+              "instance": 19
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 53585,
+              "multiplier": 1.08,
+              "value": 49615.74074074074,
+              "time": 736.578,
+              "instance": 19
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 59487,
+              "multiplier": 1.08,
+              "value": 55080.555555555555,
+              "time": 738.626,
+              "instance": 19
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Arm Punch')": {
+              "n": 13,
+              "interval": [
+                92.72633048304455,
+                94.10354701213426
+              ],
+              "queens": 5
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 5,
+              "interval": [
+                92.27271694704085,
+                94.43465122135481
+              ],
+              "queens": 5
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 4,
+              "interval": [
+                90.30077152347897,
+                94.69078167139108
+              ],
+              "queens": 4
+            },
+            "(False, 'Roller Dash')": {
+              "n": 6,
+              "interval": [
+                89.03893232251441,
+                91.06938199770785
+              ],
+              "queens": 6
+            },
+            "(False, 'Arm Punch')": {
+              "n": 53,
+              "interval": [
+                89.73374295954942,
+                90.76082165212026
+              ],
+              "queens": 20
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 13,
+              "interval": [
+                89.38314961142002,
+                92.95482276486369
+              ],
+              "queens": 13
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 14,
+              "interval": [
+                89.32747738717889,
+                91.66242977748485
+              ],
+              "queens": 14
+            },
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                90.48204150889775,
+                97.41626794258372
+              ],
+              "queens": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "hyMBNLxP1dDJmkKX",
+      "fight": 36,
+      "source": 527,
+      "gauges": [
+        60,
+        50,
+        80,
+        100,
+        100,
+        100,
+        80,
+        60,
+        100,
+        100,
+        80,
+        70,
+        100,
+        100,
+        100,
+        100,
+        60,
+        80,
+        70,
+        90,
+        80,
+        60,
+        90
+      ],
+      "ghosts": [
+        {
+          "time": 715.467,
+          "timestamp": 87986326,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 40916,
+          "target": 26,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 40.287
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 15,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": true,
+              "amount": 31999,
+              "multiplier": 1.19,
+              "value": 21511.932773109245,
+              "time": 739.224,
+              "instance": 15
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 27234,
+              "multiplier": 1.19,
+              "value": 22885.714285714286,
+              "time": 742.346,
+              "instance": 15
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": true,
+              "dh": false,
+              "amount": 77881,
+              "multiplier": 1.19,
+              "value": 65446.21848739496,
+              "time": 745.46,
+              "instance": 15
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Roller Dash')": {
+              "n": 12,
+              "interval": [
+                89.39232409381664,
+                91.06182541781591
+              ],
+              "queens": 12
+            },
+            "(False, 'Arm Punch')": {
+              "n": 53,
+              "interval": [
+                89.54592118771225,
+                90.55364542008286
+              ],
+              "queens": 21
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 16,
+              "interval": [
+                88.79655446819626,
+                91.37794234329542
+              ],
+              "queens": 16
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 17,
+              "interval": [
+                89.52237611462496,
+                90.66979446543282
+              ],
+              "queens": 17
+            },
+            "(True, 'Arm Punch')": {
+              "n": 1,
+              "interval": [
+                85.22577169718035,
+                95.00497610646401
+              ],
+              "queens": 1
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 1,
+              "interval": [
+                86.57168120618773,
+                96.49775966349232
+              ],
+              "queens": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "km8FjJYqgyw1L2xB",
+      "fight": 11,
+      "source": 5,
+      "gauges": [
+        60,
+        90,
+        90,
+        60,
+        60,
+        50,
+        100,
+        50,
+        70,
+        100,
+        90,
+        90,
+        60,
+        100,
+        60,
+        80,
+        60,
+        50,
+        90,
+        90,
+        80,
+        90,
+        80,
+        100,
+        50
+      ],
+      "ghosts": [
+        {
+          "time": 375.011,
+          "timestamp": 4484937,
+          "action": "Excavator",
+          "amount": 20,
+          "packet": 48999,
+          "target": 16,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 61.495
+        },
+        {
+          "time": 707.454,
+          "timestamp": 4817380,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 51457,
+          "target": 19,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 55.342
+        },
+        {
+          "time": 714.983,
+          "timestamp": 4824909,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 51508,
+          "target": 18,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 40.284
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 10,
+          "gauge": 100,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 27431,
+              "multiplier": 1,
+              "value": 21944.8,
+              "time": 434.991,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 20919,
+              "multiplier": 1,
+              "value": 20919.0,
+              "time": 436.551,
+              "instance": 10
+            },
+            {
+              "action": "Roller Dash",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 41932,
+              "multiplier": 1,
+              "value": 41932.0,
+              "time": 438.642,
+              "instance": 10
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 20645,
+              "multiplier": 1,
+              "value": 20645.0,
+              "time": 441.799,
+              "instance": 10
+            },
+            {
+              "action": "Crowned Collider",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 83811,
+              "multiplier": 1,
+              "value": 67048.8,
+              "time": 445.408,
+              "instance": 10
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                91.200882670077,
+                94.63215652299473
+              ],
+              "queens": 2
+            },
+            "(True, 'Arm Punch')": {
+              "n": 16,
+              "interval": [
+                91.28112540434815,
+                92.23882752147858
+              ],
+              "queens": 6
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 1,
+              "interval": [
+                87.9082997474658,
+                97.99749687108886
+              ],
+              "queens": 1
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 4,
+              "interval": [
+                90.33582998827865,
+                93.13508830861164
+              ],
+              "queens": 4
+            },
+            "(False, 'Roller Dash')": {
+              "n": 4,
+              "interval": [
+                87.9574789193363,
+                92.65185577007846
+              ],
+              "queens": 4
+            },
+            "(False, 'Arm Punch')": {
+              "n": 46,
+              "interval": [
+                88.0991866066493,
+                88.79943967663266
+              ],
+              "queens": 15
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                87.43119138202545,
+                89.26158138473586
+              ],
+              "queens": 12
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 13,
+              "interval": [
+                88.15935540573223,
+                89.081808380054
+              ],
+              "queens": 13
+            }
+          }
+        },
+        {
+          "queen": 17,
+          "gauge": 60,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 14211,
+              "multiplier": 1.09,
+              "value": 13037.61467889908,
+              "time": 736.279,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 13593,
+              "multiplier": 1.09,
+              "value": 12470.642201834862,
+              "time": 737.836,
+              "instance": 17
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 13319,
+              "multiplier": 1.09,
+              "value": 12219.266055045871,
+              "time": 742.514,
+              "instance": 17
+            }
+          ],
+          "reference_intervals": {
+            "(True, 'Roller Dash')": {
+              "n": 2,
+              "interval": [
+                91.200882670077,
+                94.63215652299473
+              ],
+              "queens": 2
+            },
+            "(True, 'Arm Punch')": {
+              "n": 16,
+              "interval": [
+                91.28112540434815,
+                92.23882752147858
+              ],
+              "queens": 6
+            },
+            "(True, 'Pile Bunker')": {
+              "n": 1,
+              "interval": [
+                87.9082997474658,
+                97.99749687108886
+              ],
+              "queens": 1
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 4,
+              "interval": [
+                90.33582998827865,
+                93.13508830861164
+              ],
+              "queens": 4
+            },
+            "(False, 'Roller Dash')": {
+              "n": 4,
+              "interval": [
+                87.9574789193363,
+                92.65185577007846
+              ],
+              "queens": 4
+            },
+            "(False, 'Arm Punch')": {
+              "n": 46,
+              "interval": [
+                88.0991866066493,
+                88.79943967663266
+              ],
+              "queens": 15
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 12,
+              "interval": [
+                87.43119138202545,
+                89.26158138473586
+              ],
+              "queens": 12
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 13,
+              "interval": [
+                88.15935540573223,
+                89.081808380054
+              ],
+              "queens": 13
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "pqtxwgdW8z2j7Vy9",
+      "fight": 3,
+      "source": 18,
+      "gauges": [
+        60,
+        50,
+        60,
+        100,
+        100,
+        90,
+        90,
+        100,
+        90,
+        100,
+        70,
+        60,
+        80,
+        70,
+        80,
+        100,
+        50,
+        50,
+        70,
+        80,
+        50,
+        80,
+        50,
+        50,
+        50,
+        100
+      ],
+      "ghosts": [
+        {
+          "time": 376.993,
+          "timestamp": 2391809,
+          "action": "Air Anchor",
+          "amount": 20,
+          "packet": 21806,
+          "target": 29,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": false,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 54.628
+        },
+        {
+          "time": 379.533,
+          "timestamp": 2394349,
+          "action": "Heated Clean Shot",
+          "amount": 10,
+          "packet": 21826,
+          "target": 29,
+          "calculated_positive": true,
+          "unpaired": true,
+          "combo_calculated": true,
+          "immune": false,
+          "rows": 1,
+          "next_same_action_seconds": 74.621
+        }
+      ],
+      "damage_checks": [
+        {
+          "queen": 9,
+          "gauge": 90,
+          "hits": [
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 23149,
+              "multiplier": 1,
+              "value": 18519.2,
+              "time": 435.271,
+              "instance": 9
+            },
+            {
+              "action": "Roller Dash",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 36889,
+              "multiplier": 1,
+              "value": 36889.0,
+              "time": 437.362,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": false,
+              "amount": 19437,
+              "multiplier": 1,
+              "value": 19437.0,
+              "time": 440.521,
+              "instance": 9
+            },
+            {
+              "action": "Arm Punch",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 23925,
+              "multiplier": 1,
+              "value": 19140.0,
+              "time": 442.081,
+              "instance": 9
+            },
+            {
+              "action": "Pile Bunker",
+              "crit": false,
+              "potted": false,
+              "dh": true,
+              "amount": 70913,
+              "multiplier": 1,
+              "value": 56730.4,
+              "time": 443.642,
+              "instance": 9
+            }
+          ],
+          "reference_intervals": {
+            "(False, 'Arm Punch')": {
+              "n": 56,
+              "interval": [
+                88.24264918792282,
+                89.34756418944356
+              ],
+              "queens": 20
+            },
+            "(False, 'Pile Bunker')": {
+              "n": 16,
+              "interval": [
+                87.17093802695209,
+                89.85795852326649
+              ],
+              "queens": 16
+            },
+            "(False, 'Crowned Collider')": {
+              "n": 12,
+              "interval": [
+                88.14729769953652,
+                89.06689525618825
+              ],
+              "queens": 12
+            },
+            "(False, 'Roller Dash')": {
+              "n": 4,
+              "interval": [
+                85.08713048514043,
+                89.75327766652813
+              ],
+              "queens": 4
+            },
+            "(True, 'Arm Punch')": {
+              "n": 12,
+              "interval": [
+                91.27626759205708,
+                92.09452201933405
+              ],
+              "queens": 5
+            },
+            "(True, 'Crowned Collider')": {
+              "n": 2,
+              "interval": [
+                91.36098235624301,
+                94.3854140846622
+              ],
+              "queens": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "report": "xf4RFTpn3HJgXc67",
+      "fight": 11,
+      "source": 29,
+      "gauges": [
+        60,
+        60,
+        100,
+        50,
+        100,
+        80,
+        80,
+        100,
+        100,
+        90,
+        90,
+        50,
+        100,
+        50,
+        50,
+        100,
+        60,
+        80,
+        100,
+        70,
+        100,
+        70,
+        50,
+        90
+      ],
+      "ghosts": [],
+      "damage_checks": []
+    }
+  ]
+}

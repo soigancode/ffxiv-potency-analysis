@@ -33,8 +33,9 @@ def test_dancing_mad_potion_windows_and_phase_regression(
     assert result.auto_attacks[0].hits == 373
     assert sum(count for _, count in result.ghosted) == 8
     assert result.unmatched == ()
-    # The final Heated Clean Shot deals 2,131 of its 53,907 pre-overkill damage.
-    assert result.adjusted_luck_score == pytest.approx(0.2692279417913884)
+    # Ghosted combo Clean Shot (+10) and Air Anchor (+20) now increase Queen
+    # weights; the final Clean Shot still counts only 2,131/53,907 of its damage.
+    assert result.adjusted_luck_score == pytest.approx(0.2696394669353244)
     assert result.luck_baseline == pytest.approx(0.249754668)
     assert result.critical_gear_baseline == pytest.approx(0.277)
     assert result.direct_gear_baseline == pytest.approx(0.288)

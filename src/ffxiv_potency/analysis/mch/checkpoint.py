@@ -8,6 +8,7 @@ from ..errors import AnalysisError
 from ..events import _load_json
 from ..pets import _reconstruct_pet_deployments
 from ..profiles import _PetProfile
+from .battery import mch_battery_events
 
 
 def mch_checkpoint_gauges(
@@ -48,6 +49,7 @@ def mch_checkpoint_gauges(
                     and cast.get("sourceID") == source_id),
                    key=lambda event: event.get("timestamp", 0)),
             actions, names, landed, profiles, float(previous["startTime"]),
+            gauge_events_by_packet={"Battery Gauge": mch_battery_events(damage, source_id)},
         )
     except AnalysisError as exc:
         if "Battery Gauge" not in str(exc):

@@ -44,6 +44,14 @@ def test_mch_checkpoint_carries_landed_battery_after_previous_queen(tmp_path) ->
         {"Battery Gauge": 60}, False,
     )
 
+    # The post-deployment gain can resolve even if its damage ghosts.
+    context["damage"][1].update(type="calculateddamage", unpaired=True)
+    (tmp_path / "checkpoint-context.json").write_text(json.dumps(context))
+    assert mch_checkpoint_gauges(tmp_path, fight, 2, actions,
+                                 {1: "Battery Builder", 2: "Automaton Queen"}, profiles) == (
+        {"Battery Gauge": 60}, False,
+    )
+
     context["damage"] = []
     (tmp_path / "checkpoint-context.json").write_text(json.dumps(context))
     assert mch_checkpoint_gauges(tmp_path, fight, 2, actions,

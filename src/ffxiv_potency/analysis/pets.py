@@ -20,6 +20,9 @@ def _reconstruct_pet_deployments(
     fight_start: float,
     *, initial_gauges: dict[str, int] | None = None,
     allow_unknown_initial_gauge: bool = False,
+    gauge_events_by_packet: dict[
+        str, dict[tuple[Any, Any], list[dict[str, Any]]]
+    ] | None = None,
 ) -> tuple[tuple[PetDeploymentSummary, ...], dict[str, int]]:
     gauge_values: dict[str, int] = defaultdict(int, initial_gauges or {})
     deployments: list[PetDeploymentSummary] = []
@@ -33,16 +36,20 @@ def _reconstruct_pet_deployments(
         action_name = _event_name(cast, ability_names)
         action = actions.get(action_name, {})
         packet = (cast.get("packetID"), cast.get("abilityGameID"))
-        landed_events = landed_by_packet.get(packet, [])
         for gain in action.get("gauge_gains", []):
-            if not isinstance(gain, dict) or not landed_events:
+            if not isinstance(gain, dict):
                 continue
             gauge_name = gain.get("gauge")
             amount = gain.get("amount")
             requires_combo = gain.get("requires_combo") is True
             if not isinstance(gauge_name, str) or not isinstance(amount, int):
                 continue
-            if requires_combo and not any(e.get("bonusPercent") is not None for e in landed_events):
+            gain_events = (gauge_events_by_packet or {}).get(
+                gauge_name, landed_by_packet
+            ).get(packet, [])
+            if not gain_events:
+                continue
+            if requires_combo and not any(e.get("bonusPercent") is not None for e in gain_events):
                 continue
             configured_maxima = [
                 profile.gauge_maximum

@@ -47,6 +47,10 @@ _DOT_MARKERS = {
 }
 _STANDALONE_POTENCY_PATTERN = re.compile(r"^Potency:\s*(\d+)\s*$", re.IGNORECASE)
 _DURATION_PATTERN = re.compile(r"^Duration:\s*(\d+)s\s*$", re.IGNORECASE)
+_TRAIT_ROW_PATTERN = re.compile(
+    r'<tr\b[^>]*\bid=["\']trait_action__\d+["\'][^>]*>.*?</tr\s*>',
+    re.IGNORECASE | re.DOTALL,
+)
 _ACTION_START_PATTERN = re.compile(r'<tr\s+id=["\']pve_action__\d+["\']', re.IGNORECASE)
 _MCH_PET_ATTACK_PATTERN = re.compile(
     r"attacks using (.+?), dealing damage with a potency of\s+(\d+)\b", re.IGNORECASE
@@ -114,21 +118,24 @@ def _first_match(pattern: re.Pattern[str], lines: tuple[str, ...]) -> re.Match[s
 
 def parse_job_traits(html: str) -> list[Trait]:
     """Capture PvE traits and interpret supported base-action damage bonuses."""
-    soup = BeautifulSoup(html, "html.parser")
-    rows = soup.select('tr[id^="trait_action__"]')
-    if not rows:
+    blocks = list(_TRAIT_ROW_PATTERN.finditer(html))
+    if not blocks:
         raise JobGuideParseError("No PvE trait rows found")
     traits: list[Trait] = []
-    for row in rows:
-        name_cell = row.select_one("td.skill strong")
-        level_cell = row.select_one("td.jobclass")
-        if name_cell is None or level_cell is None:
-            raise JobGuideParseError(f"Incomplete trait row {row.get('id')!r}")
+    for block in blocks:
+        # An extra closing div in the official HTML can detach a content cell
+        # when parsing the full page. Keep recovery within this source row.
+        container = BeautifulSoup(block.group(), "html.parser")
+        row = container.select_one('tr[id^="trait_action__"]')
+        name_cell = container.select_one("td.skill strong")
+        level_cell = container.select_one("td.jobclass")
+        if row is None or name_cell is None or level_cell is None:
+            raise JobGuideParseError("Incomplete trait row")
         name = name_cell.get_text(" ", strip=True)
         match = _LEVEL_PATTERN.search(level_cell.get_text(" ", strip=True))
         if match is None:
             raise JobGuideParseError(f"Could not determine level for trait {name!r}")
-        content = row.select_one("td.content")
+        content = container.select_one("td.content")
         description = _lines(content) if content is not None else ()
         multiplier = None
         if name.startswith("Increased Action Damage") and description:

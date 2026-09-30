@@ -306,7 +306,7 @@ def test_reconstructs_battery_spent_and_exact_pet_potency(tmp_path: Path) -> Non
     write_json(
         log / "damage-events.json",
         [
-            {"timestamp": 2100, "type": "damage", "packetID": 1, "abilityGameID": 1},
+            {"timestamp": 2100, "type": "damage", "packetID": 1, "abilityGameID": 1, "amount": 100},
             {"timestamp": 4000, "type": "damage", "packetID": 3, "abilityGameID": 3},
         ],
     )
@@ -410,9 +410,9 @@ def test_pet_deployments_separate_potion_adjusted_potency(tmp_path: Path) -> Non
     write_json(
         log / "damage-events.json",
         [
-            {"timestamp": 150, "type": "damage", "packetID": 1, "abilityGameID": 1},
+            {"timestamp": 150, "type": "damage", "packetID": 1, "abilityGameID": 1, "amount": 100},
             {"timestamp": 1000, "type": "damage", "packetID": 3, "abilityGameID": 3},
-            {"timestamp": 3500, "type": "damage", "packetID": 4, "abilityGameID": 1},
+            {"timestamp": 3500, "type": "damage", "packetID": 4, "abilityGameID": 1, "amount": 100},
             {
                 "timestamp": 5000,
                 "type": "damage",
