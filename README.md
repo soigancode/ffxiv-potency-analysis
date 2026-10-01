@@ -132,7 +132,7 @@ ffxiv-potency analyse "https://www.fflogs.com/reports/REPORT1?fight=9&source=18"
 
 The report starts with the player, fight, duration, date (UTC), partition, patch, food, nDPS, rDPS, landed events, potency, and PPS. A wipe is labelled after its duration. Deaths, Weakness, Brink of Death, and encounter-specific Damage Down appear below the summary when recorded. It then shows any variable potency estimates, reduced damage and ghosted casts, potion item and windows, hit outcomes and luck, action totals, auto-attacks, and job-specific details. If FF Logs does not identify a consumed item in the fight events, the report labels its configured name as unverified. A ghosted cast dealt no positive recorded damage; its note may identify an untargetable target, a defeated target, or a boss phase HP lock.
 
-To download a fight without analysing it, run `ffxiv-potency fflogs "<report URL>"`; an unselected URL offers the same prompts. To empty `data/logs`, run `ffxiv-potency clear logs`; it asks for confirmation and leaves job data intact. Add `--yes` to skip the prompt.
+To download a fight without analysing it, run `ffxiv-potency fflogs "<report URL>"`; an unselected URL offers the same prompts. To remove saved logs and analysis cache, run `ffxiv-potency clear`. Use `ffxiv-potency clear logs` to remove only downloaded logs and preserve calculations. To remove only analysis cache while retaining downloaded logs, run `ffxiv-potency clear cache`. Both ask for confirmation and leave job data intact. Add `--yes` to skip the prompt.
 
 ### Compare your logs
 

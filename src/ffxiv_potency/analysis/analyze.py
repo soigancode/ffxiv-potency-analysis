@@ -92,7 +92,18 @@ def _find_ranking_amount(
     return None
 
 
-def analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
+def analyze_saved_fight(
+    directory: Path, actions_path: Path, *, use_cache: bool = True,
+) -> AnalysisResult:
+    """Analyze a saved player log, reusing calculations for unchanged inputs."""
+    if use_cache:
+        from .cache import cached_analysis
+
+        return cached_analysis(directory, actions_path, _analyze_saved_fight)
+    return _analyze_saved_fight(directory, actions_path)
+
+
+def _analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     """Analyze one directory produced by :func:`download_report_events`.
 
     FF Logs returns both ``calculateddamage`` and the later authoritative

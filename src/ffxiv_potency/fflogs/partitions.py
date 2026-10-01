@@ -1,7 +1,8 @@
 """Validate global ranking partitions and played dates of unranked fights."""
 
-from datetime import UTC, datetime
 from typing import Any
+
+from ..patches import PATCH_STARTS
 
 # Global Savage partitions verified against the M9S/MCH probe. The first
 # of each pair uses standard compositions; the second is non-standard.
@@ -23,13 +24,13 @@ CURRENT_PARTITIONS = {
     **dict.fromkeys(EXTREME_ENCOUNTERS, 7),
     1085: 1,
 }
+# Duty release metadata references the shared patch boundaries.
+DUNGEON_RELEASE_PATCHES = {4550: "7.45", 4549: "7.4", 4551: "7.5"}
 DUNGEON_RELEASES = {
-    4550: datetime(2026, 3, 3, 10, tzinfo=UTC),    # Another Merchant's Tale, 7.45
-    4549: datetime(2025, 12, 16, 10, tzinfo=UTC),  # Mistwake, 7.4
-    4551: datetime(2026, 4, 28, 10, tzinfo=UTC),   # The Clyteum, 7.5
+    encounter: PATCH_STARTS[patch] for encounter, patch in DUNGEON_RELEASE_PATCHES.items()
 }
-_PATCH_74_START_MS = datetime(2025, 12, 16, 10, tzinfo=UTC).timestamp() * 1000
-_PATCH_75_START_MS = datetime(2026, 4, 28, 10, tzinfo=UTC).timestamp() * 1000
+_PATCH_74_START_MS = PATCH_STARTS["7.4"].timestamp() * 1000
+_PATCH_75_START_MS = PATCH_STARTS["7.5"].timestamp() * 1000
 
 
 def current_partition(encounter_id: int, selected: int | None = None) -> int | None:
@@ -94,7 +95,7 @@ def fight_partition_patch(fight: dict[str, Any], rankings: dict[str, Any]) -> tu
             played_at = start + report_start
             if played_at >= _PATCH_75_START_MS:
                 patch = 7.5
-            elif played_at >= DUNGEON_RELEASES[4550].timestamp() * 1000:
+            elif played_at >= PATCH_STARTS["7.45"].timestamp() * 1000:
                 patch = 7.45
             elif played_at >= _PATCH_74_START_MS:
                 patch = 7.4

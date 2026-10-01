@@ -52,7 +52,7 @@ def test_damage_down_scales_only_affected_hits(
     ) == pytest.approx(2.5)
 
     with patch("ffxiv_potency.analysis.analyze.load_damage_penalties", return_value={}):
-        unpenalized = analyze_saved_fight(tmp_path, actions)
+        unpenalized = analyze_saved_fight(tmp_path, actions, use_cache=False)
     assert unpenalized.potency_min == pytest.approx(20272.071231923077)
     assert result.potency_min < unpenalized.potency_min
 

@@ -21,6 +21,7 @@ from .analysis import (
     AnalysisResult,
     analyze_saved_fight,
 )
+from .analysis.cache import CACHE_FILENAME, cache_root
 from .analysis.config import reference_path
 from .analysis.penalties import DamagePenaltySummary
 from .fflogs import (
@@ -133,7 +134,10 @@ def build_parser() -> argparse.ArgumentParser:
     jobguide.add_argument("--output", type=Path, default=Path("data"), help="output root")
 
     clear = commands.add_parser("clear", help="remove downloaded data")
-    clear.add_argument("item", choices=("logs",), help="data to remove")
+    clear.add_argument(
+        "item", nargs="?", choices=("logs", "cache"),
+        help="remove logs or analysis cache; default removes both",
+    )
     clear.add_argument("--output", type=Path, default=Path("data/logs"), help="logs directory")
     clear.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
 
@@ -1042,28 +1046,44 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         if args.command == "clear":
-            directory = args.output
-            if directory.is_symlink():
-                raise ValueError(f"logs directory must not be a symbolic link: {directory}")
-            if not directory.exists():
-                print(f"No saved logs in {directory}.")
+            logs = args.output
+            cache = cache_root(logs)
+            targets = ([logs] if args.item == "logs" else [cache]
+                       if args.item == "cache" else [logs, cache])
+            for directory in targets:
+                if directory.is_symlink():
+                    raise ValueError(f"data directory must not be a symbolic link: {directory}")
+                if directory.exists() and not directory.is_dir():
+                    raise ValueError(f"data path is not a directory: {directory}")
+            legacy_caches = []
+            if args.item == "cache" and logs.is_dir() and not logs.is_symlink():
+                for root, _, filenames in os.walk(logs, followlinks=False):
+                    if CACHE_FILENAME in filenames:
+                        legacy_caches.append(Path(root) / CACHE_FILENAME)
+            existing = [directory for directory in targets if directory.exists()]
+            label = ("saved logs" if args.item == "logs" else "cached analysis"
+                     if args.item == "cache" else "saved logs and cached analysis")
+            if not existing and not legacy_caches:
+                print(f"No {label} to clear.")
                 return 0
-            if not directory.is_dir():
-                raise ValueError(f"logs path is not a directory: {directory}")
             if not args.yes:
                 try:
-                    answer = input(f"Delete all saved logs in {directory}? [y/N] ")
+                    locations = ", ".join(str(directory) for directory in existing + legacy_caches)
+                    answer = input(f"Delete all {label} in {locations}? [y/N] ")
                 except EOFError:
                     answer = ""
                 if answer.strip().casefold() not in {"y", "yes"}:
                     print("Cancelled.")
                     return 0
-            for item in directory.iterdir():
-                if item.is_dir() and not item.is_symlink():
-                    shutil.rmtree(item)
-                else:
-                    item.unlink()
-            print(f"Cleared saved logs in {directory}.")
+            for directory in existing:
+                for item in directory.iterdir():
+                    if item.is_dir() and not item.is_symlink():
+                        shutil.rmtree(item)
+                    else:
+                        item.unlink()
+            for path in legacy_caches:
+                path.unlink(missing_ok=True)
+            print(f"Cleared {label}.")
             return 0
 
         if args.command == "compare":
