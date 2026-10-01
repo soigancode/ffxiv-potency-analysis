@@ -14,7 +14,7 @@ def test_enuo_real_log_has_landed_damage_without_damage_down(
         (tmp_path / "combatant-info-events.json").write_bytes(archive.read(
             "VaPWAkyRCTDZ1KFB/fight-5/source-45/combatant-info-events.json"
         ))
-    result = analyze_saved_fight(tmp_path, Path("data/machinist/7.55/actions.json"))
+    result = analyze_saved_fight(tmp_path, Path("data/jobs/mch/7.4/actions.json"))
     assert result.encounter_id == 1084
     assert result.echo_status == "absent"
     assert result.unmatched == ()

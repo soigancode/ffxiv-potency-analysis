@@ -31,7 +31,7 @@ def test_anonymous_brd_dot_refresh_after_untargetable_phase(
     assert {tick.application_name for tick in refreshed} == {"Iron Jaws"}
     assert {tick.snapshot_buffs for tick in refreshed} == {"1002217."}
 
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
     assert (result.source_name, result.encounter_id) == ("Player (7)", 102)
     assert result.unmatched == ()
@@ -48,7 +48,7 @@ def test_anonymous_brd_appears_as_anonymous_in_comparison(
         for member in z.namelist():
             if member.startswith(prefix) and member.endswith(".json"):
                 (directory / member.removeprefix(prefix)).write_bytes(z.read(member))
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     cli._compare_directories([directory, directory], actions, rank_positions=(9, 10))
     output = capsys.readouterr().out
     assert "   9  Anonymous" in output
@@ -63,7 +63,7 @@ def test_anonymous_brd_analysis_groups_landed_events(
         "brd_red_hot_deep_blue_anonymous.zip",
         "a-DNaXrgHGZ8PbCkfL/fight-22/source-7/",
     )
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     cli._print_analysis(analyze_saved_fight(tmp_path, actions))
     output = capsys.readouterr().out
     assert "Player: Anonymous\n" in output
@@ -83,7 +83,7 @@ def test_one_leaderboard_rank_shows_full_anonymous_analysis(
         "a-DNaXrgHGZ8PbCkfL/fight-22/source-7/",
     )
     reference = ReportReference("a:DNaXrgHGZ8PbCkfL", 22, 7)
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     monkeypatch.setattr(cli, "ranked_source", lambda encounter, job, rank, *, partition: (
         reference if (encounter, job, rank, partition) == (102, "bard", 9, None) else None
     ))

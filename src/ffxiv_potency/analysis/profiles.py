@@ -1,7 +1,9 @@
 """Job profiles, weapon delays and pet scaling for FF Logs analysis."""
 
 from dataclasses import dataclass
+from pathlib import Path
 
+from ..datasets import job_code, load_manifest, select_set
 from ..patches import LATEST_KNOWN_PATCH
 from .config import reference_path
 from .errors import AnalysisError
@@ -45,7 +47,7 @@ class _PetProfile:
 
 
 def _load_weapon_delays(job: str) -> tuple[float, ...]:
-    resource = reference_path(job.lower(), "weapon_delays.json")
+    resource = reference_path("jobs", job_code(job), "weapon_delays.json")
     if not resource.is_file():
         raise AnalysisError(f"no known weapon delays are configured for job {job!r}")
     values = _load_json(resource, list)
@@ -56,9 +58,11 @@ def _load_weapon_delays(job: str) -> tuple[float, ...]:
     return tuple(float(value) for value in values)
 
 
-def _load_pet_profiles(job: str) -> dict[str, _PetProfile]:
-    resource = reference_path(job.lower(), LATEST_KNOWN_PATCH, "pet_scaling.json")
-    if not resource.is_file():
+def _load_pet_profiles(job: str, resource: Path | None = None) -> dict[str, _PetProfile]:
+    manifest, root = load_manifest(job)
+    rows = manifest["pet_scaling_sets"]
+    resource = resource or (root / select_set(manifest, "pet_scaling_sets", LATEST_KNOWN_PATCH)["file"] if rows else root / "no-pets.json")
+    if resource is None or not resource.is_file():
         return {}
     job_profile = _load_json(resource, dict)
     pets = job_profile.get("pets", {})
@@ -128,13 +132,35 @@ def _determination_factor(determination: int, level_main: int, level_divisor: in
 
 def _load_combat_profile(
     job: str, action_document: dict | None = None, *, party_bonus_percent: int = 5,
+    gear_path: Path | None = None,
 ) -> _CombatProfile:
     if not isinstance(party_bonus_percent, int) or not 1 <= party_bonus_percent <= 5:
         raise AnalysisError(f"invalid party bonus {party_bonus_percent!r}%")
-    resource = reference_path(job.lower(), LATEST_KNOWN_PATCH, "combat_profile.json")
-    if not resource.is_file():
-        raise AnalysisError(f"no combat profile is configured for job {job!r}")
+    if gear_path is None:
+        manifest, root = load_manifest(job)
+        gear_path = Path(root / str(select_set(manifest, "gear_sets", LATEST_KNOWN_PATCH)["file"]))
+    gear = _load_json(gear_path, dict)
+    profile_name = gear.get("combat_profile")
+    if not isinstance(profile_name, str):
+        raise AnalysisError(f"missing combat profile for gear {gear_path}")
+    resource = gear_path.parent.parent / profile_name
+    if not resource.resolve().is_relative_to(gear_path.parent.parent.resolve()) or not resource.is_file():
+        raise AnalysisError(f"invalid combat profile for gear {gear_path}")
     profile = _load_json(resource, dict)
+    if profile.get("level") != gear.get("level"):
+        raise AnalysisError("gear and combat model have different levels")
+    if gear_path is not None:
+        profile["food"] = gear["food"]
+        profile["potion"] = gear["potion"]
+        solo = gear["solo_dexterity"]
+        party = solo * 105 // 100
+        potion_data = _load_json(reference_path("consumables", gear["potion"]), dict)
+        bonus = potion_data["bonuses"]["dexterity"]
+        profile["dexterity"] = {"solo_unpotted": solo, "party_unpotted": party,
+                                "party_potted": party + min(party * bonus["percent"] // 100, bonus["cap"])}
+        profile["secondary_stats"] = {stat: gear[stat] for stat in
+                                      ("critical_hit", "direct_hit", "determination", "skill_speed")}
+        profile["auto_attack"] = {**profile["auto_attack"], "weapon_damage": gear["weapon_damage"]}
     food_reference = profile.get("food")
     if not isinstance(food_reference, str) or not food_reference.startswith("food/"):
         raise AnalysisError(f"invalid food reference for job {job!r}")
@@ -212,7 +238,7 @@ def _load_combat_profile(
             raise AnalysisError(f"configured {stat} must include its capped HQ food bonus")
     # Synthetic/older action snapshots without traits use the bundled guide.
     if action_document is None or "traits" not in action_document:
-        guide = _load_json(reference_path(job.lower(), LATEST_KNOWN_PATCH, "actions.json"), dict)
+        guide = _load_json(load_manifest(job)[1] / select_set(load_manifest(job)[0], "action_sets", LATEST_KNOWN_PATCH)["file"], dict)
     else:
         guide = action_document
     traits = guide.get("traits")

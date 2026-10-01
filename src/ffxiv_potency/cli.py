@@ -22,8 +22,8 @@ from .analysis import (
     analyze_saved_fight,
 )
 from .analysis.cache import CACHE_FILENAME, cache_root
-from .analysis.config import reference_path
 from .analysis.penalties import DamagePenaltySummary
+from .datasets import job_code, load_manifest, select_set
 from .fflogs import (
     FFLogsClient,
     FFLogsError,
@@ -87,6 +87,7 @@ _RANK_RANGE = re.compile(r"(\d+)-(\d+)")
 
 class _RankingStatusOptions(TypedDict, total=False):
     on_status: Callable[[str], None]
+    on_progress: Callable[[int, int], None]
 
 
 class _Progress(AbstractContextManager["_Progress"]):
@@ -99,11 +100,13 @@ class _Progress(AbstractContextManager["_Progress"]):
     def __enter__(self) -> Self:
         return self
 
-    def update(self, label: str, done: int, total: int) -> None:
+    def update(self, label: str, done: int, total: int, *, detail: str = "") -> None:
         if not self.enabled:
             return
         filled = round(20 * done / total)
         line = f"{label}: [{'#' * filled}{'-' * (20 - filled)}] {done}/{total}"
+        if detail:
+            line += f" - {detail}"
         sys.stderr.write("\r" + line.ljust(self.width))
         sys.stderr.flush()
         self.width = max(self.width, len(line))
@@ -166,6 +169,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--actions", type=Path, help=f"override the job's default {LATEST_KNOWN_PATCH} actions.json"
     )
     analyse.add_argument("--output", type=Path, default=Path("data/logs"), help="download root")
+    for command in (analyse, compare, fflogs):
+        command.add_argument("--gear", help="gear profile ID; default selects BiS by fight date")
     return parser
 
 
@@ -247,14 +252,22 @@ def _print_analysis(
     if rank is not None:
         print(f"Rank: {rank}")
     wipe = " (wipe)" if result.kill is False else ""
-    print(f"Fight: {_format_fight(result)}, {_format_duration(result.duration_seconds)}{wipe}")
+    print(f"Fight: {_format_fight(result)}")
+    print(f"Duration: {_format_duration(result.duration_seconds)}{wipe}")
     if directory is not None:
         partition, patch = _fight_provenance(directory)
         print(f"Date: {_fight_date(directory, full_year=True)} (UTC)")
         print(f"Partition: {partition}")
-        print(f"Patch: {patch}")
+        patch_detail = f" ({result.patch_source})" if result.played_patch and result.patch_source else ""
+        print(f"Patch: {result.played_patch or patch}{patch_detail}")
+        if result.played_patch and result.played_patch != patch and patch != "n/a":
+            print(f"Ranking patch bracket: {patch}")
     bonus = (f"{result.party_bonus_percent}%"
              if result.party_bonus_percent is not None else "5% (assumed; older saved fight)")
+    if result.gear_name:
+        print(f"Actions: valid since {result.actions_since}" if result.actions_since
+              else "Actions: custom snapshot")
+        print(f"Gear: {result.gear_name} ({result.gear_source})")
     print(f"Party main-stat bonus: {bonus}")
     if result.echo_status == "observed":
         print("Echo: 12% (damage normalised by 1.12)")
@@ -613,6 +626,7 @@ def _fight_provenance(directory: Path) -> tuple[str, str]:
 def _compare_directories(
     directories: Sequence[Path], override: Path | None, progress: _Progress | None = None,
     *, rank_positions: Sequence[int] | None = None, skip_analysis_errors: bool = False,
+    gear: str | None = None,
 ) -> tuple[tuple[int, str], ...]:
     if rank_positions is not None and len(rank_positions) != len(directories):
         raise ValueError("ranking positions must match the compared fights")
@@ -629,7 +643,8 @@ def _compare_directories(
     for index, directory in enumerate(directories, 1):
         try:
             _verify_supported_fight(directory)
-            result = analyze_saved_fight(directory, actions_path)
+            result = (analyze_saved_fight(directory, actions_path, gear=gear) if gear is not None
+                      else analyze_saved_fight(directory, actions_path))
         except AnalysisError as exc:
             if not skip_analysis_errors or rank_positions is None:
                 raise
@@ -784,9 +799,13 @@ def _verify_supported_fight(directory: Path) -> None:
 def _actions_for_job(job: str, override: Path | None) -> Path:
     if job not in SUPPORTED_JOBS.values():
         raise ValueError(f"job {job!r} is not supported yet; currently only Bard and Machinist are supported")
-    path = override or Path("data") / job / LATEST_KNOWN_PATCH / "actions.json"
-    if override is None and not path.is_file():
-        path = reference_path(job, LATEST_KNOWN_PATCH, "actions.json")
+    if override is not None:
+        path = override
+    else:
+        manifest, root = load_manifest(job)
+        row = select_set(manifest, "action_sets", LATEST_KNOWN_PATCH)
+        local = Path("data/jobs") / job_code(job) / row["file"]
+        path = local if local.is_file() else root / row["file"]
     _require_actions(path, job)
     return path
 
@@ -814,7 +833,25 @@ def _choose_number(label: str, count: int) -> int:
 
 
 def _ranking_status_options(progress: _Progress) -> _RankingStatusOptions:
-    return {"on_status": progress.message} if progress.enabled else {}
+    if not progress.enabled:
+        return {}
+    counts: tuple[int, int] | None = None
+    detail = ""
+
+    def status(message: str) -> None:
+        nonlocal detail
+        detail = message
+        if counts is None:
+            progress.message(message)
+        else:
+            progress.update("Looking up ranks", *counts, detail=detail)
+
+    def update(done: int, total: int) -> None:
+        nonlocal counts
+        counts = done, total
+        progress.update("Looking up ranks", done, total, detail=detail)
+
+    return {"on_status": status, "on_progress": update}
 
 
 def _report_fight_label(fight: ReportFight) -> str:
@@ -958,9 +995,14 @@ def _resolve_analysis_directory(
     return download.directory
 
 
+class _GearOptions(TypedDict, total=False):
+    gear: str
+
+
 def _download_and_compare(
     urls: Sequence[str], output: Path, actions: Path | None, progress: _Progress,
     *, rank_positions: Sequence[int] | None = None, skip_analysis_errors: bool = False,
+    gear: str | None = None,
 ) -> tuple[tuple[int, str], ...]:
     # A source may appear more than once in a comparison; only one worker may
     # write its files, while the result still appears in each requested position.
@@ -993,33 +1035,34 @@ def _download_and_compare(
     ) if rank_positions is not None else None
     if not directories:
         raise FFLogsError("none of the selected ranked fights could be downloaded")
+    gear_options: _GearOptions = {"gear": gear} if gear is not None else {}
     if progress.enabled:
         if compared_ranks is None:
-            _compare_directories(directories, actions, progress)
+            _compare_directories(directories, actions, progress, **gear_options)
         elif skip_analysis_errors:
             return skipped + _compare_directories(
                 directories, actions, progress, rank_positions=compared_ranks,
-                skip_analysis_errors=True,
+                skip_analysis_errors=True, **gear_options,
             )
         else:
-            _compare_directories(directories, actions, progress, rank_positions=compared_ranks)
+            _compare_directories(directories, actions, progress, rank_positions=compared_ranks, **gear_options)
     else:
         if compared_ranks is None:
-            _compare_directories(directories, actions)
+            _compare_directories(directories, actions, **gear_options)
         elif skip_analysis_errors:
             return skipped + _compare_directories(
                 directories, actions, rank_positions=compared_ranks,
-                skip_analysis_errors=True,
+                skip_analysis_errors=True, **gear_options,
             )
         else:
-            _compare_directories(directories, actions, rank_positions=compared_ranks)
+            _compare_directories(directories, actions, rank_positions=compared_ranks, **gear_options)
     return ()
 
 
 def _compare_ranked_references(
     ranked: tuple[tuple[int, ReportReference], ...],
     skipped: tuple[tuple[int, str], ...],
-    output: Path, progress: _Progress,
+    output: Path, progress: _Progress, *, gear: str | None = None,
 ) -> None:
     """Compare selected leaderboard entries and show skipped ranks."""
     urls = [
@@ -1030,7 +1073,7 @@ def _compare_ranked_references(
     analysis_skipped = _download_and_compare(
         urls, output, None, progress,
         rank_positions=tuple(rank for rank, _ in ranked),
-        skip_analysis_errors=True,
+        skip_analysis_errors=True, **({"gear": gear} if gear is not None else {}),
     )
     skipped_ranks = (*skipped, *analysis_skipped)
     if skipped_ranks:
@@ -1097,7 +1140,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     f"?fight={reference.fight_id}&source={reference.source_id}"
                 )
             with _Progress() as progress:
-                _download_and_compare(urls, args.output, args.actions, progress)
+                _download_and_compare(urls, args.output, args.actions, progress, gear=args.gear)
             return 0
 
         if args.command == "analyse":
@@ -1120,7 +1163,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 actions_path = _actions_for_job(job, args.actions)
                 _verify_supported_fight(directory)
                 progress.update("Calculating potency", 0, 1)
-                result = analyze_saved_fight(directory, actions_path)
+                result = (analyze_saved_fight(directory, actions_path, gear=args.gear) if args.gear is not None
+                          else analyze_saved_fight(directory, actions_path))
                 progress.update("Calculating potency", 1, 1)
             reference = _reference_from_directory(directory)
             _print_analysis(
@@ -1162,7 +1206,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             encounter_id, job, first, last, partition=args.partition,
                             **_ranking_status_options(progress),
                         )
-                        _compare_ranked_references(ranked, skipped, args.output, progress)
+                        _compare_ranked_references(ranked, skipped, args.output, progress, gear=args.gear)
                     return 0
                 if args.rank is not None and "," in args.rank:
                     pieces = args.rank.split(",")
@@ -1176,7 +1220,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             encounter_id, job, positions, partition=args.partition,
                             **_ranking_status_options(progress),
                         )
-                        _compare_ranked_references(ranked, skipped, args.output, progress)
+                        _compare_ranked_references(ranked, skipped, args.output, progress, gear=args.gear)
                     return 0
                 if args.rank is not None:
                     if not args.rank.isdecimal() or int(args.rank) < 1:
@@ -1201,7 +1245,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         actions_path = _actions_for_job(job, None)
                         _verify_supported_fight(directory)
                         progress.update("Calculating potency", 0, 1)
-                        result = analyze_saved_fight(directory, actions_path)
+                        result = (analyze_saved_fight(directory, actions_path, gear=args.gear) if args.gear is not None
+                          else analyze_saved_fight(directory, actions_path))
                         progress.update("Calculating potency", 1, 1)
                     _print_analysis(
                         result, directory=directory, rank=rank,
@@ -1214,7 +1259,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         encounter_id, job, partition=args.partition,
                         **_ranking_status_options(progress),
                     )
-                    _compare_ranked_references(ranked, skipped, args.output, progress)
+                    _compare_ranked_references(ranked, skipped, args.output, progress, gear=args.gear)
                 return 0
             if args.rank is not None:
                 raise ValueError("a rank requires a job and fight abbreviation")

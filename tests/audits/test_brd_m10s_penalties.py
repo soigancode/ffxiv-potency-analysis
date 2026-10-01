@@ -10,7 +10,7 @@ from ffxiv_potency.analysis.brd.dots import brd_dot_potency, reconstruct_brd_dot
 from ffxiv_potency.analysis.profiles import _load_combat_profile
 
 ARCHIVE = "brd_m10s_penalty_cases.zip"
-ACTIONS = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
+ACTIONS = Path(__file__).parents[2] / "data/jobs/brd/7.4/actions.json"
 
 
 def test_food_expires_during_dots_and_lb3_precedes_weakness(

@@ -10,7 +10,7 @@ from ffxiv_potency.analysis.profiles import _load_combat_profile
 
 ARCHIVE = "brd_ast_spear.zip"
 SPEAR = "1003889"
-ACTIONS = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
+ACTIONS = Path(__file__).parents[2] / "data/jobs/brd/7.4/actions.json"
 
 
 def _events(directory: Path):

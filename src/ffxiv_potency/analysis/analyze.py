@@ -7,6 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from ..datasets import load_manifest, resolve_datasets
 from ..fflogs.partitions import EXTREME_ENCOUNTERS
 from ..jobguide.schema import ACTION_SCHEMA_VERSION
 from ..patches import LATEST_KNOWN_PATCH
@@ -93,17 +94,28 @@ def _find_ranking_amount(
 
 
 def analyze_saved_fight(
-    directory: Path, actions_path: Path, *, use_cache: bool = True,
+    directory: Path, actions_path: Path, *, use_cache: bool = True, gear: str | None = None,
 ) -> AnalysisResult:
     """Analyze a saved player log, reusing calculations for unchanged inputs."""
+    document = _load_json(actions_path, dict)
+    if document.get("patch") and isinstance(document.get("job"), str):
+        manifest, root = load_manifest(document["job"])
+        if any(actions_path.resolve() == (root / row["file"]).resolve()
+               for row in manifest["action_sets"]):
+            selection = resolve_datasets(document["job"], _load_json(directory / "fight.json", dict), gear=gear)
+            actions_path = selection.actions
     if use_cache:
         from .cache import cached_analysis
 
-        return cached_analysis(directory, actions_path, _analyze_saved_fight)
-    return _analyze_saved_fight(directory, actions_path)
+        return cached_analysis(directory, actions_path,
+                               lambda directory, actions: (_analyze_saved_fight(directory, actions, gear=gear)
+                                                          if gear is not None else _analyze_saved_fight(directory, actions)),
+                               gear=gear)
+    return (_analyze_saved_fight(directory, actions_path, gear=gear) if gear is not None
+            else _analyze_saved_fight(directory, actions_path))
 
 
-def _analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
+def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | None = None) -> AnalysisResult:
     """Analyze one directory produced by :func:`download_report_events`.
 
     FF Logs returns both ``calculateddamage`` and the later authoritative
@@ -139,7 +151,12 @@ def _analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
             f"unsupported actions schema version {schema_version!r}; update the job-guide data"
         )
     snapshot_patch = action_document.get("patch")
-    if snapshot_patch is not None and snapshot_patch != LATEST_KNOWN_PATCH:
+    registered = False
+    if isinstance(action_document.get("job"), str) and snapshot_patch is not None:
+        registered_manifest, registered_root = load_manifest(action_document["job"])
+        registered = any(actions_path.resolve() == (registered_root / row["file"]).resolve()
+                         for row in registered_manifest["action_sets"])
+    if snapshot_patch is not None and snapshot_patch != LATEST_KNOWN_PATCH and not registered:
         raise AnalysisError(
             f"only patch {LATEST_KNOWN_PATCH} actions are supported for now; "
             f"received {snapshot_patch!r}"
@@ -178,10 +195,13 @@ def _analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     job = action_document.get("job")
     if not isinstance(job, str) or not job:
         raise AnalysisError(f"{actions_path} is missing job")
-    pet_profiles = _load_pet_profiles(job)
+    # Synthetic snapshots retain the direct-analysis test path; real versioned
+    # exports resolve independent datasets and gear from their played date.
+    selection = resolve_datasets(job, fight, gear=gear) if snapshot_patch is not None else None
+    pet_profiles = _load_pet_profiles(job, selection.pet_scaling if selection else None)
     encounter_id = fight.get("encounterID")
     penalty_rules = load_damage_penalties(encounter_id if isinstance(encounter_id, int) else None)
-    raid_effects = _load_raid_effects(actions_path)
+    raid_effects = _load_raid_effects(actions_path, played_patch=selection.patch if selection else None)
 
     sorted_casts = sorted(
         (e for e in casts if isinstance(e, dict)), key=lambda e: e.get("timestamp", 0)
@@ -193,6 +213,12 @@ def _analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     )
     source_id = player_source_counts.most_common(1)[0][0] if player_source_counts else None
     source_name = actors.get(source_id, {}).get("name", f"Source {source_id}")
+    if selection and combatants:
+        for combatant in combatants:
+            if isinstance(combatant, dict) and combatant.get("sourceID") == source_id:
+                level = combatant.get("level")
+                if level is not None and level != 100:
+                    raise AnalysisError("only validated level-100 combatants are supported")
     initial_echo = echo_status(
         encounter_id if isinstance(encounter_id, int) else None, source_id, combatants,
     )
@@ -346,6 +372,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
     party_bonus = party_bonus_percent(fight, master_data, source_id)
     combat_profile = _load_combat_profile(
         job, action_document, party_bonus_percent=party_bonus if party_bonus is not None else 5,
+        gear_path=selection.gear if selection else None,
     )
     missing_food = food_gaps(
         buffs, source_id, combat_profile.food_buff_id, float(start), float(end),
@@ -1004,6 +1031,12 @@ def _analyze_saved_fight(directory: Path, actions_path: Path) -> AnalysisResult:
         else None,
         source_name=str(source_name),
         party_bonus_percent=party_bonus,
+        played_patch=selection.patch if selection else None,
+        patch_source=selection.patch_source if selection else None,
+        actions_since=selection.actions_since if selection and registered else None,
+        gear_id=selection.gear_id if selection else None,
+        gear_name=selection.gear_name if selection else None,
+        gear_source=selection.gear_source if selection else None,
         echo_status=initial_echo,
         ndps=ndps,
         rdps=rdps,

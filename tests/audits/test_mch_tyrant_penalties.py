@@ -10,7 +10,7 @@ from ffxiv_potency.analysis import analyze_saved_fight
 from ffxiv_potency.cli import _print_analysis
 
 ARCHIVE = "mch_tyrant_penalty_cases.zip"
-ACTIONS = Path(__file__).parents[2] / "data/machinist/7.55/actions.json"
+ACTIONS = Path(__file__).parents[2] / "data/jobs/mch/7.4/actions.json"
 
 
 def _normal_damage(directory: Path, action: str, buffs: str) -> list[int]:

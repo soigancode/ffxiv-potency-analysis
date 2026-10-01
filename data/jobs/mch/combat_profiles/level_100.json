@@ -1,0 +1,21 @@
+{
+  "level": 100,
+  "level_main": 440,
+  "level_sub": 420,
+  "level_divisor": 2780,
+  "attack_power_coefficient": 195,
+  "player_damage_coefficient": 237,
+  "attribute_modifiers": {
+    "player": 115,
+    "Automaton Queen": 100,
+    "Rook Autoturret": 100
+  },
+  "auto_attack": {
+    "base_potency": 80
+  },
+  "luck": {
+    "non_random_damage_actions": [
+      "Wildfire"
+    ]
+  }
+}

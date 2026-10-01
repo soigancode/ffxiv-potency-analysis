@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "effect_sets": [
+    {
+      "id": "effects_7_4",
+      "file": "7.4.json",
+      "valid_from": "7.4",
+      "valid_until": "8.0",
+      "verified_through": "7.56"
+    }
+  ],
+  "last_capture": {
+    "patch": "7.56"
+  }
+}

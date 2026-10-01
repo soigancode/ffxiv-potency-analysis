@@ -18,6 +18,7 @@ from ffxiv_potency.fflogs.rankings import (
 def test_rank_range_crosses_pages_without_resolving_earlier_reports() -> None:
     pages: list[int] = []
     reports: list[str] = []
+    progress = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/oauth/token":
@@ -50,8 +51,9 @@ def test_rank_range_crosses_pages_without_resolving_earlier_reports() -> None:
 
     selected, skipped = ranked_sources_in_range(
         103, "machinist", 5000, 5024, client_id="id", client_secret="secret",
-        transport=httpx.MockTransport(handler),
+        transport=httpx.MockTransport(handler), on_progress=lambda done, total: progress.append((done, total)),
     )
+    assert progress == [(done, 25) for done in range(26)]
     assert pages == [1, 50, 51]
     assert reports == ["report5000", *(f"report{rank}" for rank in range(5002, 5025))]
     assert selected[0] == (5000, ReportReference("report5000", 9, 2))
@@ -72,6 +74,7 @@ def test_rank_range_requires_increasing_positions() -> None:
 def test_selected_positions_fetch_only_needed_pages_in_requested_order() -> None:
     pages: list[int] = []
     reports: list[str] = []
+    progress = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/oauth/token":
@@ -99,8 +102,9 @@ def test_selected_positions_fetch_only_needed_pages_in_requested_order() -> None
 
     found, skipped = ranked_sources_at_positions(
         103, "machinist", (153, 1, 2), client_id="id", client_secret="secret",
-        transport=httpx.MockTransport(handler),
+        transport=httpx.MockTransport(handler), on_progress=lambda done, total: progress.append((done, total)),
     )
+    assert progress == [(done, 3) for done in range(4)]
     assert pages == [1, 2]
     assert reports == ["report1", "report2"]
     assert [rank for rank, _ in found] == [1, 2]
@@ -138,10 +142,12 @@ def test_one_rank_resolves_only_its_report(partition: int | None) -> None:
         }}}})
 
     statuses: list[str] = []
+    progress = []
     assert ranked_source(1085, "bard", 2, partition=partition,
-                         on_status=statuses.append,
+                         on_status=statuses.append, on_progress=lambda done, total: progress.append((done, total)),
                          client_id="id", client_secret="secret",
                          transport=httpx.MockTransport(handler)) == ReportReference("def456", 2, 7)
+    assert progress == [(0, 1), (1, 1)]
     assert requests[0]["variables"]["partition"] == (partition if partition is not None else 1)
     assert len(requests) == 2
     assert statuses == ["Loading leaderboard page 1...", "Identifying player for rank 2..."]
@@ -701,3 +707,56 @@ def test_duplicate_report_actors_resolve_using_fight_participants() -> None:
         client_secret="secret",
         transport=httpx.MockTransport(handler),
     ) == (ReportReference("abc123", 2, 2), ReportReference("def456", 3, 7))
+
+
+def test_leaderboard_resolves_four_reports_concurrently_and_reuses_shared_fights() -> None:
+    from threading import Barrier, Lock, get_ident
+
+    rendezvous = Barrier(4, timeout=3)
+    lock = Lock()
+    reports = []
+    main_thread = get_ident()
+    status_threads = []
+    progress = []
+    rows = [{"name": f"Player {rank}", "report": {
+        "code": f"report{rank % 4}", "fightID": 1,
+    }} for rank in range(1, 11)]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/token":
+            return httpx.Response(200, json={"access_token": "token"})
+        body = json.loads(request.content)
+        if "EncounterRankings" in body["query"]:
+            return httpx.Response(200, json={"data": {"worldData": {"encounter": {
+                "id": 103, "characterRankings": {"rankings": rows},
+            }}}})
+        code = body["variables"]["code"]
+        with lock:
+            reports.append(code)
+        # Serial report resolution cannot pass this rendezvous.
+        rendezvous.wait()
+        actors = [{"id": rank, "name": f"Player {rank}", "type": "Player",
+                   "subType": "Machinist"}
+                  for rank in range(1, 11) if f"report{rank % 4}" == code]
+        return httpx.Response(200, json={"data": {"reportData": {"report": {
+            "fights": [{"id": 1, "encounterID": 103,
+                        "friendlyPlayers": [actor["id"] for actor in actors]}],
+            "masterData": {"actors": actors},
+        }}}})
+
+    found, skipped = accessible_ranked_sources(
+        103, "machinist", client_id="id", client_secret="secret",
+        transport=httpx.MockTransport(handler),
+        on_status=lambda _: status_threads.append(get_ident()),
+        on_progress=lambda done, total: progress.append((done, total, get_ident())),
+    )
+    assert sorted(reports) == [f"report{index}" for index in range(4)]
+    assert found == tuple((rank, ReportReference(f"report{rank % 4}", 1, rank))
+                          for rank in range(1, 11))
+    assert skipped == ()
+    assert set(status_threads) == {main_thread}
+    assert progress[0][:2] == (0, 10)
+    assert progress[-1][:2] == (10, 10)
+    assert [done for done, _, _ in progress] == sorted(done for done, _, _ in progress)
+    assert any(0 < done < 10 for done, _, _ in progress)
+    assert all(thread == main_thread for _, _, thread in progress)

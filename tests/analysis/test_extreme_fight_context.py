@@ -10,7 +10,7 @@ from ffxiv_potency.analysis import analyze_saved_fight
 from ffxiv_potency.analysis.errors import AnalysisError
 from ffxiv_potency.fflogs.partitions import require_current_patch
 
-ACTIONS = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
+ACTIONS = Path(__file__).parents[2] / "data/jobs/brd/7.4/actions.json"
 
 
 @pytest.fixture

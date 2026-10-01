@@ -23,7 +23,7 @@ def test_brd_enuo_real_log_has_five_party_roles_and_no_unmatched_hits(
     assert (fight["encounterID"], rankings["rankings"]["data"][0]["partition"]) == (1084, 7)
     require_current_patch(fight, rankings)
 
-    result = analyze_saved_fight(tmp_path, Path("data/bard/7.55/actions.json"))
+    result = analyze_saved_fight(tmp_path, Path("data/jobs/brd/7.4/actions.json"))
     assert result.party_bonus_percent == 5
     assert result.echo_status == "absent"
     assert result.food is not None

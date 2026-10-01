@@ -13,7 +13,7 @@ def test_brd_adds_and_clipped_hit(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
     extract_fight("brd_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
     by_name = {action.name: action for action in result.actions}
 
@@ -48,7 +48,7 @@ def test_brd_echo_normalization_matches_unboosted_fight(
     tmp_path: Path, extract_fight,
 ) -> None:
     extract_fight("brd_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     ordinary = analyze_saved_fight(tmp_path, actions)
 
     damage_path = tmp_path / "damage-events.json"
@@ -86,7 +86,7 @@ def test_barrage_shadowbite_buffs_every_target(
     tmp_path: Path, extract_fight
 ) -> None:
     extract_fight("brd_vamp_fatale.zip", "Kn9vkBgZT3RPGxDf/fight-21/source-4/")
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     ordinary = analyze_saved_fight(tmp_path, actions)
     ordinary_potency = next(row.potency_min for row in ordinary.actions if row.name == "Shadowbite")
 
@@ -121,7 +121,7 @@ def test_recorded_targetability_explains_ghosted_burst_shot(
         {"type": "targetabilityupdate", "timestamp": 5819947,
          "sourceID": 5, "targetID": 5, "targetable": 1},
     ]), encoding="utf-8")
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     cli._print_analysis(analyze_saved_fight(tmp_path, actions))
     output = capsys.readouterr().out
     assert "Burst Shot on Vamp Fatale (target became untargetable before hit landed)" in output
@@ -139,7 +139,7 @@ def test_other_players_overkill_explains_ghosted_coffinmaker_shot(
          "targetID": coffin_id, "packetID": 99999,
          "amount": 30315, "overkill": 18059},
     ]), encoding="utf-8")
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     cli._print_analysis(analyze_saved_fight(tmp_path, actions))
     assert "Burst Shot on Coffinmaker (target defeated before hit landed)" in capsys.readouterr().out
 
@@ -155,7 +155,7 @@ def test_repeated_cell_overkill_is_not_a_boss_hp_lock(
          "amount": 0, "overkill": 1000}
         for index, timestamp in enumerate((6143000, 6146000, 6149000))
     ]), encoding="utf-8")
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     cli._print_analysis(analyze_saved_fight(tmp_path, actions))
     output = capsys.readouterr().out
     assert "Heartbreak Shot on Charnel Cell (phase HP lock" not in output
@@ -167,7 +167,7 @@ def test_rank_two_cell_dies_from_own_sidewinder_before_burst_shot_lands(
     extract_fight(
         "brd_vamp_fatale_rank2.zip", "xCN3zZp6rnDwTMLq/fight-10/source-325/"
     )
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
     assert result.unmatched == ()
 

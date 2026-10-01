@@ -14,7 +14,7 @@ def test_brd_mistwake_apex_certainty_uses_the_whole_cast(
     extract_fight(
         "brd_mistwake_variable_potency.zip", "L7hjT31wtfBJkqPM/fight-4/source-2/",
     )
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
     apex = next(row for row in result.brd_potency_estimates if row.action == "Apex Arrow")
 

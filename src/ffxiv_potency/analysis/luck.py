@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from ..patches import LATEST_KNOWN_PATCH
-from .config import reference_path
+from ..raid_effects import REQUIRED_EFFECTS, resolve_effects, select_effect_document
+from .config import action_data_root
 from .errors import AnalysisError
 from .events import _event_name, _has_buff, _load_json
 from .models import HitOutcomeSummary
@@ -74,42 +75,31 @@ def _has_inherently_guaranteed_outcome(action: dict[str, Any]) -> bool:
     return "delivers a critical direct hit" in description
 
 
-def _load_raid_effects(actions_path: Path) -> list[dict[str, Any]]:
-    """Use the refreshed guide snapshot for the action patch when available."""
-    patch = _load_json(actions_path, dict).get("patch") or LATEST_KNOWN_PATCH
-    bundled = reference_path("raid_effects", f"{patch}.json")
-    if not bundled.is_file():
-        raise AnalysisError(f"raid-effect data for patch {patch!r} is missing")
-    bundled_document = _load_json(bundled, dict)
-    data_root = actions_path.parent.parent.parent
-    generated = data_root / "raid_effects" / f"{patch}.json"
-    legacy = data_root / "raid_buffs" / str(patch) / "effects.json"
-    if generated.is_file():
-        document = _load_json(generated, dict)
-    elif legacy.is_file():
-        document = _load_json(legacy, dict)
-    else:
-        document = bundled_document
-    if patch is not None and document.get("patch") != patch:
-        raise AnalysisError(
-            f"raid-effect data for patch {patch!r} is missing; run 'ffxiv-potency jobguide buffs'"
-        )
-    effects = document.get("effects")
-    required = {(row["action"], row["rate"]) for row in bundled_document["effects"]}
-    if isinstance(effects, list) and legacy.is_file() and not generated.is_file():
-        present = {(row.get("action"), row.get("rate")) for row in effects if isinstance(row, dict)}
-        if present == required - {("Devilment", "critical"), ("Devilment", "direct")}:
-            # Existing 7.55 snapshots predate Devilment support. Use the
-            # complete bundled data until they are refreshed.
-            effects = bundled_document["effects"]
-    if (
-        not isinstance(effects, list)
-        or len(effects) != len(required)
-        or any(not isinstance(row, dict) for row in effects)
-        or {(row.get("action"), row.get("rate")) for row in effects} != required
-    ):
-        raise AnalysisError("raid-effect snapshot must contain all configured crit/DH effects")
-    return effects
+def _load_raid_effects(actions_path: Path, *, played_patch: str | None = None) -> list[dict[str, Any]]:
+    """Resolve effects for the fight patch, including parsed job action references."""
+    patch = played_patch or _load_json(actions_path, dict).get("patch") or LATEST_KNOWN_PATCH
+    data_root = action_data_root(actions_path)
+    try:
+        document = select_effect_document(data_root, patch)
+        # Preserve older custom snapshots until their first manifest-based update.
+        if not (data_root / "raid_effects/datasets.json").is_file():
+            generated = data_root / "raid_effects" / f"{patch}.json"
+            legacy = data_root / "raid_buffs" / str(patch) / "effects.json"
+            path = generated if generated.is_file() else legacy
+            if path.is_file():
+                override = _load_json(path, dict)
+                if override.get("patch") != patch:
+                    raise ValueError("raid-effect snapshot patch does not match the requested patch")
+                rows = override.get("effects")
+                present = {(row.get("action"), row.get("rate")) for row in rows
+                           if isinstance(row, dict)} if isinstance(rows, list) else set()
+                if not (path == legacy and present == REQUIRED_EFFECTS - {
+                    ("Devilment", "critical"), ("Devilment", "direct"),
+                }):
+                    document = override
+        return resolve_effects(document, data_root, patch)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise AnalysisError(f"raid-effect data for patch {patch!r} is missing or invalid: {exc}") from exc
 
 
 def _raid_luck_adjustment(

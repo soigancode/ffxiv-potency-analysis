@@ -10,7 +10,7 @@ from ffxiv_potency.cli import _format_fight, _print_analysis
 
 ARCHIVE = "mch_doomtrain_sample.zip"
 PREFIX = "czvapF4mr1XPJ8Kw/fight-1/source-4/"
-ACTIONS = Path(__file__).parents[2] / "data/machinist/7.55/actions.json"
+ACTIONS = Path(__file__).parents[2] / "data/jobs/mch/7.4/actions.json"
 
 
 def test_doomtrain_self_targeted_flamethrower_cast_has_no_landed_ticks(

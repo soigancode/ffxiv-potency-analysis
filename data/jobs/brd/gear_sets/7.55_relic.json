@@ -10,5 +10,9 @@
   "direct_hit": 1823,
   "determination": 2765,
   "skill_speed": 474,
-  "expected_damage_per_100_potency": 12402.73
+  "expected_damage_per_100_potency": 12402.73,
+  "id": "relic_7_55",
+  "potion": "potions/7.4/grade_4_gemdraught_of_dexterity_hq.json",
+  "solo_dexterity": 6513,
+  "combat_profile": "combat_profiles/level_100.json"
 }

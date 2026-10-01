@@ -15,7 +15,7 @@ def test_dancing_mad_wipe_shots_and_weakness_snapshots(
     extract_fight(
         "brd_dancing_mad_weakness_wipe.zip", "7y6BM2RwpTgvhW8C/fight-4/source-2/"
     )
-    result = analyze_saved_fight(tmp_path, Path("data/bard/7.55/actions.json"))
+    result = analyze_saved_fight(tmp_path, Path("data/jobs/brd/7.4/actions.json"))
     assert result.kill is False
     assert result.auto_attacks[0].hits == 198
     assert result.auto_attacks[0].weapon_delay_seconds == 3.04
@@ -52,7 +52,7 @@ def test_dancing_mad_wipe_shots_and_weakness_snapshots(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "Fight: Dancing Mad (1085), 11m18s (wipe)" in output
+    assert "Fight: Dancing Mad (1085)\nDuration: 11m18s (wipe)" in output
     assert "Dead: 08m55s–09m04s (revived: Weakness applied)" in output
     assert "Weakness: 09m04s–10m44s (expired)" in output
     assert "Weakness: 09m04s–10m44s (expired)\n    main stat -25%; ~26.0% potency reduction; 162 landed hits affected; " in output
@@ -66,7 +66,7 @@ def test_dancing_mad_wipe_all_ghosted_casts_and_reasons(
     extract_fight(
         "brd_dancing_mad_weakness_wipe.zip", "7y6BM2RwpTgvhW8C/fight-4/source-2/"
     )
-    result = analyze_saved_fight(tmp_path, Path("data/bard/7.55/actions.json"))
+    result = analyze_saved_fight(tmp_path, Path("data/jobs/brd/7.4/actions.json"))
     _print_analysis(result)
     output = capsys.readouterr().out
     ghosted = output.split("Ghosted damaging casts:\n", 1)[1].split("\n\n", 1)[0]

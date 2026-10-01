@@ -184,7 +184,7 @@ def test_full_dancing_mad_analysis_uses_dot_snapshots_without_extra_potions(
     tmp_path: Path, extract_fight
 ) -> None:
     extract_fight("brd_dancing_mad.zip", "7CANHrvwKT6tp2Gx/fight-7/source-2/")
-    actions = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).parents[2] / "data/jobs/brd/7.4/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
     dots = {row.name: row for row in result.brd_dots}
     full = {row.name: row for row in result.actions}

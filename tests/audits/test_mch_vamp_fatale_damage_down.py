@@ -9,7 +9,7 @@ from ffxiv_potency.analysis import analyze_saved_fight
 
 ARCHIVE = "mch_vamp_fatale_damage_down.zip"
 PREFIX = "mMv987bGDNWfJhxt/fight-4/source-47/"
-ACTIONS = Path(__file__).parents[2] / "data/machinist/7.55/actions.json"
+ACTIONS = Path(__file__).parents[2] / "data/jobs/mch/7.4/actions.json"
 
 
 def test_vamp_fatale_damage_down_strength_and_refreshes(tmp_path: Path, extract_fight) -> None:

@@ -12,7 +12,7 @@ def test_dancing_mad_brink_wipe(
     extract_fight, tmp_path: Path, capsys: pytest.CaptureFixture[str],
 ) -> None:
     extract_fight("brd_dancing_mad_brink_wipe.zip", "wdV37v9K8mB4Xatq/fight-20/source-3/")
-    result = analyze_saved_fight(tmp_path, Path("data/bard/7.55/actions.json"))
+    result = analyze_saved_fight(tmp_path, Path("data/jobs/brd/7.4/actions.json"))
     assert result.kill is False
     assert result.encounter_id == 1085
     assert [(w.name, w.start_seconds, w.end_seconds, w.end_reason)

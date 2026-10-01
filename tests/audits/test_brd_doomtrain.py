@@ -15,7 +15,7 @@ def test_brd_doomtrain_without_food(tmp_path: Path, extract_fight, capsys) -> No
         (tmp_path / "combatant-info-events.json").write_bytes(
             archive.read(prefix + "combatant-info-events.json")
         )
-    result = analyze_saved_fight(tmp_path, Path("data/bard/7.55/actions.json"))
+    result = analyze_saved_fight(tmp_path, Path("data/jobs/brd/7.4/actions.json"))
     assert result.encounter_id == 1083
     assert result.food is None
     assert result.food_missing_windows == ((0, result.duration_seconds),)

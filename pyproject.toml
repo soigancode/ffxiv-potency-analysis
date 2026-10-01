@@ -33,7 +33,6 @@ target-version = "py311"
 [tool.hatch.build.targets.wheel.force-include]
 "data/encounters" = "ffxiv_potency/data/encounters"
 "data/consumables" = "ffxiv_potency/data/consumables"
-"data/bard" = "ffxiv_potency/data/bard"
-"data/machinist" = "ffxiv_potency/data/machinist"
+"data/jobs" = "ffxiv_potency/data/jobs"
 "data/raid_effects" = "ffxiv_potency/data/raid_effects"
 "data/patches.json" = "ffxiv_potency/data/patches.json"

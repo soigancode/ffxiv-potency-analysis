@@ -32,7 +32,7 @@ def test_iron_jaws_zero_direct_hit_refreshes_one_landed_stormbite_tick(
     assert tiny_tick.landed_fraction == pytest.approx(1 / 3443)
     assert all(tick.matched for tick in ticks)
 
-    result = analyze_saved_fight(tmp_path, Path("data/bard/7.55/actions.json"))
+    result = analyze_saved_fight(tmp_path, Path("data/jobs/brd/7.4/actions.json"))
     assert result.unmatched == ()
     assert next(row for row in result.brd_dots if row.name == "Stormbite").ticks == 345
     assert any(hit.action == "Stormbite" and hit.damage == 1 and hit.overkill == 3442

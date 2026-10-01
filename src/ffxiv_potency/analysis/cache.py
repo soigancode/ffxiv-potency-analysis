@@ -14,11 +14,11 @@ from types import UnionType
 from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from ..patches import LATEST_KNOWN_PATCH
-from .config import reference_path
+from .config import action_data_root, reference_path
 from .models import AnalysisResult
 
 # Increment for changes to analysis semantics or the persisted result schema.
-ANALYZER_REVISION = 2
+ANALYZER_REVISION = 3
 CACHE_FILENAME = "analysis-cache.json"
 
 
@@ -42,31 +42,56 @@ def _reference_roots() -> tuple[Path, Path]:
             Path(__file__).resolve().parents[3] / "data")
 
 
+def _input_bytes(name: str, path: Path) -> bytes:
+    """Ignore capture provenance while retaining every calculation input."""
+    payload = path.read_bytes()
+    if path.suffix != ".json" or name.startswith("log/"):
+        return payload
+    try:
+        document = json.loads(payload)
+    except (UnicodeError, ValueError):
+        return payload
+    if isinstance(document, dict):
+        if name == "actions" or path.name == "actions.json":
+            document.pop("source", None)
+        elif path.name == "datasets.json":
+            document.pop("last_capture", None)
+            for category in ("action_sets", "gear_sets", "pet_scaling_sets", "effect_sets"):
+                for row in document.get(category, []):
+                    if isinstance(row, dict):
+                        row.pop("verified_through", None)
+        elif path.name == "patches.json":
+            document.pop("sources", None)
+    return json.dumps(document, sort_keys=True, separators=(",", ":")).encode()
+
+
 def _fingerprint(directory: Path, actions_path: Path) -> str:
     inputs = {f"log/{path.name}": path for path in directory.glob("*.json")
               if path.name != CACHE_FILENAME}
     inputs["actions"] = actions_path
     # Hash effective reference files by logical name, regardless of installation path.
-    for folder in ("bard", "machinist", "consumables", "encounters", "raid_effects"):
+    for folder in ("jobs", "consumables", "encounters", "raid_effects"):
         for data_root in _reference_roots():
             for path in (data_root / folder).rglob("*.json"):
                 inputs[f"reference/{path.relative_to(data_root).as_posix()}"] = path
     inputs["reference/patches.json"] = reference_path("patches.json")
-    root = actions_path.parent.parent.parent
+    root = action_data_root(actions_path)
+    for path in (root / "jobs").rglob("*.json"):
+        inputs[f"reference/{path.relative_to(root).as_posix()}"] = path
     for folder in ("raid_effects", "raid_buffs"):
         for path in (root / folder).rglob("*.json"):
             inputs[f"override/{path.relative_to(root).as_posix()}"] = path
     package = Path(__file__).resolve().parents[1]
     sources = list((package / "analysis").rglob("*.py"))
     sources += [package / "fflogs/partitions.py", package / "patches.py",
-                package / "jobguide/schema.py"]
+                package / "jobguide/schema.py", package / "datasets.py", package / "reference_data.py", package / "raid_effects.py"]
     for path in sources:
         inputs[f"code/{path.relative_to(package).as_posix()}"] = path
     digest = hashlib.sha256(f"{ANALYZER_REVISION}:{LATEST_KNOWN_PATCH}".encode())
     for name, path in sorted(inputs.items()):
         digest.update(name.encode())
         digest.update(b"\0")
-        digest.update(hashlib.sha256(path.read_bytes()).digest())
+        digest.update(hashlib.sha256(_input_bytes(name, path)).digest())
     return digest.hexdigest()
 
 
@@ -110,12 +135,12 @@ def _decode(value: Any, expected: Any) -> Any:
 
 def cached_analysis(
     directory: Path, actions_path: Path,
-    calculate: Callable[[Path, Path], AnalysisResult],
+    calculate: Callable[[Path, Path], AnalysisResult], *, gear: str | None = None,
 ) -> AnalysisResult:
     """Reuse an exact input match; cache failures never block analysis."""
     path = cache_path(directory)
     try:
-        key = _fingerprint(directory, actions_path)
+        key = _fingerprint(directory, actions_path) + ":" + str(gear)
     except OSError:
         return calculate(directory, actions_path)
     try:
@@ -129,7 +154,7 @@ def cached_analysis(
     temporary = None
     try:
         # Never publish a result if its inputs changed while calculating.
-        if _fingerprint(directory, actions_path) != key:
+        if _fingerprint(directory, actions_path) + ":" + str(gear) != key:
             return result
         document = {"revision": ANALYZER_REVISION, "key": key, "result": _encode(result)}
         path.parent.mkdir(parents=True, exist_ok=True)

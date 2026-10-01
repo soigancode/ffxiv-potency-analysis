@@ -187,6 +187,12 @@ class AnalysisResult:
     status_windows: tuple[StatusWindow, ...] = ()
     echo_status: str | None = None
     party_bonus_percent: int | None = None
+    played_patch: str | None = None
+    patch_source: str | None = None
+    actions_since: str | None = None
+    gear_id: str | None = None
+    gear_name: str | None = None
+    gear_source: str | None = None
 
     @property
     def pps_min(self) -> float:

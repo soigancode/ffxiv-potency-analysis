@@ -2,14 +2,13 @@
 
 Compare logs from the **same job and fight** by the potency of attacks that actually dealt damage. Potency removes the random damage roll and Crit/Direct Hit damage variance, making it easier to compare rotations. The tool also shows potency per second (PPS), hit luck, and FF Logs rDPS and nDPS.
 
-**Current support:** level 100 with configured gear and patch 7.55 action data.
+**Current support:** level 100 with configured gear, for fights played during patches 7.4–7.56.
 
-Supported duties: Heavyweight Savage (M9S–M12S); Dancing Mad Ultimate; Doomtrain and Enuo (Extreme); Another Merchant's Tale (Criterion), Mistwake, and The Clyteum (dungeons).
+Supported duties: Heavyweight Savage (M9S–M12S), Dancing Mad (Ultimate), Doomtrain and Enuo (Extreme), Another Merchant's Tale (Criterion), Mistwake and The Clyteum (Dungeons).
 
 | Patch | Supported jobs |
 | --- | --- |
-| 7.4–7.45 | Bard (BRD), Machinist (MCH) |
-| 7.5 | Bard (BRD), Machinist (MCH) |
+| 7.4–7.56 | Bard (BRD), Machinist (MCH) |
 
 Leaderboard support covers the global partitions, including Savage Echo. Dungeon fights use their played date to identify the patch. See [Limitations](#limitations) for gear and sync assumptions.
 
@@ -90,7 +89,7 @@ Ranges and comma-separated selections contain 2–25 distinct leaderboard positi
 | `mistwake` | Mistwake |
 | `clyteum` | The Clyteum |
 
-Use `brd` or `mch` for the job; the full job names also work.
+Use `brd` or `mch` for the job. The full job names also work.
 
 The `--partition` option is optional. Savage defaults to the global 7.5 standard-composition leaderboard. To select another global leaderboard:
 
@@ -108,9 +107,9 @@ ffxiv-potency fflogs brd m11s 20-25 --partition 2
 | 13 | 7.5 | Standard | Yes |
 | 14 | 7.5 | Non-standard | Yes |
 
-Dancing Mad Ultimate uses partition 1 by default; partition 2 has non-standard compositions. China and Korea partitions are not supported yet.
+Dancing Mad defaults to partition 1. Use partition 2 for non-standard compositions. Only global FF Logs partitions are supported.
 
-Doomtrain follows the Savage 7.4 and 7.5 partition pairs; Enuo uses the 7.5 pair. Both default to 7. Unranked Extreme fights use their played date; Echo is unsupported.
+Doomtrain and Enuo default to partition 7. Doomtrain also supports partitions 1, 2, and 8. Enuo also supports partition 8. Extreme fights with Echo are not supported.
 
 ### Analyse one log
 
@@ -130,9 +129,23 @@ A link with `fight` and `source` already selected runs without the prompts:
 ffxiv-potency analyse "https://www.fflogs.com/reports/REPORT1?fight=9&source=18"
 ```
 
-The report starts with the player, fight, duration, date (UTC), partition, patch, food, nDPS, rDPS, landed events, potency, and PPS. A wipe is labelled after its duration. Deaths, Weakness, Brink of Death, and encounter-specific Damage Down appear below the summary when recorded. It then shows any variable potency estimates, reduced damage and ghosted casts, potion item and windows, hit outcomes and luck, action totals, auto-attacks, and job-specific details. If FF Logs does not identify a consumed item in the fight events, the report labels its configured name as unverified. A ghosted cast dealt no positive recorded damage; its note may identify an untargetable target, a defeated target, or a boss phase HP lock.
+The report shows the player, fight, duration, date, patch, assumed gear, potency, PPS, and FF Logs damage metrics. It marks wipes and lists deaths and damage penalties. Below the summary are action totals, hit outcomes, potions, auto-attacks, and job-specific details.
 
-To download a fight without analysing it, run `ffxiv-potency fflogs "<report URL>"`; an unselected URL offers the same prompts. To remove saved logs and analysis cache, run `ffxiv-potency clear`. Use `ffxiv-potency clear logs` to remove only downloaded logs and preserve calculations. To remove only analysis cache while retaining downloaded logs, run `ffxiv-potency clear cache`. Both ask for confirmation and leave job data intact. Add `--yes` to skip the prompt.
+To save a fight without analysing it, run `ffxiv-potency fflogs "<report URL>"`.
+
+| Command | Removes |
+| --- | --- |
+| `ffxiv-potency clear logs` | Downloaded logs |
+| `ffxiv-potency clear cache` | Saved calculations |
+| `ffxiv-potency clear` | Both |
+
+These commands ask for confirmation and leave job data intact. Add `--yes` to skip the prompt.
+
+The tool remembers calculated results to speed up later views. Clearing logs frees storage while keeping these results. After downloading a log again, the tool reuses its calculation if the log and analysis data are unchanged.
+
+The analysis shows the patch in effect on the fight date and the gear assumed for that patch. This can differ from FF Logs’ broader ranking patch bracket shown above a leaderboard. Gear is an assumption, not equipment recovered from the log.
+
+The default is **7.4 Savage BiS** before patch 7.55 and **7.55 Relic BiS** from 7.55 until 8.0. To choose a different set, add `--gear savage_7_4` or `--gear relic_7_55` to `analyse`, `compare`, or a leaderboard command. The choice applies to all logs in that command. Run `analyse` to see the gear used for a particular log.
 
 ### Compare your logs
 
@@ -148,9 +161,9 @@ The comparison shows duration, rDPS, nDPS, landed potency, PPS, Luck, adjusted L
 
 ## Understanding the results
 
-**Potency** adds the potency of hits that landed, including configured personal buffs and potion gains. It also accounts for pet actions and estimates auto-attack potency. Multi-target hits use their action's falloff rules; recorded overkill reduces the credited potency in proportion to damage dealt. Other players' damage buffs do **not** increase personal potency. **PPS** divides total potency by fight duration in seconds.
+**Potency** adds the potency of hits that landed, including configured personal buffs and potion gains. It also accounts for pet actions and estimates auto-attack potency. Multi-target hits use their action's falloff rules. Recorded overkill reduces the credited potency in proportion to damage dealt. Other players' damage buffs do **not** increase personal potency. **PPS** divides total potency by fight duration in seconds.
 
-**Luck** shows how favorable the observed Crit and Direct Hit outcomes were, weighted by each hit's potency. A critical hit contributes more than a Direct Hit because its configured damage multiplier is larger. **Luck baseline** shows the expected score from the configured unbuffed gear rates. Comparing the two indicates whether hit outcomes were favorable for that gear profile; it does not measure rotation quality.
+**Luck** shows how favorable the observed Crit and Direct Hit outcomes were, weighted by each hit's potency. A critical hit contributes more than a Direct Hit because its configured damage multiplier is larger. **Luck baseline** shows the expected score from the configured unbuffed gear rates. Comparing the two indicates whether hit outcomes were favorable for that gear profile. It does not measure rotation quality.
 
 **Adjusted Luck** (`aLuck` in comparisons) subtracts the *expected* benefit of tracked party and target Crit/DH rate buffs. The original Luck score remains visible because those actual outcomes still affect FF Logs damage rankings. Adjusted Luck does not change potency or PPS. [The formulas](#luck-and-adjusted-luck) explain both scores.
 
@@ -181,9 +194,9 @@ The values above describe a five-role party. For another composition, the tool r
 
 #### Damage penalties
 
-Weakness reduces the player's main damage stat by 25%; Brink of Death reduces it by 50%. These effects apply across encounters. The tool calculates their damage factors from the configured gear, accounting for a potion when one overlaps the hit.
+Weakness reduces the player's main damage stat by 25%. Brink of Death reduces it by 50%. These effects apply across encounters. The tool calculates their damage factors from the configured gear, accounting for a potion when one overlaps the hit.
 
-Damage Down strength is configured by encounter. The tool reduces potency on landed hits carrying that status; older DoT snapshots without it retain their potency. Consecutive applications appear as one interval with refresh times and a combined affected-hit count.
+Damage Down strength is configured by encounter. The tool reduces potency on landed hits carrying that status. Older DoT snapshots without it retain their potency. Consecutive applications appear as one interval with refresh times and a combined affected-hit count.
 
 #### Auto-attacks
 
@@ -201,7 +214,7 @@ F=\left\lfloor\frac{\text{level main stat}\times
 +\text{weapon damage}.
 ```
 
-Dividing by `1.2` accounts for the action-damage trait read from the job guide, which does not apply to Shots. With the configured MCH stats and 2.64 s weapon delay, the result is about **58.65 action-comparable potency per Shot** before potion effects. This approximation agrees with the damage-per-potency comparison in checked logs; it is not an official Shot potency.
+Dividing by `1.2` accounts for the action-damage trait read from the job guide, which does not apply to Shots. With the configured MCH stats and 2.64 s weapon delay, the result is about **58.65 action-comparable potency per Shot** before potion effects. This approximation agrees with the damage-per-potency comparison in checked logs. It is not an official Shot potency.
 
 #### Luck and adjusted Luck
 
@@ -219,7 +232,7 @@ For each eligible landed hit $i$, let $P_i$ be its potency (including potion gai
 \frac{\sum_i P_i(M_i-1)}{\sum_i P_i(1.25C-1)}.
 ```
 
-Zero means no eligible hit rolled Crit or DH; 100% means every eligible hit rolled both. Guaranteed Crit/DH and configured non-random damage, such as Wildfire, are excluded from **both sums**. Eligible pet hits and auto-attacks count too. This is an observed score, not a probability or an FF Logs ranking metric.
+Zero means no eligible hit rolled Crit or DH. A score of 100% means every eligible hit rolled both. Guaranteed Crit/DH and configured non-random damage, such as Wildfire, are excluded from **both sums**. Eligible pet hits and auto-attacks count too. This is an observed score, not a probability or an FF Logs ranking metric.
 
 With gear Crit chance $p_C$ and DH chance $p_D$, the unbuffed Luck baseline is:
 
@@ -242,11 +255,11 @@ A_i=(1+p'_C(C-1))(1+0.25p'_D)
 {\sum_i P_i(1.25C-1)}\right)\right).
 ```
 
-Tracked effects are Battle Litany, Battle Voice, Army's Paeon, the Wanderer's Minuet, Devilment on the Dance Partner, and Chain Stratagem on the target. The adjustment subtracts the **expected** buff benefit; it does not erase actual Crits or Direct Hits.
+Tracked effects are Battle Litany, Battle Voice, Army's Paeon, the Wanderer's Minuet, Devilment on the Dance Partner, and Chain Stratagem on the target. The adjustment subtracts the **expected** buff benefit. It does not erase actual Crits or Direct Hits.
 
 #### Variable potency from damage
 
-Some actions have a potency determined by a resource that FF Logs does not expose directly. For BRD, the tool estimates it from the same player's fixed-potency hits: Burst Shot (220), Refulgent Arrow (280), Empyreal Arrow (260), and Heartbreak Shot (180). Each reference hit gives an estimate of **damage per potency** after normalization. It uses the median of up to 30 hits on the same target nearest in time; when fewer than three are available, it uses up to 20 reference hits, prioritizing the same target, and marks the baseline as less certain. Overkill hits are excluded from the reference set.
+Some actions have a potency determined by a resource that FF Logs does not expose directly. For BRD, the tool estimates it from the same player's fixed-potency hits: Burst Shot (220), Refulgent Arrow (280), Empyreal Arrow (260), and Heartbreak Shot (180). Each reference hit gives an estimate of **damage per potency** after normalization. It uses the median of up to 30 hits on the same target nearest in time. When fewer than three are available, it uses up to 20 reference hits, prioritizing the same target, and marks the baseline as less certain. Overkill hits are excluded from the reference set.
 
 For each reference or variable-potency hit, the tool divides logged damage by its configured Crit multiplier if it crit, by 1.25 if it Direct Hit, and by FF Logs' recorded damage multiplier. That multiplier includes recorded damage buffs, target debuffs, and FF Logs' **1.05** contribution for Medicated. A potted hit also needs a correction: the actual potion effect uses the configured Dexterity damage factor, which differs from 1.05.
 
@@ -254,35 +267,43 @@ For each reference or variable-potency hit, the tool divides logged damage by it
 D_{\mathrm{norm}}=\frac{D_{\mathrm{logged}}}{C^{I_C}\,1.25^{I_D}\,M_{\mathrm{FF}}}\times Q.
 ```
 
-Here $I_C$ and $I_D$ are 1 when the hit crits or Direct Hits, otherwise 0. $M_{\mathrm{FF}}$ is FF Logs' multiplier (assumed to be 1 if absent). $Q$ is **1.05 ÷ configured potion factor** for Medicated hits, otherwise 1. The median of reference values $D_{\mathrm{norm}}/P_{\mathrm{known}}$ is the baseline $B$; the variable hit's estimated potency is $D_{\mathrm{norm}}/B$.
+Here $I_C$ and $I_D$ are 1 when the hit crits or Direct Hits, otherwise 0. $M_{\mathrm{FF}}$ is FF Logs' multiplier (assumed to be 1 if absent). $Q$ is **1.05 ÷ configured potion factor** for Medicated hits, otherwise 1. The median of reference values $D_{\mathrm{norm}}/P_{\mathrm{known}}$ is the baseline $B$. The variable hit's estimated potency is $D_{\mathrm{norm}}/B$.
 
 The estimate is compared with the action's possible potencies. For **Pitch Perfect**, those are 100, 220, or 360 for one, two, or three stacks, and half those values for an additional target. Relative damage between multiple landed targets narrows which hit could have received full potency. A single landed hit is treated as full potency unless another target in the same use was immune. The tool allows a **94%–106%** damage roll plus **0.5%** tolerance for the estimated baseline and rounded multiplier: a candidate $P$ is plausible when estimated potency lies between $0.935P$ and $1.065P$. It lists multiple plausible fits when their ranges overlap. If none fits, it still selects the nearest candidate and reports how far outside the expected range the hit was.
 
-For **Apex Arrow**, candidate potency is $140+7(g-20)$ for Soul Voice Gauge $g$ from 20 to 100 in steps of five; a following Blast Arrow narrows the candidates to 80–100 gauge. The best fit minimizes relative error across its landed hits, while candidates within **6.5%** on every hit remain plausible. **Radiant Encore** uses Codas reconstructed from song casts. The report marks ambiguous assignments; selected potencies are deterministic estimates, not recovered gauge or stack values.
+For **Apex Arrow**, candidate potency is $140+7(g-20)$ for Soul Voice Gauge $g$ from 20 to 100 in steps of five. A following Blast Arrow narrows the candidates to 80–100 gauge. The best fit minimizes relative error across its landed hits, while candidates within **6.5%** on every hit remain plausible. **Radiant Encore** uses Codas reconstructed from song casts. The report marks ambiguous assignments. Selected potencies are deterministic estimates, not recovered gauge or stack values.
 
 ### Bard
 
 - **Pitch Perfect** stacks and **Apex Arrow** gauge are estimated using [normalized damage and reference hits](#variable-potency-from-damage). Apex also lists estimated gauge and total potency per use.
-- **Radiant Finale and Radiant Encore** use Codas reconstructed from song casts. The report shows Codas spent, Encore hits, and potency; it also lists each song's average duration.
+- **Radiant Finale and Radiant Encore** use Codas reconstructed from song casts. The report shows Codas spent, Encore hits, and potency. It also lists each song's average duration.
 - **Caustic Bite and Stormbite** ticks are matched to their application or **Iron Jaws** refresh, per target. Their personal buffs and potion state are snapshotted at application. The report separates direct application and tick potency.
 - **Barrage** changes Shadowbite potency when its buff is consumed. Additional-target falloff and landed AoE hits are counted separately. The action totals include ordinary and Barrage-enhanced hits.
 
 ### Machinist
 
-- Lindwurm II can start with carried Battery Gauge. The first Queen uses the preceding phase-one pull when available; otherwise 100 Battery is assumed and marked unconfirmed.
 - **Wildfire** counts weaponskills that actually landed during each window, including an early detonation when present. Its potency uses the potion state at application.
-- **Automaton Queen and Rook Autoturret** are deployment actions; their own landed attacks add potency. The report shows Battery Gauge spent and total potency per deployment, identifies missing Queen finishers, and notes Queen Overdrive. The configured conversion of pet action potency to player-comparable potency is **0.89**, an approximation. Deployments and Queen Overdrive themselves do not add damage potency.
+- **Automaton Queen and Rook Autoturret** are deployment actions. Their own landed attacks add potency. The report shows Battery Gauge spent and total potency per deployment, identifies missing Queen finishers, and notes Queen Overdrive. The configured conversion of pet action potency to player-comparable potency is **0.89**, an approximation. Deployments and Queen Overdrive themselves do not add damage potency.
+- **Lindwurm II opening Battery** is reconstructed from the preceding phase-one kill when the checkpoint data is available. If the opening Queen cannot be explained by recorded Battery gains and the carried gauge is unknown, the tool initially assumes 100 Battery and marks it unconfirmed. It can replace that assumption with a unique estimate from Queen damage. A Queen summoned before the pull is matched separately, and its spent Battery is not carried into the first in-fight deployment again.
+
+Opening Queen estimates compare damage from the same attack, Crit outcome, and potion state against at least two later Queens with reconstructed Battery. At least two comparable opening hits must agree on one candidate from 50, 60, 70, 80, 90, or 100 Battery. Queen action potency scales linearly between its configured values at 50 and 100 Battery:
+
+```math
+P(G)=P_{50}+(P_{100}-P_{50})\frac{G-50}{50}.
+```
+
+The fit accounts for Direct Hits, the recorded FF Logs multiplier, a 95%–105% damage roll, multiplier rounding of ±0.005, and damage rounding of ±2. Overkill, Weakness, Brink of Death, and configured Damage Down hits are excluded. For a pre-pull Queen, the first in-fight Queen is also excluded from the reference set. Only a unique fit is accepted. Inferred Battery is labelled as an estimate.
+
+Battery gains use positive landed or calculated action resolutions. A calculated hit can grant Battery even if its later damage never lands. Such a hit adds no landed potency.
 
 ## Limitations
 
-- Combat profiles assume level 100 configured stats, weapon damage, and delay. A different gear set or synced content can change potion gains, auto-attack estimates, and luck baselines. Review `data/<job>/7.55/combat_profile.json` if your stats differ.
-- BRD and MCH action-damage traits are read from the job-guide snapshot. The current level 100 multiplier is used to express auto-attacks in action-comparable potency; listed action potencies are not multiplied again. Other trait effects are recorded but are not yet interpreted automatically.
-- BRD gauge and Pitch Perfect stacks sometimes remain ambiguous. The report marks those estimates; it does not claim to recover hidden resources exactly.
-- Auto-attack conversion and MCH pet scaling are approximations. This tool does not reproduce FF Logs rDPS or nDPS from potency.
+- Combat profiles assume level 100 configured stats, weapon damage, and delay. A different gear set or synced content can change potion gains, auto-attack estimates, and luck baselines. Use `--gear` to choose between the available sets. Level-synced content is not supported yet.
+- BRD gauge and Pitch Perfect stacks sometimes remain ambiguous. The report marks those estimates.
+- Auto-attack conversion and MCH pet scaling are approximations.
 
 ## Future features
 
 - Add more jobs and support additional gear and level-sync profiles.
-- Interpret other damage-affecting traits from the job guide where their effects are needed.
 - Improve variable-potency estimates if FF Logs exposes the underlying resources.
 - Provide an HTML report generated from exported analysis data.

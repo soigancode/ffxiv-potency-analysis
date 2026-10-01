@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Any
 from zipfile import ZipFile
 
+import httpx
 import pytest
 
+from ffxiv_potency import cli
 from ffxiv_potency.jobguide import parse_job_actions
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -31,13 +33,26 @@ _LOG_FILES = {
 _REQUIRED_FILES = {"fight.json", "master-data.json", "cast-events.json", "damage-events.json"}
 
 
+@pytest.fixture(autouse=True)
+def isolate_external_services(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep local credentials and live HTTP requests out of the test suite."""
+    monkeypatch.delenv("FFLOGS_CLIENT_ID", raising=False)
+    monkeypatch.delenv("FFLOGS_CLIENT_SECRET", raising=False)
+    monkeypatch.setattr(cli, "load_dotenv", lambda: False)
+
+    def reject_live_request(self: httpx.HTTPTransport, request: httpx.Request) -> httpx.Response:
+        raise AssertionError("live HTTP requests are disabled in tests; use a mock transport")
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", reject_live_request)
+
+
 @pytest.fixture(scope="session")
 def mch_action_json() -> str:
     html = (JOBGUIDE_FIXTURES / "mch_full_7_5.html").read_text(encoding="utf-8")
     return json.dumps(
         {
             "job": "machinist",
-            "patch": "7.55",
+            "patch": "7.56",
             "actions": [action.to_dict() for action in parse_job_actions(html)],
         }
     )

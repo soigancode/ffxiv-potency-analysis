@@ -14,7 +14,7 @@ def test_dancing_mad_hp_locks_explain_ghosted_casts(
     extract_fight(
         "brd_dancing_mad_hp_lock.zip", "a-D6ZtNJ4Cbnf1ak8y/fight-6/source-198/"
     )
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     _print_analysis(analyze_saved_fight(tmp_path, actions))
     output = capsys.readouterr().out.split("Ghosted damaging casts:\n", 1)[1].split("\n\n", 1)[0]
 
@@ -52,7 +52,7 @@ def test_top_two_bards_have_phase_hp_locks_not_defeated_targets(
     archive_name: str, prefix: str, expected: tuple[str, ...],
 ) -> None:
     extract_fight(archive_name, prefix)
-    actions = Path(__file__).resolve().parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     _print_analysis(analyze_saved_fight(tmp_path, actions))
     output = capsys.readouterr().out.split("Ghosted damaging casts:\n", 1)[1].split("\n\n", 1)[0]
     for line in expected:

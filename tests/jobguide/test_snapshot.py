@@ -21,7 +21,7 @@ FIXTURES = Path(__file__).parents[1] / "fixtures/jobguide"
 def test_full_guide_matches_committed_action_snapshot(job: str, abbreviation: str) -> None:
     html = (FIXTURES / f"{abbreviation}_full_7_5.html").read_text(encoding="utf-8")
     committed = json.loads(
-        (Path(__file__).parents[2] / "data" / job / "7.55" / "actions.json").read_text()
+        (Path(__file__).parents[2] / "data" / "jobs" / abbreviation / "7.4" / "actions.json").read_text()
     )
     assert [action.to_dict() for action in parse_job_actions(html)] == committed["actions"]
     assert [trait.to_dict() for trait in parse_job_traits(html)] == committed["traits"]
@@ -37,21 +37,21 @@ def test_update_downloads_and_exports_versioned_snapshot(tmp_path: Path) -> None
 
     result = update_job_guide(
         job="machinist",
-        patch="7.55",
+        patch="7.56",
         output_root=tmp_path,
         url=mch_url,
         transport=httpx.MockTransport(handler),
         retrieved_at=datetime(2026, 9, 23, 12, 0, tzinfo=UTC),
     )
 
-    assert result.source == tmp_path / "machinist" / "7.55" / "source.html"
-    assert result.actions == tmp_path / "machinist" / "7.55" / "actions.json"
+    assert result.source == tmp_path / "jobs" / "mch" / "7.56" / "source.html"
+    assert result.actions == tmp_path / "jobs" / "mch" / "7.56" / "actions.json"
     assert result.action_count == 40
     assert result.source.read_bytes() == source_bytes
 
     document = json.loads(result.actions.read_text(encoding="utf-8"))
     assert document["job"] == "machinist"
-    assert document["patch"] == "7.55"
+    assert document["patch"] == "7.56"
     assert document["source"] == {
         "url": mch_url,
         "retrieved_at": "2026-09-23T12:00:00Z",
@@ -91,7 +91,7 @@ def test_brd_guide_crawls_all_actions_and_special_potencies(tmp_path: Path) -> N
 
     result = update_job_guide(
         job="bard",
-        patch="7.55",
+        patch="7.56",
         output_root=tmp_path,
         transport=httpx.MockTransport(handler),
         retrieved_at=datetime(2026, 9, 27, tzinfo=UTC),
@@ -138,7 +138,7 @@ def test_brd_guide_crawls_all_actions_and_special_potencies(tmp_path: Path) -> N
 
 
 def test_unrecognized_action_damage_trait_does_not_replace_snapshot(tmp_path: Path) -> None:
-    destination = tmp_path / "bard/7.55/actions.json"
+    destination = tmp_path / "bard/7.56/actions.json"
     destination.parent.mkdir(parents=True)
     destination.write_text('{"previous": true}\n', encoding="utf-8")
     html = (FIXTURES / "brd_full_7_5.html").read_text(encoding="utf-8")
@@ -147,20 +147,20 @@ def test_unrecognized_action_damage_trait_does_not_replace_snapshot(tmp_path: Pa
 
     with pytest.raises(JobGuideParseError, match="Unsupported action damage trait wording"):
         update_job_guide(
-            job="bard", patch="7.55", output_root=tmp_path,
+            job="bard", patch="7.56", output_root=tmp_path,
             transport=httpx.MockTransport(lambda request: httpx.Response(200, text=changed)),
         )
     assert destination.read_text(encoding="utf-8") == '{"previous": true}\n'
 
 
-@pytest.mark.parametrize("patch", ["", "latest", "7", "../7.5", "7.5/other", "7.5"])
+@pytest.mark.parametrize("patch", ["", "latest", "7", "../7.5", "7.5/other", "6.5"])
 def test_update_rejects_unsafe_or_ambiguous_patch(patch: str, tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="only patch 7.55"):
+    with pytest.raises(ValueError, match="only patch 7.56"):
         update_job_guide(job="machinist", patch=patch, output_root=tmp_path)
 
 
 def test_unrecognized_guide_wording_does_not_replace_existing_actions(tmp_path: Path) -> None:
-    actions = tmp_path / "machinist/7.55/actions.json"
+    actions = tmp_path / "jobs/mch/7.56/actions.json"
     actions.parent.mkdir(parents=True)
     actions.write_text('{"previous": true}\n', encoding="utf-8")
     html = (FIXTURES / "mch_full_7_5.html").read_text(encoding="utf-8")
@@ -171,7 +171,7 @@ def test_unrecognized_guide_wording_does_not_replace_existing_actions(tmp_path: 
     with pytest.raises(JobGuideParseError, match="Unsupported potency wording for 'Drill'"):
         update_job_guide(
             job="machinist",
-            patch="7.55",
+            patch="7.56",
             output_root=tmp_path,
             transport=httpx.MockTransport(lambda request: httpx.Response(200, text=changed)),
         )
@@ -188,7 +188,7 @@ def test_brd_heavier_shot_description_survives_malformed_official_html() -> None
         "Adds to Heavy Shot a 20% chance to grant Hawk's Eye.", "Duration: 30s",
     )
     expected = json.loads(
-        (Path(__file__).parents[2] / "data/bard/7.55/actions.json").read_text()
+        (Path(__file__).parents[2] / "data/jobs/brd/7.4/actions.json").read_text()
     )
     assert [t.to_dict() for t in traits] == expected["traits"]
     assert [a.to_dict() for a in parse_job_actions(html)] == expected["actions"]

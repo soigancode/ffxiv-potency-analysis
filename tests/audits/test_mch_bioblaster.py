@@ -11,7 +11,7 @@ from ffxiv_potency.analysis.profiles import _load_combat_profile
 
 ARCHIVE = "mch_bioblaster_dungeon.zip"
 PREFIX = "6WNQp2yC3Lj7KYvJ/fight-4/source-42/"
-ACTIONS = Path(__file__).parents[2] / "data/machinist/7.55/actions.json"
+ACTIONS = Path(__file__).parents[2] / "data/jobs/mch/7.4/actions.json"
 
 
 def test_bioblaster_applications_ticks_and_snapshots(tmp_path: Path, extract_fight) -> None:

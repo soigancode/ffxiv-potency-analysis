@@ -15,6 +15,6 @@ data/**/source.html
 data/raid_buffs/
 data/raid_effects/sources/
 data/logs/
-data/analysis-cache
+data/analysis-cache/
 data/research/
 .env

@@ -1,5 +1,5 @@
 {
-  "patch": "7.55",
+  "patch": "7.4",
   "effects": [
     {
       "action": "Chain Stratagem",
@@ -23,7 +23,7 @@
       "job": "bard",
       "target": "player",
       "rate": "direct",
-      "bonus": 0.2
+      "source": "job_actions"
     },
     {
       "action": "Army's Paeon",
@@ -31,7 +31,7 @@
       "job": "bard",
       "target": "player",
       "rate": "direct",
-      "bonus": 0.03
+      "source": "job_actions"
     },
     {
       "action": "The Wanderer's Minuet",
@@ -39,7 +39,7 @@
       "job": "bard",
       "target": "player",
       "rate": "critical",
-      "bonus": 0.02
+      "source": "job_actions"
     },
     {
       "action": "Devilment",

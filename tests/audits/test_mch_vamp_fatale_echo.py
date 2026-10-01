@@ -33,7 +33,7 @@ def test_mch_vamp_fatale_echo_is_an_initial_aura_not_a_damage_buff(
     assert all("1000042" not in hit.get("buffs", "").split(".") for hit in player_hits)
     assert player_hits[0]["multiplier"] == pytest.approx(1.05)  # potion, not 1.12 Echo
 
-    actions = Path(__file__).parents[2] / "data/machinist/7.55/actions.json"
+    actions = Path(__file__).parents[2] / "data/jobs/mch/7.4/actions.json"
     with pytest.raises(AnalysisError, match="initial Echo aura"):
         analyze_saved_fight(tmp_path, actions)
     # The earlier API probe recorded these eight initial auras, but the old

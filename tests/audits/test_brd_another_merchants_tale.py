@@ -10,7 +10,7 @@ from ffxiv_potency.cli import _format_fight
 from ffxiv_potency.fflogs.partitions import require_current_patch
 
 ARCHIVE = "brd_another_merchants_tale_damage_down.zip"
-ACTIONS = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
+ACTIONS = Path(__file__).parents[2] / "data/jobs/brd/7.4/actions.json"
 
 
 @pytest.mark.parametrize("prefix,window_count,affected_hits,first,final", [

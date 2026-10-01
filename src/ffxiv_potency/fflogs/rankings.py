@@ -1,6 +1,7 @@
 """Resolve current encounter rankings to selected FF Logs report sources."""
 
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import count
 from typing import Any
 
@@ -194,11 +195,14 @@ def ranked_source(
     client_secret: str | None = None, transport: httpx.BaseTransport | None = None,
     partition: int | None = None,
     on_status: Callable[[str], None] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> ReportReference:
     """Resolve any positive leaderboard position without loading other reports."""
     if rank < 1:
         raise ValueError("rank must be a positive number")
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        if on_progress is not None:
+            on_progress(0, 1)
         position = 0
         for page in count(1):
             if on_status is not None:
@@ -210,10 +214,56 @@ def ranked_source(
             if not rows:
                 break
             if rank <= position + len(rows):
-                return _resolve_row(client, rows[rank - position - 1], rank, encounter_id, job, {},
-                                    on_status)
+                reference = _resolve_row(client, rows[rank - position - 1], rank, encounter_id, job, {},
+                                         on_status)
+                if on_progress is not None:
+                    on_progress(1, 1)
+                return reference
             position += len(rows)
     raise FFLogsError(f"rank {rank} does not exist for {job} in encounter {encounter_id}")
+
+
+def _resolve_rank_batch(
+    client: FFLogsClient, rows: list[Any], first_position: int, encounter_id: int, job: str,
+    cache: dict[tuple[str, int], tuple[list[dict[str, Any]], set[int]]],
+    on_progress: Callable[[int], None] | None = None,
+) -> list[ReportReference | FFLogsError]:
+    """Resolve independent reports concurrently, retaining rank order and shared fights."""
+    groups: dict[tuple[str, int], list[tuple[int, Any]]] = {}
+    for index, row in enumerate(rows):
+        try:
+            key = _ranking_report(row) if isinstance(row, dict) else ("", index)
+        except FFLogsError:
+            key = "", index
+        groups.setdefault(key, []).append((index, row))
+    results: dict[int, ReportReference | FFLogsError] = {}
+
+    def resolve_group(group: list[tuple[int, Any]]) -> tuple[
+        dict[int, ReportReference | FFLogsError],
+        dict[tuple[str, int], tuple[list[dict[str, Any]], set[int]]],
+    ]:
+        local_cache = dict(cache)
+        resolved: dict[int, ReportReference | FFLogsError] = {}
+        for index, row in group:
+            try:
+                resolved[index] = _resolve_row(
+                    client, row, first_position + index, encounter_id, job, local_cache,
+                )
+            except FFLogsError as exc:
+                resolved[index] = exc
+        return resolved, local_cache
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = [pool.submit(resolve_group, group) for group in groups.values()]
+        found = 0
+        for future in as_completed(futures):
+            resolved, updated_cache = future.result()
+            results.update(resolved)
+            cache.update(updated_cache)
+            found += sum(isinstance(item, ReportReference) for item in resolved.values())
+            if on_progress is not None:
+                on_progress(found)
+    return [results[index] for index in range(len(rows))]
 
 
 def accessible_ranked_sources(
@@ -221,12 +271,15 @@ def accessible_ranked_sources(
     client_secret: str | None = None, transport: httpx.BaseTransport | None = None,
     partition: int | None = None,
     on_status: Callable[[str], None] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> tuple[tuple[tuple[int, ReportReference], ...], tuple[tuple[int, str], ...]]:
     """Collect ten accessible rankings, preserving skipped leaderboard positions."""
     found: list[tuple[int, ReportReference]] = []
     skipped: list[tuple[int, str]] = []
     cache: dict[tuple[str, int], tuple[list[dict[str, Any]], set[int]]] = {}
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        if on_progress is not None:
+            on_progress(0, 10)
         position = 0
         for page in range(1, 6):
             if on_status is not None:
@@ -237,24 +290,31 @@ def accessible_ranked_sources(
             }), encounter_id)
             if not rows:
                 break
-            for row in rows:
-                position += 1
-                try:
-                    reference = _resolve_row(client, row, position, encounter_id, job, cache,
-                                             on_status)
-                except FFLogsError as exc:
-                    reason = str(exc)
-                    if not any(marker in reason for marker in (
-                        "no usable report", "no player name", "anonymous actor names",
-                    )):
-                        raise
-                    skipped.append((position, reason))
-                    continue
-                found.append((position, reference))
+            offset = 0
+            while offset < len(rows):
+                batch = rows[offset:offset + 10 - len(found)]
+                if on_status is not None:
+                    on_status(f"Identifying players for ranks {position + 1}–{position + len(batch)}...")
+                callback = (lambda count: on_progress(len(found) + count, 10)) if on_progress is not None else None
+                resolved = _resolve_rank_batch(client, batch, position + 1, encounter_id, job, cache, callback)
+                for reference in resolved:
+                    position += 1
+                    if isinstance(reference, FFLogsError):
+                        reason = str(reference)
+                        if not any(marker in reason for marker in (
+                            "no usable report", "no player name", "anonymous actor names",
+                        )):
+                            raise reference
+                        skipped.append((position, reason))
+                        continue
+                    found.append((position, reference))
+                offset += len(batch)
                 if len(found) == 10:
                     return tuple(found), tuple(skipped)
     if not found:
         raise FFLogsError("none of the ranked logs have accessible report references")
+    if on_progress is not None:
+        on_progress(len(found), len(found))
     return tuple(found), tuple(skipped)
 
 
@@ -281,6 +341,7 @@ def ranked_sources_at_positions(
     client_id: str | None = None, client_secret: str | None = None,
     transport: httpx.BaseTransport | None = None, partition: int | None = None,
     on_status: Callable[[str], None] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> tuple[tuple[tuple[int, ReportReference], ...], tuple[tuple[int, str], ...]]:
     """Resolve selected ranks in input order, fetching only their ranking pages."""
     validate_rank_positions(positions)
@@ -288,6 +349,8 @@ def ranked_sources_at_positions(
     skipped: list[tuple[int, str]] = []
     cache: dict[tuple[str, int], tuple[list[dict[str, Any]], set[int]]] = {}
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        if on_progress is not None:
+            on_progress(0, len(positions))
         variables = {
             "encounterID": encounter_id, "specName": job.capitalize(),
             "partition": current_partition(encounter_id, partition),
@@ -301,7 +364,7 @@ def ranked_sources_at_positions(
             raise FFLogsError(f"no ranked {job} logs exist for encounter {encounter_id}")
         page_size = len(first)
         pages = {1: first}
-        for position in positions:
+        for done, position in enumerate(positions, 1):
             page, index = divmod(position - 1, page_size)
             page += 1
             if page not in pages:
@@ -322,6 +385,8 @@ def ranked_sources_at_positions(
                 )))
             except FFLogsError as exc:
                 skipped.append((position, str(exc)))
+            if on_progress is not None:
+                on_progress(done, len(positions))
     if not found:
         raise FFLogsError(f"no accessible {job} logs at the selected ranks")
     return tuple(found), tuple(skipped)
@@ -332,6 +397,7 @@ def ranked_sources_in_range(
     client_id: str | None = None, client_secret: str | None = None,
     transport: httpx.BaseTransport | None = None, partition: int | None = None,
     on_status: Callable[[str], None] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> tuple[tuple[tuple[int, ReportReference], ...], tuple[tuple[int, str], ...]]:
     """Resolve every leaderboard position in an inclusive range across pages."""
     validate_rank_range(first, last)
@@ -339,6 +405,8 @@ def ranked_sources_in_range(
     skipped: list[tuple[int, str]] = []
     cache: dict[tuple[str, int], tuple[list[dict[str, Any]], set[int]]] = {}
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        if on_progress is not None:
+            on_progress(0, last - first + 1)
         if on_status is not None:
             on_status("Loading leaderboard page 1...")
         first_rows = _ranking_rows(client.graphql(_character_ranking_query(encounter_id, paged=True), {
@@ -371,6 +439,8 @@ def ranked_sources_in_range(
                     )))
                 except FFLogsError as exc:
                     skipped.append((position, str(exc)))
+                if on_progress is not None:
+                    on_progress(position - first + 1, last - first + 1)
             if position >= last:
                 break
     if position < last:

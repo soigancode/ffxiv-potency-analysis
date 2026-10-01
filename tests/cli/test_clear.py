@@ -1,8 +1,41 @@
-"""Clearing calculations independently from downloaded logs."""
+"""Tests for clear behavior."""
 
 from pathlib import Path
 
 from ffxiv_potency import cli
+
+
+def test_clear_logs_requires_confirmation_and_keeps_job_snapshots(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    logs = tmp_path / "data/logs"
+    saved = logs / "report/fight-1/source-2/fight.json"
+    saved.parent.mkdir(parents=True)
+    saved.write_text("{}", encoding="utf-8")
+    actions = tmp_path / "data/jobs/brd/7.4/actions.json"
+    actions.parent.mkdir(parents=True)
+    actions.write_text("{}", encoding="utf-8")
+
+    monkeypatch.setattr("builtins.input", lambda prompt: "no")
+    assert cli.main(["clear", "logs"]) == 0
+    assert saved.exists()
+    assert "Cancelled." in capsys.readouterr().out
+
+    monkeypatch.setattr("builtins.input", lambda prompt: "yes")
+    assert cli.main(["clear", "logs"]) == 0
+    assert logs.is_dir() and not any(logs.iterdir())
+    assert actions.exists()
+
+
+
+def test_clear_logs_yes_supports_custom_download_directory(tmp_path: Path) -> None:
+    logs = tmp_path / "downloads"
+    logs.mkdir()
+    (logs / "fight.json").write_text("{}", encoding="utf-8")
+    assert cli.main(["clear", "logs", "--output", str(logs), "--yes"]) == 0
+    assert not any(logs.iterdir())
+
 
 
 def test_clear_cache_preserves_logs_and_checks_confirmation(tmp_path, monkeypatch) -> None:

@@ -23,7 +23,7 @@ def test_mch_lindwurm_ii_infers_first_queen_and_reports_patch(
                 (directory / name.removeprefix(prefix)).write_bytes(z.read(name))
     assert cli._fight_provenance(directory) == ("1", "7.4")
     assert cli._fight_date(directory) == "25/04/26"
-    actions = Path(__file__).resolve().parents[2] / "data/machinist/7.55/actions.json"
+    actions = Path(__file__).resolve().parents[2] / "data/jobs/mch/7.4/actions.json"
     result = analyze_saved_fight(directory, actions)
     assert result.echo_status == "absent"
     first, second = result.pet_deployments[:2]

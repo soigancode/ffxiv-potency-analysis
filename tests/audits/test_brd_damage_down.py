@@ -16,7 +16,7 @@ def test_damage_down_scales_only_affected_hits(
     tmp_path: Path, extract_fight, capsys: pytest.CaptureFixture[str]
 ) -> None:
     extract_fight("brd_damage_down.zip", "nRdCmKkJP1XjYf29/fight-1/source-2/")
-    actions = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).parents[2] / "data/jobs/brd/7.4/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
 
     assert result.encounter_id == 1085
@@ -67,7 +67,7 @@ def test_damage_down_refresh_and_ticks_after_death_use_snapshot(
     tmp_path: Path, extract_fight,
 ) -> None:
     extract_fight("brd_damage_down_refresh.zip", "CLgcPdnVR47aZ1kQ/fight-28/source-13/")
-    actions = Path(__file__).parents[2] / "data/bard/7.55/actions.json"
+    actions = Path(__file__).parents[2] / "data/jobs/brd/7.4/actions.json"
     result = analyze_saved_fight(tmp_path, actions)
 
     assert result.unmatched == ()
