@@ -195,8 +195,8 @@ def test_full_dancing_mad_analysis_uses_dot_snapshots_without_extra_potions(
     assert (dots["Caustic Bite"].landed_uses, dots["Caustic Bite"].ticks) == (6, 344)
     assert (dots["Stormbite"].landed_uses, dots["Stormbite"].ticks) == (7, 347)
     assert (dots["Iron Jaws"].landed_uses, dots["Iron Jaws"].ticks) == (23, 0)
-    assert dots["Caustic Bite"].total_potency == pytest.approx(8476.363042470388)
-    assert dots["Stormbite"].total_potency == pytest.approx(10213.081034475488)
+    assert dots["Caustic Bite"].total_potency == pytest.approx(8476.680077586687)
+    assert dots["Stormbite"].total_potency == pytest.approx(10213.461153862449)
     for name in ("Caustic Bite", "Stormbite", "Iron Jaws"):
         assert full[name].potency_min == pytest.approx(dots[name].total_potency)
     assert full["Caustic Bite"].uses == 6

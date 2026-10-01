@@ -163,8 +163,8 @@ def test_brink_reapplies_for_a_full_window_after_another_revival() -> None:
 
 def test_global_main_stat_penalties_include_potion_and_do_not_stack() -> None:
     profile = _load_combat_profile("bard")
-    normal_dex = 6838
-    potted_dex = 7379
+    normal_dex = 6841
+    potted_dex = 7382
     factor = lambda dex: 100 + 237 * (dex - 440) // 440
     for status_id, percentage in ((1000043, 75), (1000044, 50)):
         event = {"buffs": f"{status_id}."}

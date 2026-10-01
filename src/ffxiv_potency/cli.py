@@ -64,6 +64,7 @@ from .jobguide.snapshot import LATEST_KNOWN_PATCH, update_job_guide
 SUPPORTED_JOBS = {
     "brd": "bard", "bard": "bard",
     "mch": "machinist", "machinist": "machinist",
+    "dnc": "dancer", "dancer": "dancer",
 }
 CURRENT_FIGHTS = {
     "m9s": 101,
@@ -133,7 +134,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     jobguide = commands.add_parser("jobguide", help="update all job guides and buffs, or one item")
-    jobguide.add_argument("item", nargs="?", help="job name or abbreviation (BRD/MCH), or 'buffs'")
+    jobguide.add_argument("item", nargs="?", help="job name or abbreviation (BRD/MCH/DNC), or 'buffs'")
     jobguide.add_argument("--output", type=Path, default=Path("data"), help="output root")
 
     clear = commands.add_parser("clear", help="remove downloaded data")
@@ -145,7 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
     clear.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
 
     fflogs = commands.add_parser("fflogs", help="download an FF Logs fight")
-    fflogs.add_argument("url", help="'limit', a report URL or ID, or a job such as BRD/MCH")
+    fflogs.add_argument("url", help="'limit', a report URL or ID, or a job such as BRD/MCH/DNC")
     fflogs.add_argument("fight", nargs="?", help="fight abbreviation such as m9s")
     fflogs.add_argument(
         "rank", nargs="?", help="one rank, an inclusive range, or comma-separated ranks"
@@ -268,6 +269,13 @@ def _print_analysis(
         print(f"Actions: valid since {result.actions_since}" if result.actions_since
               else "Actions: custom snapshot")
         print(f"Gear: {result.gear_name} ({result.gear_source})")
+    if result.food is None:
+        print("Food: None")
+    else:
+        note = "" if result.food.recorded else " (configured; not identified in fight events)"
+        print(f"Food: {result.food.name}{note}")
+        for begin, finish in result.food_missing_windows:
+            print(f"  Without food: {_format_timestamp(begin)} - {_format_timestamp(finish)}")
     print(f"Party main-stat bonus: {bonus}")
     if result.echo_status == "observed":
         print("Echo: 12% (damage normalised by 1.12)")
@@ -275,13 +283,6 @@ def _print_analysis(
         print("Echo: 0%")
     elif result.echo_status == "unknown":
         print("Echo: unknown (initial combatant auras unavailable)")
-    if result.food is None:
-        print("Food: None")
-    else:
-        note = "" if result.food.recorded else " (configured; not identified in fight events)"
-        print(f"Food: {result.food.name}{note}")
-        for begin, finish in result.food_missing_windows:
-            print(f"  Without food: {_format_timestamp(begin)}–{_format_timestamp(finish)}")
     print(f"nDPS: {result.ndps:,.1f}" if result.ndps is not None else "nDPS: n/a")
     print(f"rDPS: {result.rdps:,.1f}" if result.rdps is not None else "rDPS: n/a")
     print(f"Landed damage events: {result.landed_damage_events}")
@@ -325,7 +326,7 @@ def _print_analysis(
                 times = ", ".join(_format_timestamp(at) for at in window.refresh_seconds)
                 note = f"refreshed at {times}; {note}"
             print(
-                f"  {window.name}: {_format_timestamp(window.start_seconds)}–"
+                f"  {window.name}: {_format_timestamp(window.start_seconds)} - "
                 f"{_format_timestamp(window.end_seconds)} ({note})"
             )
             if window.name not in printed_counts and window_counts[window.name] == 1:
@@ -359,7 +360,7 @@ def _print_analysis(
                         note = f"{use.gauge} gauge"
                     elif use.plausible_gauges:
                         low, high = use.plausible_gauges[0], use.plausible_gauges[-1]
-                        note = f"best estimate {use.gauge} gauge (plausible {low}–{high} gauge)"
+                        note = f"best estimate {use.gauge} gauge (plausible {low} - {high} gauge)"
                     else:
                         note = f"best estimate {use.gauge} gauge (outside expected damage range)"
                     hits_label = "hit" if use.hits == 1 else "hits"
@@ -443,12 +444,12 @@ def _print_analysis(
         for index, window in enumerate(result.potion.windows, 1):
             if window.start_seconds is not None and window.end_seconds is not None:
                 print(
-                    f"  Window {index}: {_format_timestamp(window.start_seconds)}–{_format_timestamp(window.end_seconds)}"
+                    f"  Window {index}: {_format_timestamp(window.start_seconds)} - {_format_timestamp(window.end_seconds)}"
                 )
             elif window.observed_start_seconds is not None and window.observed_end_seconds is not None:
                 print(
                     f"  Window {index}: start unknown; Medicated observed "
-                    f"{_format_timestamp(window.observed_start_seconds)}–{_format_timestamp(window.observed_end_seconds)}"
+                    f"{_format_timestamp(window.observed_start_seconds)} - {_format_timestamp(window.observed_end_seconds)}"
                 )
         print(
             "  Potted base potency: "
@@ -532,6 +533,103 @@ def _print_analysis(
                 f"{auto_attack.potency_per_hit:.2f} potency/hit, "
                 f"{auto_attack.total_potency:,.0f} total potency"
             )
+    if result.dnc_procs is not None:
+        proc = result.dnc_procs
+        print("\nDancer proc luck:")
+        start = (str(proc.starting_feathers[0]) if len(proc.starting_feathers) == 1
+                 else f"{min(proc.starting_feathers)}-{max(proc.starting_feathers)}")
+        print(f"  Starting feathers: {start} ({proc.starting_feathers_source})")
+        print("  Proc luck indices: 50 = expected luck (approximate rarity)")
+        if proc.initial_proc_luck is not None:
+            print(f"  Initial GCD proc luck: {proc.initial_proc_luck:.1f}/100")
+        if proc.feather_luck_min is not None:
+            print(f"  Feather-chain luck index: {proc.feather_luck_min:.1f}/100 "
+                  "(minimum supported by the log)")
+            print("    Unlogged Feather overcap can make the true score higher.")
+        else:
+            print("  Feather-chain luck index: unavailable (insufficient proc or resource evidence)")
+
+        if proc.threefold_luck is not None:
+            print(f"  Threefold proc luck: {proc.threefold_luck:.1f}/100")
+        if proc.gcd_to_feather_chance is not None:
+            print(f"  Ordinary GCD-to-Feather chain: {100 * proc.gcd_to_feather_chance:.1f}% expected")
+            print("    Flourish skips the unlock roll. Threefold is a separate roll after spending a feather.")
+        for ready in proc.ready_procs:
+            if ready.name == "Threefold":
+                continue
+            opportunities = sum(count for _, count in ready.trials)
+            sources = ", ".join(f"{count} {name}" for name, count in ready.trials) or "none"
+            print(f"  {ready.name} opportunities: {opportunities} ({sources}), "
+                  f"expected random grants: {ready.expected:.1f}")
+            if ready.random_grants is not None:
+                extra = ready.random_grants - ready.expected
+                rate = (f", {100 * ready.random_grants / opportunities:.1f}% proc rate"
+                        if opportunities else "")
+                print(f"  {ready.name} random grants: {ready.random_grants} "
+                      f"({extra:+.1f} vs expected){rate}")
+                print(f"  {ready.name} from Flourish: {ready.guaranteed_grants}")
+            else:
+                print(f"  {ready.name} grants: unavailable (missing or unattributed buff events)")
+            print(f"  {ready.name} proc GCD uses: {ready.uses}")
+            if ready.random_grants is not None:
+                print(f"    Consumed: {ready.random_consumed} random, "
+                      f"{ready.guaranteed_consumed} Flourish")
+                print(f"    Both effects consumed together: {ready.overlaps}")
+                print(f"    Lost: {ready.overwritten} overwritten, {ready.expired} expired, "
+                      f"{ready.death_lost} on death. Remaining: {ready.remaining}")
+        if (proc.full_use_expected_feathers is not None
+                and proc.full_use_expected_random_threefold is not None):
+            print(f"  Full-use chain expectation: {proc.full_use_expected_feathers:.1f} feathers, "
+                  f"{proc.full_use_expected_random_threefold:.1f} random Threefold procs "
+                  "(assuming all ready effects and feathers are used, with no losses)")
+        print(f"  Feather opportunities: {proc.feather_trials}, "
+              f"expected successful rolls: {proc.expected_feathers:.1f}")
+        print(f"  Feathers used: {proc.feathers_used}")
+        if proc.feathers_gained_min is not None:
+            unknown = "ending gauge and cap losses" if len(proc.starting_feathers) == 1 else "starting/ending gauge and cap losses"
+            print(f"  Feathers gained: {proc.feathers_gained_min}-{proc.feathers_gained_max} "
+                  f"possible ({unknown} are unlogged)")
+            if proc.feather_successes_min is not None:
+                print(f"  Successful Feather rolls: at least {proc.feather_successes_min} "
+                      f"of {proc.feather_trials}. Exact count is unlogged.")
+        else:
+            print("  Feather gains: unavailable (incomplete resource evidence)")
+        print(f"  Threefold random opportunities: {proc.fan_trials}, "
+              f"expected procs: {proc.expected_threefold:.1f}")
+        if proc.random_threefold is not None:
+            extra = proc.random_threefold - proc.expected_threefold
+            print(f"  Threefold random procs: {proc.random_threefold} ({extra:+.1f} vs expected)")
+            if proc.fan_trials:
+                print(f"  Threefold proc rate: {100 * proc.random_threefold / proc.fan_trials:.1f}%")
+        else:
+            print("  Threefold random procs: unavailable (missing or unattributed buff events)")
+        print(f"  Threefold from Flourish: {proc.guaranteed_threefold}")
+        print(f"  Fan Dance III uses: {proc.fan_three_uses}")
+        threefold = next((r for r in proc.ready_procs if r.name == "Threefold"), None)
+        if threefold is not None and threefold.random_grants is not None:
+            print(f"    Consumed: {threefold.random_consumed} random, "
+                  f"{threefold.guaranteed_consumed} Flourish")
+            print(f"    Lost: {threefold.overwritten} overwritten, {threefold.expired} expired, "
+                  f"{threefold.death_lost} on death. Remaining: {threefold.remaining}")
+
+        print("  Feather luck score: "
+              f"{proc.combined_feather_luck_min:.1f}/100 (minimum supported by the log)"
+              if proc.combined_feather_luck_min is not None
+              else "  Feather luck score: unavailable (insufficient proc or resource evidence)")
+        print("    50 = expected rates, 100 = every roll succeeds across all three stages.")
+        if proc.combined_feather_luck_min is not None:
+            print("    Unlogged Feather overcap can make the true score higher.")
+
+    if result.dnc_finishes:
+        print("\nDancer finishes:")
+        for name, strength in result.dnc_initial_buffs:
+            print(f"  Pre-pull {name}: +{(strength - 1) * 100:.0f}% damage "
+                  "(inferred from recorded multipliers)")
+        for finish in result.dnc_finishes:
+            steps = f" ({finish.steps} steps)" if finish.steps is not None else ""
+            print(f"  {_format_timestamp(finish.seconds)} {finish.action}{steps}: "
+                  f"{finish.hits} landed hits, {finish.potency:,.0f} potency")
+
     if result.mch_wildfires:
         print("\nWildfire:")
         for wildfire in result.mch_wildfires:
@@ -542,7 +640,7 @@ def _print_analysis(
                 else "no detonation"
             )
             print(
-                f"  {started}–{ended}: {wildfire.landed_weaponskills}/6 landed weaponskills, "
+                f"  {started} - {ended}: {wildfire.landed_weaponskills}/6 landed weaponskills, "
                 f"{wildfire.potency:,.0f} potency"
                 f"{' (detonated early)' if wildfire.detonated_early else ''}"
             )
@@ -798,7 +896,7 @@ def _verify_supported_fight(directory: Path) -> None:
 
 def _actions_for_job(job: str, override: Path | None) -> Path:
     if job not in SUPPORTED_JOBS.values():
-        raise ValueError(f"job {job!r} is not supported yet; currently only Bard and Machinist are supported")
+        raise ValueError(f"job {job!r} is not supported yet; currently Bard, Machinist, and Dancer are supported")
     if override is not None:
         path = override
     else:
@@ -836,20 +934,20 @@ def _ranking_status_options(progress: _Progress) -> _RankingStatusOptions:
     if not progress.enabled:
         return {}
     counts: tuple[int, int] | None = None
-    detail = ""
+    label = "Looking up ranks"
 
     def status(message: str) -> None:
-        nonlocal detail
-        detail = message
+        nonlocal label
+        label = "Identifying players" if message.startswith("Identifying player") else "Looking up ranks"
         if counts is None:
             progress.message(message)
         else:
-            progress.update("Looking up ranks", *counts, detail=detail)
+            progress.update(label, *counts)
 
     def update(done: int, total: int) -> None:
         nonlocal counts
         counts = done, total
-        progress.update("Looking up ranks", done, total, detail=detail)
+        progress.update(label, done, total)
 
     return {"on_status": status, "on_progress": update}
 
@@ -906,7 +1004,7 @@ def _select_report_reference(url: str) -> ReportReference:
             )
         return ReportReference(selection.report_code, fight.id, player.id)
     if not players:
-        raise ValueError(f"fight {fight.id} has no supported BRD or MCH players")
+        raise ValueError(f"fight {fight.id} has no supported BRD, MCH, or DNC players")
     if len(players) == 1:
         player = players[0]
         print(f"Player: {player.name} ({player.job}, source {player.id})")
@@ -1188,7 +1286,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 job = SUPPORTED_JOBS.get(args.url.casefold())
                 if job is None:
                     raise ValueError(
-                        f"unsupported job {args.url!r}; use BRD or MCH"
+                        f"unsupported job {args.url!r}; use BRD, MCH, or DNC"
                     )
                 encounter_id = CURRENT_FIGHTS.get(args.fight.casefold())
                 if encounter_id is None:
@@ -1293,7 +1391,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         job = SUPPORTED_JOBS.get(args.item.casefold())
         if job is None:
-            raise ValueError(f"unsupported job {args.item!r}; use BRD, MCH, or buffs")
+            raise ValueError(f"unsupported job {args.item!r}; use BRD, MCH, DNC, or buffs")
         result = update_job_guide(
             job=job,
             patch=LATEST_KNOWN_PATCH,

@@ -42,7 +42,7 @@ def test_party_bonus_rejects_unknown_fight_participant() -> None:
 
 
 def test_party_bonus_recalculates_main_stat_potion_and_revival_factors() -> None:
-    for bonus, expected in ((3, 6708), (4, 6773), (5, 6838)):
+    for bonus, expected in ((3, 6711), (4, 6776), (5, 6841)):
         profile = _load_combat_profile("machinist", party_bonus_percent=bonus)
         assert profile.party_main_stat == expected
         assert profile.potted_main_stat == expected + 541

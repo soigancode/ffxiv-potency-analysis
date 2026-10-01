@@ -35,7 +35,7 @@ def test_anonymous_brd_dot_refresh_after_untargetable_phase(
     result = analyze_saved_fight(tmp_path, actions)
     assert (result.source_name, result.encounter_id) == ("Player (7)", 102)
     assert result.unmatched == ()
-    assert result.potency_min == pytest.approx(116378.79720375093)
+    assert result.potency_min == pytest.approx(116385.0271817427)
 
 
 def test_anonymous_brd_appears_as_anonymous_in_comparison(

@@ -118,7 +118,7 @@ def test_potted_weakness_dot_snapshot_survives_both_status_expiries(
     assert tick.timestamp > fight["startTime"] + 512_193
     profile = _load_combat_profile("bard")
     factor = lambda main_stat: 100 + 237 * (main_stat - 440) // 440
-    expected = 25 * factor(7379 * 75 // 100) / factor(6838)
+    expected = 25 * factor(7382 * 75 // 100) / factor(6841)
     assert brd_dot_potency(
         tick, 25, potion_multiplier=profile.player_potion_multiplier,
         self_buff_windows={}, combat_profile=profile,

@@ -7,7 +7,7 @@ from itertools import pairwise
 from statistics import median
 from typing import Any
 
-from .brd.buffs import _brd_self_multiplier
+from .buffs import self_damage_multiplier
 from .damage import landed_fraction
 from .errors import AnalysisError
 from .events import _has_buff
@@ -103,8 +103,9 @@ def _summarize_auto_attacks(
         base_total = action_gain = potted_effective = 0.0
         for event in action_events:
             base = potency_per_hit * landed_fraction(event) * (
-                _brd_self_multiplier(
-                    str(event.get("buffs", "")), float(event.get("timestamp", 0)), self_windows
+                self_damage_multiplier(
+                    str(event.get("buffs", "")),
+                    float(event.get("_snapshot_time", event.get("timestamp", 0))), self_windows
                 ) if self_windows else 1.0
             ) * penalty_multiplier(event, damage_penalties or {})
             effective_base = base * revival_multiplier(event, combat_profile)

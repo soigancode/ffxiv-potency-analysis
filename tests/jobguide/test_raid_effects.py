@@ -73,9 +73,9 @@ def test_reuses_parsed_bard_and_crawls_unparsed_job_guides(tmp_path: Path) -> No
         0.20,
         0.20,
     ]
-    assert requested == ["scholar", "dragoon", "dancer"]
+    assert requested == ["scholar", "dragoon"]
     assert (tmp_path / "raid_effects/sources/7.56/scholar.html").is_file()
-    assert all("bonus" not in effect for effect in document["effects"] if effect["job"] == "bard")
+    assert all("bonus" not in effect for effect in document["effects"] if effect["job"] in {"bard", "dancer"})
     actions = tmp_path / "machinist/7.56/actions.json"
     actions.parent.mkdir(parents=True)
     actions.write_text('{"patch": "7.56"}', encoding="utf-8")
@@ -165,3 +165,22 @@ def test_invalid_raid_update_preserves_previous_files(tmp_path: Path) -> None:
         update_raid_effects(tmp_path, transport=httpx.MockTransport(lambda _: httpx.Response(200, text="invalid guide")))
     assert first.read_bytes() == original
     assert manifest.read_bytes() == original_manifest
+
+
+def test_devilment_reference_uses_dancer_action_version(tmp_path: Path) -> None:
+    import shutil
+
+    from ffxiv_potency.jobguide.snapshot import update_job_guide
+
+    shutil.copytree("data/jobs/dnc", tmp_path / "jobs/dnc")
+    html = Path("tests/fixtures/jobguide/dnc_full_7_56.html").read_text()
+    changed = html.replace("Increases critical hit rate and direct hit rate by 20%.",
+                           "Increases critical hit rate and direct hit rate by 21%.")
+    assert changed != html
+    update_job_guide(job="dancer", patch="7.56", output_root=tmp_path,
+                     transport=httpx.MockTransport(lambda _: httpx.Response(200, text=changed)))
+    document = json.loads(Path("data/raid_effects/7.4.json").read_text())
+    old = resolve_effects(document, tmp_path, "7.55")
+    new = resolve_effects(document, tmp_path, "7.56")
+    assert [r["bonus"] for r in old if r["action"] == "Devilment"] == [.20, .20]
+    assert [r["bonus"] for r in new if r["action"] == "Devilment"] == [.21, .21]

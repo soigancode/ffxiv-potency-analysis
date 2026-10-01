@@ -28,19 +28,19 @@ def test_dancing_mad_brink_wipe(
     observed = {penalty.name: penalty for penalty in result.damage_penalties}
     assert observed["Weakness"].affected_hits == 2
     assert observed["Brink of Death"].affected_hits == 32
-    assert observed["Weakness"].lost_potency_min == pytest.approx(74.6571814)
-    assert observed["Brink of Death"].lost_potency_min == pytest.approx(1797.1467526)
-    normal = 100 + 237 * (6838 - 440) // 440
-    brink = 100 + 237 * (6838 // 2 - 440) // 440
+    assert observed["Weakness"].lost_potency_min == pytest.approx(74.63613346056253)
+    assert observed["Brink of Death"].lost_potency_min == pytest.approx(1796.640085879724)
+    normal = 100 + 237 * (6841 - 440) // 440
+    brink = 100 + 237 * (6841 // 2 - 440) // 440
     assert observed["Brink of Death"].multiplier == pytest.approx(brink / normal)
     assert result.auto_attacks[0].weapon_delay_seconds == 3.04
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "Weakness: 11m11s–11m16s (death)" in output
-    assert "Brink of Death: 11m29s–11m49s (death)" in output
-    assert "Weakness: 11m11s–11m16s (death)\n    main stat -25%; ~26.0% potency reduction; 2 landed hits affected; 75 potency lost" in output
-    assert "Brink of Death: 11m29s–11m49s (death)\n    main stat -50%; ~51.9% potency reduction; 32 landed hits affected; 1,797 potency lost" in output
+    assert "Weakness: 11m11s - 11m16s (death)" in output
+    assert "Brink of Death: 11m29s - 11m49s (death)" in output
+    assert "Weakness: 11m11s - 11m16s (death)\n    main stat -25%; ~26.0% potency reduction; 2 landed hits affected; 75 potency lost" in output
+    assert "Brink of Death: 11m29s - 11m49s (death)\n    main stat -50%; ~51.9% potency reduction; 32 landed hits affected; 1,797 potency lost" in output
     assert (
         "10m57s Refulgent Arrow on Exdeath (player defeated before hit landed)"
         in output

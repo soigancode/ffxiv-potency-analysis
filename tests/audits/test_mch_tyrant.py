@@ -4,7 +4,7 @@ Five landed Blazing Shots during Hypercharge: 5 * (240 + 20) potency.
 Five weaponskill triggers before Wildfire resolves: 5 * 240 potency.
 Six consecutive auto-attacks match a 2.64s weapon delay: their comparable
 potency is 80 * 183 / 208 / 1.2 each; the last four carry Medicated. All five Blazing Shots and
-Wildfire carry Medicated too. Player potion factor: 3837 / 3546.
+Wildfire carry Medicated too. Player potion factor: 3839 / 3547.
 """
 
 import json
@@ -26,9 +26,9 @@ def test_audited_wildfire_hypercharge_auto_attacks_and_three_potions(
     blazing = by_name["Blazing Shot"]
     wildfire = by_name["Wildfire"]
     assert (blazing.uses, blazing.hits) == (5, 5)
-    assert blazing.potency_min == blazing.potency_max == pytest.approx(5 * (240 + 20) * 3837 / 3546)
+    assert blazing.potency_min == blazing.potency_max == pytest.approx(5 * (240 + 20) * 3839 / 3547)
     assert (wildfire.uses, wildfire.hits) == (1, 1)
-    assert wildfire.potency_min == wildfire.potency_max == pytest.approx(5 * 240 * 3837 / 3546)
+    assert wildfire.potency_min == wildfire.potency_max == pytest.approx(5 * 240 * 3839 / 3547)
 
     (shot,) = result.auto_attacks
     assert shot.hits == 6
@@ -36,7 +36,7 @@ def test_audited_wildfire_hypercharge_auto_attacks_and_three_potions(
     comparable_shot = 80 * 183 / 208 / 1.2
     assert shot.potency_per_hit == pytest.approx(comparable_shot)
     assert shot.total_potency == pytest.approx(
-        6 * comparable_shot + 4 * comparable_shot * (3837 / 3546 - 1)
+        6 * comparable_shot + 4 * comparable_shot * (3839 / 3547 - 1)
     )
 
     assert result.potion.uses == 3
@@ -47,7 +47,7 @@ def test_audited_wildfire_hypercharge_auto_attacks_and_three_potions(
         5 * 260 + 5 * 240 + 4 * comparable_shot
     )
     assert result.potion.gained_potency_min == pytest.approx(
-        (5 * 260 + 5 * 240 + 4 * comparable_shot) * (3837 / 3546 - 1)
+        (5 * 260 + 5 * 240 + 4 * comparable_shot) * (3839 / 3547 - 1)
     )
     assert result.ghosted == ()
     assert result.unmatched == ()
@@ -77,7 +77,7 @@ def test_wildfire_potion_snapshots_on_application(
     (tmp_path / "damage-events.json").write_text(json.dumps(damage), encoding="utf-8")
 
     result = analyze_saved_fight(tmp_path, mch_actions)
-    expected = 1200 * (3837 / 3546 if expected_potted else 1)
+    expected = 1200 * (3839 / 3547 if expected_potted else 1)
     assert result.mch_wildfires[0].potency == pytest.approx(expected)
     assert next(
         action for action in result.actions if action.name == "Wildfire"
@@ -111,7 +111,7 @@ def test_wildfire_recovers_prepull_potion_when_cast_is_missing(
     (tmp_path / "cast-events.json").write_text(json.dumps(casts), encoding="utf-8")
 
     result = analyze_saved_fight(tmp_path, mch_actions)
-    assert result.mch_wildfires[0].potency == pytest.approx(1200 * 3837 / 3546)
+    assert result.mch_wildfires[0].potency == pytest.approx(1200 * 3839 / 3547)
 
 
 def test_detonator_marks_early_wildfire_without_changing_potency(
@@ -134,7 +134,7 @@ def test_detonator_marks_early_wildfire_without_changing_potency(
 
     result = analyze_saved_fight(tmp_path, mch_actions)
     assert result.mch_wildfires[0].detonated_early
-    assert result.mch_wildfires[0].potency == pytest.approx(1200 * 3837 / 3546)
+    assert result.mch_wildfires[0].potency == pytest.approx(1200 * 3839 / 3547)
     from ffxiv_potency import cli
 
     cli._print_analysis(result)

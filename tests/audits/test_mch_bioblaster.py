@@ -59,6 +59,6 @@ def test_hypercharge_does_not_increase_aoe_weaponskills(tmp_path: Path, extract_
     result = analyze_saved_fight(tmp_path, ACTIONS)
     actions = {action.name: action for action in result.actions}
 
-    assert actions["Scattergun"].potency_min == pytest.approx(7474.010152284264)
+    assert actions["Scattergun"].potency_min == pytest.approx(7474.212010149422)
     assert actions["Auto Crossbow"].potency_min == pytest.approx(21540.12949622104)
-    assert actions["Blazing Shot"].potency_min == pytest.approx(11596.185300309224)
+    assert actions["Blazing Shot"].potency_min == pytest.approx(11596.992731769853)

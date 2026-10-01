@@ -84,15 +84,18 @@ class StackPotency:
 
     resource: str
     values: tuple[int, ...]
+    minimum_count: int = 1
 
     def __post_init__(self) -> None:
         if not self.resource or not self.values or any(value <= 0 for value in self.values):
             raise ValueError("stack potency needs a resource and positive values")
+        if self.minimum_count < 0:
+            raise ValueError("minimum stack count must not be negative")
 
     def to_dict(self) -> dict[str, str | dict[str, int]]:
         return {
             "resource": self.resource,
-            "by_count": {str(count): value for count, value in enumerate(self.values, 1)},
+            "by_count": {str(count): value for count, value in enumerate(self.values, self.minimum_count)},
         }
 
 
@@ -195,6 +198,25 @@ class GaugeGain:
 
 
 @dataclass(frozen=True, slots=True)
+class DamageBuff:
+    """A damage status whose strength depends on successful dance steps."""
+
+    status: str
+    duration_seconds: int
+    by_count: tuple[tuple[int, float], ...]
+
+    def __post_init__(self) -> None:
+        if (not self.status or self.duration_seconds <= 0 or not self.by_count
+                or any(count < 1 or strength <= 1 for count, strength in self.by_count)
+                or len({count for count, _ in self.by_count}) != len(self.by_count)):
+            raise ValueError("damage buff needs a status, duration, and distinct positive strengths")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"status": self.status, "duration_seconds": self.duration_seconds,
+                "by_count": {str(count): value for count, value in self.by_count}}
+
+
+@dataclass(frozen=True, slots=True)
 class Potency:
     """Normalized direct, periodic, triggered, or modifying potency rules."""
 
@@ -258,6 +280,8 @@ class Action:
     source_actor: str | None = None
     derived_from: str | None = None
     gauge_gains: tuple[GaugeGain, ...] = ()
+    damage_buff: DamageBuff | None = None
+    completed_steps: int | None = None
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -283,4 +307,8 @@ class Action:
             result["derived_from"] = self.derived_from
         if self.gauge_gains:
             result["gauge_gains"] = [gain.to_dict() for gain in self.gauge_gains]
+        if self.damage_buff is not None:
+            result["damage_buff"] = self.damage_buff.to_dict()
+        if self.completed_steps is not None:
+            result["completed_steps"] = self.completed_steps
         return result

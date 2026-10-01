@@ -216,6 +216,6 @@ def test_pet_deployments_separate_potion_adjusted_potency(tmp_path: Path) -> Non
     first, second = result.pet_deployments
     assert first.gauge_spent == second.gauge_spent == 50
     assert first.potency_min == first.potency_max == pytest.approx(89)
-    assert second.potency_min == second.potency_max == pytest.approx(89 * 563 / 525)
+    assert second.potency_min == second.potency_max == pytest.approx(89 * 564 / 526)
     assert result.potency_min == pytest.approx(first.potency_min + second.potency_min)
 

@@ -94,8 +94,8 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert output.startswith("\nPlayer:") and output.endswith("\n\n")
     assert ("Fight: Test Boss (1)\nDuration: 00m10s\n"
             "Date: 01/05/2026 (UTC)\nPartition: n/a\nPatch: 7.5\n"
-            "Party main-stat bonus: 5% (assumed; older saved fight)\n"
             "Food: Caramel Popcorn [HQ]\n"
+            "Party main-stat bonus: 5% (assumed; older saved fight)\n"
             "nDPS: 12,345.6\nrDPS: 12,330.4") in output
     cli._print_analysis(
         replace(expected, played_patch="7.51", patch_source="fight date",
@@ -112,7 +112,7 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert "Landed potency: 350-400" in output
     assert "Potency per second: 35.00-40.00" in output
     assert "00m12s: 1 hit, 85 gauge" in output
-    assert "03m42s: 1 hit, best estimate 95 gauge (plausible 95–100 gauge)" in output
+    assert "03m42s: 1 hit, best estimate 95 gauge (plausible 95 - 100 gauge)" in output
     assert "Pitch Perfect: 20 hits, 1 hit with ambiguous potency\n" in output
     assert "03m42s: closest fit: 3-stack full hit; outside expected damage" in output
     assert "03m42s Chain Saw on Test Boss (target at 0 HP)" in output
@@ -121,11 +121,11 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert output.index("Reduced damage hits:") < output.index("Ghosted damaging casts:")
     assert "estimated 2.672s -> 2.64s weapon delay" in output
     assert "Potency gained: 7" in output
-    assert "Window 1: -00m02s–00m28s" in output
+    assert "Window 1: -00m02s - 00m28s" in output
     assert "Potions:\n  Uses: 3\n  Item: Grade 4 Gemdraught of Dexterity [HQ]" in output
     assert "inferred" not in output
     assert "03m42s Queen" in output
-    assert "00m14s–00m25s: 5/6 landed weaponskills, 1,289 potency" in output
+    assert "00m14s - 00m25s: 5/6 landed weaponskills, 1,289 potency" in output
     assert output.index("Wildfire:") < output.index("Pet deployments:")
     assert "Shot: 1" in output
     assert "  00m12s Chain Saw on Test Add (target defeated before hit landed)" in output

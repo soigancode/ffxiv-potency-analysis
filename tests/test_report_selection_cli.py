@@ -13,7 +13,7 @@ def _fights() -> tuple[ReportFight, ...]:
     return (
         ReportFight(9, "Boss", 101, 120.0, False,
                     (ReportPlayer(18, "Alice", "Bard"),
-                     ReportPlayer(19, "Other", "Dancer"))),
+                     ReportPlayer(19, "Other", "Scholar"))),
         ReportFight(10, "Boss", 101, 90.0, True,
                     (ReportPlayer(20, "Bob", "Machinist"),)),
         ReportFight(11, "Unsupported", 9999, 60.0, True,

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..buffs import self_damage_multiplier as _brd_self_multiplier
 from .songs import SONGS
+
+__all__ = ["_brd_self_multiplier", "brd_self_buff_windows"]
 
 SELF_DAMAGE_BUFFS = {"Raging Strikes": 1.15, "Mage's Ballad": 1.01}
 
@@ -80,16 +83,3 @@ def brd_self_buff_windows(
     for status_id, window in active.items():
         completed.setdefault(status_id, []).append(window)
     return {status: tuple(windows) for status, windows in completed.items()}
-
-def _brd_self_multiplier(
-    buffs: str, timestamp: float, windows: dict[int, tuple[tuple[int, int, float], ...]]
-) -> float:
-    present = {int(value) for value in buffs.strip(".").split(".") if value.isdigit()}
-    multiplier = 1.0
-    for buff_id, intervals in windows.items():
-        if buff_id in present:
-            for start, end, strength in intervals:
-                if start <= timestamp < end:
-                    multiplier *= strength
-                    break
-    return multiplier

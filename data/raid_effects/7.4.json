@@ -47,7 +47,7 @@
       "job": "dancer",
       "target": "player",
       "rate": "critical",
-      "bonus": 0.2
+      "source": "job_actions"
     },
     {
       "action": "Devilment",
@@ -55,7 +55,7 @@
       "job": "dancer",
       "target": "player",
       "rate": "direct",
-      "bonus": 0.2
+      "source": "job_actions"
     }
   ]
 }

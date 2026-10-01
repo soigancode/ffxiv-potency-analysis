@@ -73,7 +73,7 @@ def test_real_lindwurm_ii_queen_lands_both_finishers(
     assert (
         queen.potency_min
         == queen.potency_max
-        == pytest.approx((5 * 144 + 408 + 468) * 0.89 * 563 / 525)
+        == pytest.approx((5 * 144 + 408 + 468) * 0.89 * 564 / 526)
     )
     assert queen.mch_missing_finishers == ()
 

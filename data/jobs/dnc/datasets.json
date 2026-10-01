@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "job": "dancer",
+  "action_sets": [
+    {
+      "id": "actions_7_4",
+      "file": "7.4/actions.json",
+      "valid_from": "7.4",
+      "verified_through": "7.56"
+    }
+  ],
+  "gear_sets": [
+    {
+      "id": "savage_7_4",
+      "name": "7.4 Savage BiS",
+      "file": "gear_sets/7.4_savage.json",
+      "valid_from": "7.4",
+      "valid_until": "7.55",
+      "verified_through": "7.56"
+    },
+    {
+      "id": "relic_7_55",
+      "name": "7.55 Relic BiS",
+      "file": "gear_sets/7.55_relic.json",
+      "valid_from": "7.55",
+      "valid_until": "8.0",
+      "verified_through": "7.56"
+    }
+  ],
+  "pet_scaling_sets": [],
+  "support": {
+    "level": 100,
+    "valid_from": "7.4",
+    "valid_until": "8.0",
+    "encounters": [
+      101,
+      102,
+      103,
+      104,
+      105,
+      1083,
+      1084,
+      1085,
+      4549,
+      4550,
+      4551
+    ],
+    "played_patches": [
+      "7.4",
+      "7.41",
+      "7.45",
+      "7.5",
+      "7.51",
+      "7.55",
+      "7.56"
+    ]
+  },
+  "last_capture": {
+    "patch": "7.56",
+    "source": {
+      "url": "https://eu.finalfantasyxiv.com/jobguide/dancer/",
+      "retrieved_at": "2026-10-01T21:33:31.796088Z",
+      "sha256": "03da1c79dd8b432ce066eb89eda019308128f5ac340d4ad869c91eb8b2f6e059"
+    }
+  }
+}

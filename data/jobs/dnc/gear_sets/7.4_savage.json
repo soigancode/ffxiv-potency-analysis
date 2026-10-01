@@ -1,0 +1,22 @@
+{
+  "label": "7.4 Savage BiS",
+  "patch": "7.4",
+  "food": "food/7.4/caramel_popcorn_hq.json",
+  "level": 100,
+  "weapon_damage": 158,
+  "weapon_delay_seconds": 3.12,
+  "party_dexterity": 6841,
+  "critical_hit": 3549,
+  "direct_hit": 2035,
+  "determination": 2509,
+  "skill_speed": 420,
+  "id": "savage_7_4",
+  "potion": "potions/7.4/grade_4_gemdraught_of_dexterity_hq.json",
+  "solo_dexterity": 6516,
+  "combat_profile": "combat_profiles/level_100.json",
+  "source": {
+    "url": "https://xivgear.app/?page=bis%7Cdnc%7Ccurrent",
+    "set": "Savage Weapon BiS",
+    "race_assumption": "Miqo'te - Seekers of the Sun, matching the supplied XivGear export"
+  }
+}

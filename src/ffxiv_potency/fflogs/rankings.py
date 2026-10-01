@@ -294,7 +294,7 @@ def accessible_ranked_sources(
             while offset < len(rows):
                 batch = rows[offset:offset + 10 - len(found)]
                 if on_status is not None:
-                    on_status(f"Identifying players for ranks {position + 1}–{position + len(batch)}...")
+                    on_status(f"Identifying players for ranks {position + 1}-{position + len(batch)}...")
                 callback = (lambda count: on_progress(len(found) + count, 10)) if on_progress is not None else None
                 resolved = _resolve_rank_batch(client, batch, position + 1, encounter_id, job, cache, callback)
                 for reference in resolved:

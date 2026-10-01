@@ -1,0 +1,321 @@
+{
+  "job": "BRD",
+  "level": 100,
+  "race": "Seekers of the Sun",
+  "partyBonus": 0,
+  "sets": [
+    {
+      "name": "i790 7.4 Best In Slot",
+      "items": {
+        "Body": {
+          "id": 49696,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41772,
+              "locked": false
+            }
+          ]
+        },
+        "Ears": {
+          "id": 49640,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41773,
+              "locked": false
+            }
+          ]
+        },
+        "Feet": {
+          "id": 49622,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41773,
+              "locked": false
+            }
+          ]
+        },
+        "Hand": {
+          "id": 49697,
+          "materia": [
+            {
+              "id": 41773,
+              "locked": false
+            },
+            {
+              "id": 41781,
+              "locked": false
+            }
+          ]
+        },
+        "Head": {
+          "id": 49618,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41773,
+              "locked": false
+            }
+          ]
+        },
+        "Legs": {
+          "id": 49621,
+          "materia": [
+            {
+              "id": 41773,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Neck": {
+          "id": 49722,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "RingLeft": {
+          "id": 49655,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "RingRight": {
+          "id": 49732,
+          "materia": [
+            {
+              "id": 41773,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Weapon": {
+          "id": 49662,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41772,
+              "locked": false
+            }
+          ]
+        },
+        "Wrist": {
+          "id": 49650,
+          "materia": [
+            {
+              "id": 41773,
+              "locked": false
+            },
+            {
+              "id": 41773,
+              "locked": false
+            }
+          ]
+        }
+      },
+      "food": 49240,
+      "computedStats": {
+        "dexterity": 6516,
+        "crit": 3549,
+        "dhit": 1981,
+        "determination": 2509,
+        "skillspeed": 474,
+        "wdPhys": 158,
+        "weaponDelay": 3.04
+      }
+    },
+    {
+      "name": "i790 7.55 Best In Slot w/Relic bow",
+      "items": {
+        "Body": {
+          "id": 49696,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41772,
+              "locked": false
+            }
+          ]
+        },
+        "Ears": {
+          "id": 49717,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41773,
+              "locked": false
+            }
+          ]
+        },
+        "Feet": {
+          "id": 49622,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41773,
+              "locked": false
+            }
+          ]
+        },
+        "Hand": {
+          "id": 49697,
+          "materia": [
+            {
+              "id": 41773,
+              "locked": false
+            },
+            {
+              "id": 41781,
+              "locked": false
+            }
+          ]
+        },
+        "Head": {
+          "id": 49618,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41773,
+              "locked": false
+            }
+          ]
+        },
+        "Legs": {
+          "id": 49621,
+          "materia": [
+            {
+              "id": 41773,
+              "locked": false
+            },
+            {
+              "id": 41773,
+              "locked": false
+            }
+          ]
+        },
+        "Neck": {
+          "id": 49722,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "RingLeft": {
+          "id": 49655,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "RingRight": {
+          "id": 49732,
+          "materia": [
+            {
+              "id": 41773,
+              "locked": false
+            },
+            {
+              "id": 41773,
+              "locked": false
+            }
+          ]
+        },
+        "Weapon": {
+          "id": 51004,
+          "materia": [],
+          "relicStats": {
+            "crit": 447,
+            "determination": 447,
+            "dhit": 108,
+            "skillspeed": 0
+          }
+        },
+        "Wrist": {
+          "id": 49650,
+          "materia": [
+            {
+              "id": 41773,
+              "locked": false
+            },
+            {
+              "id": 41773,
+              "locked": false
+            }
+          ]
+        }
+      },
+      "food": 49240,
+      "computedStats": {
+        "dexterity": 6516,
+        "crit": 3585,
+        "dhit": 1823,
+        "determination": 2765,
+        "skillspeed": 474,
+        "wdPhys": 158,
+        "weaponDelay": 3.04
+      }
+    }
+  ]
+}

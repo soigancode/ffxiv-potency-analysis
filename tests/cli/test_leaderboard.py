@@ -340,11 +340,12 @@ def test_rankings_show_current_step_before_lookup(monkeypatch, tmp_path: Path) -
     monkeypatch.setattr(cli, "_resolve_analysis_directory", fake_resolve)
     monkeypatch.setattr(cli, "_compare_directories", fake_compare)
     assert cli.main(["fflogs", "mch", "m10s", "--output", str(tmp_path)]) == 0
-    assert "Loading leaderboard page 1..." in terminal.getvalue()
-    assert "Identifying player for rank 1..." in terminal.getvalue()
+    assert "Identifying players: [--------------------] 0/10" in terminal.getvalue()
+    assert "Identifying players: [##------------------] 1/10" in terminal.getvalue()
     assert "Looking up ranks: [--------------------] 0/10" in terminal.getvalue()
-    assert "Looking up ranks: [####################] 10/10" in terminal.getvalue()
+    assert "Identifying players: [####################] 10/10" in terminal.getvalue()
+    assert " - Identifying" not in terminal.getvalue()
+    assert terminal.getvalue().isascii()
     assert terminal.getvalue().index("Looking up ranks:") < terminal.getvalue().index("Loading fight data:")
     assert "Loading fight data:" in terminal.getvalue()
     assert terminal.getvalue().endswith("\r")
-

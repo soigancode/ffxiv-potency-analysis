@@ -89,7 +89,7 @@ def test_real_food_expiry_changes_luck_baseline_without_changing_landed_potency(
     )
 
     _print_analysis(actual)
-    assert "Without food: 01m28s–01m52s" in capsys.readouterr().out
+    assert "Without food: 01m28s - 01m52s" in capsys.readouterr().out
 
     buff_path = tmp_path / "buff-events.json"
     buffs = json.loads(buff_path.read_text(encoding="utf-8"))

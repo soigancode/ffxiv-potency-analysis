@@ -29,14 +29,14 @@ def test_audited_vamp_fatale_events(tmp_path: Path, mch_actions: Path, load_audi
     assert (
         saw.potency_min
         == saw.potency_max
-        == pytest.approx(660 * 3837 / 3546 + (660 + 660 * 0.75) + 660)
+        == pytest.approx(660 * 3839 / 3547 + (660 + 660 * 0.75) + 660)
     )
 
     # Air Anchor, Chain Saw, and Excavator each grant 20 Battery before Queen.
     (queen,) = result.pet_deployments
     assert queen.gauge_spent == 60
     queen_base = 5 * 144 + 408 + 468
-    assert queen.potency_min == queen.potency_max == pytest.approx(queen_base * 0.89 * 563 / 525)
+    assert queen.potency_min == queen.potency_max == pytest.approx(queen_base * 0.89 * 564 / 526)
 
     assert result.potion.uses == 1
     (window,) = result.potion.windows
@@ -45,7 +45,7 @@ def test_audited_vamp_fatale_events(tmp_path: Path, mch_actions: Path, load_audi
     # The three player skills and seven Queen hits all carry Medicated.
     assert result.potion.potted_potency_min == pytest.approx(3 * 660 + queen_base * 0.89)
     assert result.potion.gained_potency_min == pytest.approx(
-        3 * 660 * (3837 / 3546 - 1) + queen_base * 0.89 * (563 / 525 - 1)
+        3 * 660 * (3839 / 3547 - 1) + queen_base * 0.89 * (564 / 526 - 1)
     )
 
     assert result.ghosted == (("Heated Slug Shot", 1),)

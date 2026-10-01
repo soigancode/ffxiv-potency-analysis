@@ -60,6 +60,61 @@ class ReducedDamageHit:
 
 
 @dataclass(frozen=True, slots=True)
+class DncFinishSummary:
+    seconds: float
+    action: str
+    steps: int | None
+    hits: int
+    potency: float
+
+
+@dataclass(frozen=True, slots=True)
+class DncReadyProcSummary:
+    name: str
+    trials: tuple[tuple[str, int], ...]
+    expected: float
+    random_grants: int | None
+    guaranteed_grants: int | None
+    uses: int
+    random_consumed: int
+    guaranteed_consumed: int
+    overlaps: int
+    overwritten: int
+    expired: int
+    death_lost: int
+    remaining: int
+    unknown_consumed: int
+    unknown_removals: int
+
+
+@dataclass(frozen=True, slots=True)
+class DncProcSummary:
+    feather_trials: int
+    expected_feathers: float
+    feathers_used: int
+    feathers_gained_min: int | None
+    feathers_gained_max: int | None
+    feather_successes_min: int | None
+    feather_successes_max: int | None
+    fan_trials: int
+    expected_threefold: float
+    random_threefold: int | None
+    guaranteed_threefold: int
+    fan_three_uses: int
+    starting_feathers: tuple[int, ...] = ()
+    starting_feathers_source: str = "unknown"
+    initial_proc_luck: float | None = None
+    feather_luck_min: float | None = None
+    feather_luck_max: float | None = None
+    threefold_luck: float | None = None
+    combined_feather_luck_min: float | None = None
+    gcd_to_feather_chance: float | None = None
+    ready_procs: tuple[DncReadyProcSummary, ...] = ()
+    full_use_expected_feathers: float | None = None
+    full_use_expected_random_threefold: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class BrdApexUseEstimate:
     seconds: float
     hits: int
@@ -180,6 +235,9 @@ class AnalysisResult:
     brd_song_durations: tuple[tuple[str, float], ...] = ()
     brd_finales: tuple[BrdFinaleSummary, ...] = ()
     brd_dots: tuple[BrdDotActionSummary, ...] = ()
+    dnc_finishes: tuple[DncFinishSummary, ...] = ()
+    dnc_initial_buffs: tuple[tuple[str, float], ...] = ()
+    dnc_procs: DncProcSummary | None = None
     food: ConsumableIdentity | None = None
     food_missing_windows: tuple[tuple[float, float], ...] = ()
     damage_penalties: tuple[DamagePenaltySummary, ...] = ()

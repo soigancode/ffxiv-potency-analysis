@@ -35,7 +35,8 @@ def _direct_potency(
     if base_potency_override is not None:
         value = base_potency_override
     combo = potency.get("combo")
-    if event.get("bonusPercent") is not None and isinstance(combo, dict):
+    combo_bonus = event.get("bonusPercent")
+    if isinstance(combo_bonus, (int, float)) and combo_bonus > 0 and isinstance(combo, dict):
         value = combo.get("potency", value)
     if not isinstance(value, int):
         return None
@@ -67,4 +68,3 @@ def _direct_potency(
 def _is_channeled_action(action: dict[str, Any]) -> bool:
     description = " ".join(action.get("description", ())).casefold()
     return "effect ends upon using another action or moving" in description
-

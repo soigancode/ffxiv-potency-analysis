@@ -5,14 +5,18 @@
   "level": 100,
   "weapon_damage": 158,
   "weapon_delay_seconds": 3.04,
-  "party_dexterity": 6838,
+  "party_dexterity": 6841,
   "critical_hit": 3585,
   "direct_hit": 1823,
   "determination": 2765,
   "skill_speed": 474,
-  "expected_damage_per_100_potency": 12402.73,
   "id": "relic_7_55",
   "potion": "potions/7.4/grade_4_gemdraught_of_dexterity_hq.json",
-  "solo_dexterity": 6513,
-  "combat_profile": "combat_profiles/level_100.json"
+  "solo_dexterity": 6516,
+  "combat_profile": "combat_profiles/level_100.json",
+  "source": {
+    "url": "https://xivgear.app/?page=bis%7Cbrd%7Ccurrent",
+    "set": "i790 7.55 Best In Slot w/Relic bow",
+    "race_assumption": "Miqo'te - Seekers of the Sun, matching the supplied XivGear export"
+  }
 }

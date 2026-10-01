@@ -17,10 +17,10 @@ def write_json(path: Path, value: object) -> None:
 def test_player_main_stat_matches_relic_set_damage_and_potion_gain() -> None:
     from math import floor
 
-    before = _player_main_stat_factor(6838, 440, 237)
-    after = _player_main_stat_factor(7379, 440, 237)
-    assert (before, after) == (3546, 3837)
-    assert _load_combat_profile("bard").player_potion_multiplier == pytest.approx(3837 / 3546)
+    before = _player_main_stat_factor(6841, 440, 237)
+    after = _player_main_stat_factor(7382, 440, 237)
+    assert (before, after) == (3547, 3839)
+    assert _load_combat_profile("bard").player_potion_multiplier == pytest.approx(3839 / 3547)
     det = (1000 + floor(140 * (2765 - 440) / 2780)) / 1000
     weapon = floor(440 * 115 / 1000 + 158) / 100
     base = floor(floor(floor(floor(100 * before / 100) * det) * weapon) * 1.2)
@@ -28,7 +28,7 @@ def test_player_main_stat_matches_relic_set_damage_and_potion_gain() -> None:
     crit_multiplier = (1400 + floor(200 * (3585 - 420) / 2780)) / 1000
     direct_rate = floor(550 * (1823 - 420) / 2780) / 1000
     expected = base * (1 + crit_rate * (crit_multiplier - 1)) * (1 + direct_rate * .25)
-    assert expected == pytest.approx(12402.73, abs=.005)
+    assert expected == pytest.approx(12405.24, abs=.005)
 
 
 
@@ -72,7 +72,7 @@ def test_applies_exact_potion_multiplier_to_main_potency(tmp_path: Path) -> None
 
     result = analyze_saved_fight(log, actions)
 
-    multiplier = 3837 / 3546
+    multiplier = 3839 / 3547
     assert result.potency_min == result.potency_max == pytest.approx(100 * multiplier)
     assert result.potion.uses == 1
     assert result.potion.windows[0].start_seconds == pytest.approx(0.1)

@@ -59,7 +59,7 @@ def test_damage_down_scales_only_affected_hits(
     _print_analysis(result)
     output = capsys.readouterr().out
     assert output.index("Damage penalties:") < output.index("Variable potency:")
-    assert "Damage Down: 00m39s–01m29s (refreshed at 01m29s; removed)" in output
+    assert "Damage Down: 00m39s - 01m29s (refreshed at 01m29s; removed)" in output
     assert "90% reduction; 80 landed hits affected" in output
 
 

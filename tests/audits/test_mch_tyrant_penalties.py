@@ -56,7 +56,7 @@ def test_potted_revival_penalty_matches_independent_action_damage(
     # Compare unmodified damage observations to the level-100 main-stat formula.
     # Individual hits have a ±5% roll, so use several independent action types.
     factor = lambda dex: 100 + 237 * (dex - 440) // 440
-    expected = factor(7379 * fraction // 100) / factor(6838)
+    expected = factor(7382 * fraction // 100) / factor(6841)
     assert median(ratios) == pytest.approx(expected, rel=0.04)
 
 
@@ -117,7 +117,7 @@ def test_tyrant_damage_down_refresh_and_transcendent_revival(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "Damage Down: 09m09s–09m47s (refreshed at 09m17s; expired)" in output
+    assert "Damage Down: 09m09s - 09m47s (refreshed at 09m17s; expired)" in output
     assert output.count("35% reduction; 38 landed hits affected") == 1
 
 
@@ -145,11 +145,11 @@ def test_tyrant_wildfire_snapshot_does_not_create_second_potion(
     _print_analysis(result)
     output = capsys.readouterr().out
     assert "  Uses: 1\n" in output
-    assert "  Window 1: 10m00s–10m30s\n" in output
+    assert "  Window 1: 10m00s - 10m30s\n" in output
     assert "Window 2:" not in output
     assert (
-        "Damage Down: 01m52s–02m22s (expired)\n"
-        "  Damage Down: 03m26s–03m56s (expired)\n"
+        "Damage Down: 01m52s - 02m22s (expired)\n"
+        "  Damage Down: 03m26s - 03m56s (expired)\n"
         "  Damage Down total (2 windows): 35% reduction; 68 landed hits affected; "
         "6,794 potency lost\n\nGhosted damaging casts:"
     ) in output

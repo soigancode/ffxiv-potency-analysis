@@ -1,7 +1,7 @@
 """Deterministic parsing of saved FFXIV job-guide HTML."""
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from bs4 import BeautifulSoup, Tag
 
@@ -10,6 +10,7 @@ from .models import (
     AoeFalloff,
     ComboPotency,
     ConditionalPotency,
+    DamageBuff,
     DamageOverTime,
     GaugeGain,
     GaugeScaling,
@@ -26,15 +27,15 @@ _ACTION_DAMAGE_TRAIT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _DAMAGE_POTENCY_PATTERN = re.compile(
-    r"^(?:Delivers|Deals|Rushes)\b.*?\bpotency of\s+(\d+)\b", re.IGNORECASE
+    r"^(?:Delivers|Deals|Rushes)\b.*?\bpotency of\s+([\d,]+)\b", re.IGNORECASE
 )
 _FALLOFF_PATTERN = re.compile(
-    r"\bpotency of\s+\d+\s+for the first enemy,\s+"
+    r"\bpotency of\s+[\d,]+\s+for the first enemy,\s+"
     r"and\s+(\d+)% less for all remaining enemies\b",
     re.IGNORECASE,
 )
 _STACK_FALLOFF_PATTERN = re.compile(
-    r"\bfull damage for the first enemy,\s+and\s+(\d+)% less for all remaining enemies\b",
+    r"\bfull (?:damage|potency) for the first enemy,\s+and\s+(\d+)% less for all remaining enemies\b",
     re.IGNORECASE,
 )
 _COMBO_POTENCY_PATTERN = re.compile(r"^Combo Potency:\s*(\d+)\s*$", re.IGNORECASE)
@@ -51,7 +52,10 @@ _TRAIT_ROW_PATTERN = re.compile(
     r'<tr\b[^>]*\bid=["\']trait_action__\d+["\'][^>]*>.*?</tr\s*>',
     re.IGNORECASE | re.DOTALL,
 )
-_ACTION_START_PATTERN = re.compile(r'<tr\s+id=["\']pve_action__\d+["\']', re.IGNORECASE)
+_ACTION_START_PATTERN = re.compile(r'<tr\s+id=["\']pve_(?:jyutsu_)?action__\d+["\']', re.IGNORECASE)
+_DNC_STEP_PATTERN = re.compile(r"^(\d+) Steps?: ([\d,]+)$")
+_DNC_BONUS_PATTERN = re.compile(r"^(\d+) Steps?: (\d+)%$")
+_DNC_STEPS = {"Emboite", "Entrechat", "Jete", "Pirouette"}
 _MCH_PET_ATTACK_PATTERN = re.compile(
     r"attacks using (.+?), dealing damage with a potency of\s+(\d+)\b", re.IGNORECASE
 )
@@ -159,7 +163,7 @@ def _direct_potency(
         None,
     )
     base_match = _DAMAGE_POTENCY_PATTERN.search(damage_line or "")
-    base = int(base_match.group(1)) if base_match is not None else None
+    base = int(base_match.group(1).replace(",", "")) if base_match is not None else None
     if base is None:
         named_match = _first_match(_NAMED_POTENCY_PATTERN, description)
         if named_match is not None:
@@ -298,12 +302,25 @@ def _parse_potency(action_name: str, description: tuple[str, ...]) -> Potency | 
     if _brd_is_non_damage_barrage(action_name, description):
         # Its buff changes Refulgent Arrow and Shadowbite; Barrage itself deals no damage.
         return None
+    if action_name in _DNC_STEPS:
+        return None
+    if any(line.startswith("Cure Potency:") for line in description) and not any(
+        line.casefold().startswith(("delivers", "deals", "rushes")) for line in description
+    ):
+        return None
 
     base, falloff = _direct_potency(action_name, description)
     combo = _combo_potency(action_name, description)
     damage_over_time = _damage_over_time(action_name, description)
     gauge_scaling = _mch_gauge_scaling(description)
     stack_potency = _brd_stack_potency(action_name, description)
+    if action_name in {"Standard Finish", "Technical Finish"}:
+        rows = [match for line in description if (match := _DNC_STEP_PATTERN.match(line))]
+        maximum = 2 if action_name == "Standard Finish" else 4
+        if [int(row.group(1)) for row in rows] != list(range(maximum + 1)):
+            raise JobGuideParseError(f"Incomplete step potency for {action_name!r}")
+        stack_potency = StackPotency("Steps", tuple(int(row.group(2).replace(",", "")) for row in rows), 0)
+        base = stack_potency.values[0]
     barrage_potency = _brd_barrage_potency(action_name, description)
     triggered = _mch_triggered_potency(action_name, description)
     modifier = _mch_potency_modifier(action_name, description)
@@ -400,7 +417,51 @@ def _parse_action_container(container: Tag, row_id: str) -> Action:
         deploys_actor=deploys_actor,
         source_actor=_mch_source_actor(name),
         gauge_gains=_parse_gauge_gains(description),
+        damage_buff=_dnc_damage_buff(name, description),
+        completed_steps=0 if name in {"Standard Finish", "Technical Finish"} else None,
     )
+
+
+def _dnc_damage_buff(name: str, description: tuple[str, ...]) -> DamageBuff | None:
+    if name not in {"Standard Finish", "Technical Finish", "Finishing Move"}:
+        return None
+    if name == "Finishing Move":
+        marker = next((i for i, line in enumerate(description)
+                       if line.startswith("Standard Finish Effect:")), None)
+        match = re.search(r"Increases damage dealt by (\d+)%", description[marker]) if marker is not None else None
+        if marker is None or match is None:
+            raise JobGuideParseError("Incomplete damage buff for 'Finishing Move'")
+        strengths = ((2, 1 + int(match.group(1)) / 100),)
+        status = "Standard Finish"
+    else:
+        marker = next((i for i, line in enumerate(description)
+                       if line.startswith(f"Damage bonus of {name}")), None)
+        if marker is None:
+            raise JobGuideParseError(f"Incomplete damage buff for {name!r}")
+        bonuses = [m for line in description[marker + 1:] if (m := _DNC_BONUS_PATTERN.match(line))]
+        maximum = 2 if name == "Standard Finish" else 4
+        if [int(m.group(1)) for m in bonuses] != list(range(1, maximum + 1)):
+            raise JobGuideParseError(f"Incomplete damage buff for {name!r}")
+        strengths = tuple((int(m.group(1)), 1 + int(m.group(2)) / 100) for m in bonuses)
+        status = name
+    duration = _first_match(_DURATION_PATTERN, description[marker + 1:])
+    if duration is None:
+        raise JobGuideParseError(f"Missing damage buff duration for {name!r}")
+    return DamageBuff(status, int(duration.group(1)), strengths)
+
+
+def _dnc_derive_finishes(actions: list[Action]) -> list[Action]:
+    derived = []
+    for action in actions:
+        if action.name not in {"Standard Finish", "Technical Finish"}:
+            continue
+        assert action.potency is not None and action.potency.stack_potency is not None
+        for count, value in enumerate(action.potency.stack_potency.values[1:], 1):
+            prefix = ("Single", "Double", "Triple", "Quadruple")[count - 1]
+            derived.append(replace(action, name=f"{prefix} {action.name}",
+                                   potency=Potency(base=value, falloff=action.potency.falloff),
+                                   derived_from=action.name, completed_steps=count))
+    return derived
 
 
 def _mch_derive_volley_fire(actions: list[Action]) -> Action | None:
@@ -472,7 +533,7 @@ def inspect_job_actions(html: str) -> ParseReport:
 
     for block in blocks:
         container = BeautifulSoup(block, "html.parser")
-        row = container.select_one('tr[id^="pve_action__"]')
+        row = container.select_one('tr[id^="pve_action__"], tr[id^="pve_jyutsu_action__"]')
         row_id = row.get("id", "<unknown>") if row is not None else "<unknown>"
         name = _action_name(row) if row is not None else "<unknown>"
         try:
@@ -488,6 +549,7 @@ def inspect_job_actions(html: str) -> ParseReport:
             actions.append(volley_fire)
     except JobGuideParseError as exc:
         issues.append(ParseIssue(action_name="Volley Fire", message=str(exc)))
+    actions.extend(_dnc_derive_finishes(actions))
 
     return ParseReport(
         actions=tuple(actions),

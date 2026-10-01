@@ -25,9 +25,9 @@ def test_audited_two_boss_fight_and_missing_prepull_cast(
         action = by_name[name]
         assert (action.uses, action.hits) == (2, 4)
         assert (
-            action.potency_min == action.potency_max == pytest.approx((660 + 495) * (1 + 3837 / 3546))
+            action.potency_min == action.potency_max == pytest.approx((660 + 495) * (1 + 3839 / 3547))
         )
-    assert by_name["Air Anchor"].potency_min == pytest.approx(660 * 3837 / 3546)
+    assert by_name["Air Anchor"].potency_min == pytest.approx(660 * 3839 / 3547)
 
     assert result.potion.uses == 2
     opening, later = result.potion.windows
@@ -37,7 +37,7 @@ def test_audited_two_boss_fight_and_missing_prepull_cast(
     assert later.end_seconds == pytest.approx(424.006)
     assert result.potion.potted_potency_min == pytest.approx(660 + 2 * (660 + 495))
     assert result.potion.gained_potency_min == pytest.approx(
-        (660 + 2 * (660 + 495)) * (3837 / 3546 - 1)
+        (660 + 2 * (660 + 495)) * (3839 / 3547 - 1)
     )
 
     assert result.ghosted_times == (

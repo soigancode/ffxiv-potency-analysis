@@ -13,12 +13,17 @@ from ..jobguide.schema import ACTION_SCHEMA_VERSION
 from ..patches import LATEST_KNOWN_PATCH
 from .auto_attacks import _is_auto_attack, _summarize_auto_attacks
 from .brd.barrage import _barrage_shadowbite_packets
-from .brd.buffs import _brd_self_multiplier, brd_self_buff_windows
+from .brd.buffs import brd_self_buff_windows
 from .brd.dots import reconstruct_brd_dots, summarize_brd_dots
 from .brd.songs import _brd_coda, _brd_song_durations
 from .brd.variable_potency import _brd_damage_estimates
+from .buffs import damage_snapshot_times, self_damage_multiplier
 from .consumables import food_active, food_gaps, identify_consumable, initial_food_aura
 from .damage import landed_fraction
+from .dnc.buffs import dnc_self_buff_windows
+from .dnc.finishes import dnc_primary_hits, summarize_dnc_finishes
+from .dnc.procs import summarize_dnc_procs
+from .dnc.starting_gauge import starting_feathers
 from .echo import (
     HEAVYWEIGHT_SAVAGE,
     echo_status,
@@ -204,7 +209,9 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     raid_effects = _load_raid_effects(actions_path, played_patch=selection.patch if selection else None)
 
     sorted_casts = sorted(
-        (e for e in casts if isinstance(e, dict)), key=lambda e: e.get("timestamp", 0)
+        (e for e in casts if isinstance(e, dict)
+         and not (job.casefold() == "dancer" and e.get("fake"))),
+        key=lambda e: e.get("timestamp", 0)
     )
     player_source_counts = Counter(
         event.get("sourceID")
@@ -292,6 +299,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     }
 
     totals: dict[str, list[float]] = defaultdict(lambda: [0, 0.0, 0.0])
+    dnc_finish_totals: dict[tuple[Any, Any], list[float]] = defaultdict(lambda: [0.0, 0.0])
     encore_totals: dict[tuple[Any, Any], list[float]] = defaultdict(lambda: [0, 0.0, 0.0])
     pet_totals: dict[PetDeploymentSummary, list[float]] = defaultdict(lambda: [0.0, 0.0])
     pet_landed_actions: dict[PetDeploymentSummary, set[str]] = defaultdict(set)
@@ -374,6 +382,12 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         job, action_document, party_bonus_percent=party_bonus if party_bonus is not None else 5,
         gear_path=selection.gear if selection else None,
     )
+    if job.casefold() == "dancer":
+        # Dancer's travelling AoEs can hit an enemy other than the selected
+        # target first. At 40%/25% falloff, normalizing Crit/DH and recorded
+        # damage modifiers separates the full hit despite the damage roll.
+        primary_hits.update(dnc_primary_hits(landed_by_packet, actions, ability_names,
+                                            combat_profile.critical_damage_multiplier))
     missing_food = food_gaps(
         buffs, source_id, combat_profile.food_buff_id, float(start), float(end),
         initially_fed=initial_food_aura(combatants, source_id, combat_profile.food_buff_id),
@@ -416,10 +430,18 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             else 0
         ),
     )
-    brd_self_windows = (
+    self_buff_windows = (
         brd_self_buff_windows(sorted_casts, buffs, ability_names, source_id)
         if job.casefold() == "bard" and source_id is not None else {}
     )
+    snapshot_times = {}
+    dnc_initial_buffs = ()
+    if job.casefold() == "dancer" and source_id is not None:
+        self_buff_windows, dnc_initial_buffs = dnc_self_buff_windows(
+            sorted_casts, buffs, ability_names, actions, source_id,
+            int(start), int(end), combatants, raw_damage,
+        )
+        snapshot_times = damage_snapshot_times(raw_damage, sorted_casts)
     brd_ticks = (
         {
             (tick.timestamp, tick.application_packet, tick.target_id): tick
@@ -469,7 +491,8 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     channel_casts: dict[str, list[tuple[int, dict[str, Any]]]] = defaultdict(list)
     for cast_index, cast in enumerate(sorted_casts):
         cast_name = _event_name(cast, ability_names)
-        if _is_channeled_action(actions.get(cast_name, {})):
+        if (_is_channeled_action(actions.get(cast_name, {}))
+                and isinstance(actions.get(cast_name, {}).get("potency"), dict)):
             channel_casts[cast_name].append((cast_index, cast))
 
     # Map temporary flat potency modifiers (currently Hypercharge) to the
@@ -539,7 +562,10 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     for event in landed:
         name = _event_name(event, ability_names)
         if _is_auto_attack(event, name):
-            auto_attack_events.append({**event, "_resolved_name": name})
+            auto_attack_events.append({**event, "_resolved_name": name,
+                                       "_snapshot_time": snapshot_times.get(
+                                           (event.get("packetID"), event.get("abilityGameID")),
+                                           event.get("timestamp", 0))})
             continue
         action = actions.get(name)
         if action is None:
@@ -618,7 +644,16 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             buff_time = snapshot_time if snapshot_time is not None else (
                 float(event_time) if isinstance(event_time, (int, float)) else 0.0
             )
-            factor = _brd_self_multiplier(buff_string, buff_time, brd_self_windows)
+            factor = self_damage_multiplier(buff_string, buff_time, self_buff_windows)
+            values = values[0] * factor, values[1] * factor
+        elif job.casefold() == "dancer":
+            key = (event.get("packetID"), event.get("abilityGameID"))
+            snapshot = snapshot_times.get(key, float(event.get("timestamp", 0)))
+            # A finish's damage uses the buff state before that same action
+            # refreshes Standard Finish, even though its landed record is later.
+            if action.get("damage_buff"):
+                snapshot -= .001
+            factor = self_damage_multiplier(str(event.get("buffs", "")), snapshot, self_buff_windows)
             values = values[0] * factor, values[1] * factor
 
         if name == "Wildfire" and wildfire is not None and event.get("tick") and isinstance(triggered, dict):
@@ -671,6 +706,9 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             pet_landed_actions[deployment].add(name)
 
         key = (event.get("packetID"), event.get("abilityGameID"))
+        if job.casefold() == "dancer" and action.get("damage_buff"):
+            dnc_finish_totals[key][0] += 1
+            dnc_finish_totals[key][1] += sum(values) / 2
         is_random_outcome = (
             key not in guaranteed_packets
             and name not in combat_profile.non_random_damage_actions
@@ -939,7 +977,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     )
     if auto_attack_events:
         auto_attacks, auto_potted, auto_gain = _summarize_auto_attacks(
-            auto_attack_events, job, combat_profile, brd_self_windows, penalty_rules
+            auto_attack_events, job, combat_profile, self_buff_windows, penalty_rules
         )
         potted_min += auto_potted
         potted_max += auto_potted
@@ -954,10 +992,10 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             potency_weight = (
                 auto_potency_by_name[str(event["_resolved_name"])] * landed_fraction(event)
             )
-            if brd_self_windows:
-                potency_weight *= _brd_self_multiplier(
-                    str(event.get("buffs", "")), float(event.get("timestamp", 0)),
-                    brd_self_windows,
+            if self_buff_windows:
+                potency_weight *= self_damage_multiplier(
+                    str(event.get("buffs", "")), float(event.get("_snapshot_time", event.get("timestamp", 0))),
+                    self_buff_windows,
                 )
             if _has_buff(event, combat_profile.potion_buff_id):
                 potency_weight *= combat_profile.player_potion_multiplier
@@ -1023,6 +1061,10 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         )
         if job.casefold() == "bard" and source_id is not None else ()
     )
+    dnc_finishes = summarize_dnc_finishes(
+        sorted_casts, actions, ability_names, source_id, float(start), dnc_finish_totals,
+    ) if job.casefold() == "dancer" else ()
+    dnc_start, dnc_start_source = starting_feathers(directory, fight, source_id) if job.casefold() == "dancer" else ((), "")
     return AnalysisResult(
         fight_name=str(fight.get("name", "Unknown fight")),
         kill=fight.get("kill") if isinstance(fight.get("kill"), bool) else None,
@@ -1062,6 +1104,13 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         brd_song_durations=brd_song_durations,
         brd_finales=brd_finales,
         brd_dots=brd_dot_summary,
+        dnc_finishes=dnc_finishes,
+        dnc_initial_buffs=dnc_initial_buffs,
+        dnc_procs=summarize_dnc_procs(
+            sorted_casts, raw_damage, buffs if buffs_path.is_file() else None,
+            life, ability_names, actions, source_id,
+            starting_feathers=dnc_start, starting_source=dnc_start_source,
+        ) if job.casefold() == "dancer" else None,
         hit_outcomes=_summarize_hit_outcomes(landed),
         potion=PotionSummary(
             uses=len(potion_windows),
