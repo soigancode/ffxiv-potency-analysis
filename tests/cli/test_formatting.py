@@ -23,6 +23,7 @@ from ffxiv_potency.analysis.models import (
     ConsumableIdentity,
     ReducedDamageHit,
 )
+from ffxiv_potency.analysis.war.summary import WarSummary, WarTomahawk
 
 from .helpers import _write_selected_log
 
@@ -56,6 +57,8 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
         food=ConsumableIdentity("Caramel Popcorn [HQ]", recorded=True),
         unmatched=(("Shot", 1),),
         ghosted=(("Chain Saw", 2),),
+        hit_bonus=0.48,
+        adjusted_hit_bonus=0.45,
         luck_score=0.4231,
         adjusted_luck_score=0.4012,
         luck_baseline=0.249754668,
@@ -93,6 +96,7 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     output = capsys.readouterr().out
     assert output.startswith("\nPlayer:") and output.endswith("\n\n")
     assert ("Fight: Test Boss (1)\nDuration: 00m10s\n"
+            "Targetable time: unavailable (PPS uses full fight duration)\n"
             "Date: 01/05/2026 (UTC)\nPartition: n/a\nPatch: 7.5\n"
             "Food: Caramel Popcorn [HQ]\n"
             "Party main-stat bonus: 5% (assumed; older saved fight)\n"
@@ -108,6 +112,17 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert "Played patch:" not in dated_output
     cli._print_analysis(replace(expected, kill=False))
     assert "Fight: Test Boss (1)\nDuration: 00m10s (wipe)\n" in capsys.readouterr().out
+    war = WarSummary(
+        1.0, 100.0, 2, 2, (), 0, 1, 3, 0, (), 1,
+        (WarTomahawk(422, "Inner Chaos", 2.54, "Heavy Swing", 3.48, (9.87,)),),
+    )
+    cli._print_analysis(replace(expected, war=war))
+    war_output = capsys.readouterr().out
+    assert war_output.index("\nSurging Tempest:") < war_output.index(
+        "\nInner Release and follow-ups:"
+    ) < war_output.index("\nMelee downtime:")
+    assert "Tomahawk: 2 uses" in war_output
+    assert "07m02s: Inner Chaos -> 2.54s -> Tomahawk -> 9.87s -> Tomahawk -> 3.48s -> Heavy Swing" in war_output
     assert "Player: Test Player" in output
     assert "Landed potency: 350-400" in output
     assert "Potency per second: 35.00-40.00" in output
@@ -141,6 +156,8 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
   Direct Critical Hit: 4
   Direct Critical Hit gear baseline: 7.98%
   Direct Critical Hit rate: 40.00% (+32.02%)
+  Hit Bonus: +48.00%
+  Adjusted Hit Bonus: +45.00%
   Luck baseline: 24.98%
   Luck score: 42.31% (+17.33%)
   Adjusted luck score: 40.12% (+15.14%)"""
@@ -180,4 +197,3 @@ def test_fight_date_uses_report_time_plus_fight_offset_and_handles_missing_date(
     assert cli._fight_date(tmp_path) == "02/05/26"
     fight.write_text('{"startTime": 500}', encoding="utf-8")
     assert cli._fight_date(tmp_path) == "n/a"
-

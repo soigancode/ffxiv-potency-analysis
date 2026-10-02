@@ -6,6 +6,7 @@ from .brd.dots import BrdDotActionSummary
 from .brd.songs import BrdFinaleSummary
 from .mch.wildfire import MchWildfireSummary
 from .penalties import DamagePenaltySummary, StatusWindow
+from .war.summary import WarSummary
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,6 +219,11 @@ class AnalysisResult:
     ghosted: tuple[tuple[str, int], ...]
     rdps: float | None = None
     dps: float | None = None
+    targetable_seconds: float | None = None
+    targetable_time_source: str = "unavailable (PPS uses full fight duration)"
+    hit_bonus: float = 0.0
+    adjusted_hit_bonus: float = 0.0
+    war: WarSummary | None = None
     luck_score: float = 0.0
     adjusted_luck_score: float = 0.0
     luck_baseline: float = 0.0
@@ -253,9 +259,13 @@ class AnalysisResult:
     gear_source: str | None = None
 
     @property
+    def pps_duration_seconds(self) -> float:
+        return self.targetable_seconds if self.targetable_seconds is not None else self.duration_seconds
+
+    @property
     def pps_min(self) -> float:
-        return self.potency_min / self.duration_seconds
+        return self.potency_min / self.pps_duration_seconds if self.pps_duration_seconds else 0.0
 
     @property
     def pps_max(self) -> float:
-        return self.potency_max / self.duration_seconds
+        return self.potency_max / self.pps_duration_seconds if self.pps_duration_seconds else 0.0

@@ -1,0 +1,19 @@
+{
+  "level": 100,
+  "level_main": 440,
+  "level_sub": 420,
+  "level_divisor": 2780,
+  "attack_power_coefficient": 195,
+  "player_damage_coefficient": 190,
+  "attribute_modifiers": {
+    "player": 105
+  },
+  "auto_attack": {
+    "base_potency": 90
+  },
+  "luck": {
+    "non_random_damage_actions": []
+  },
+  "main_stat": "strength",
+  "action_trait_multiplier": 1.0
+}

@@ -11,6 +11,8 @@ import pytest
 
 from ffxiv_potency.analysis import analyze_saved_fight
 
+from .war_audit import audit_war  # noqa: F401
+
 BASE = {
     "Standard Finish": 360,
     "Single Standard Finish": 540,
@@ -131,7 +133,8 @@ def _audit_dnc(tmp_path, archive_name, prefix, expected, starting):
     packets = defaultdict(list)
     for hit in landed:
         packets[hit.get("packetID"), hit["abilityGameID"]].append(hit)
-    party_dex = 6841
+    assert result.party_bonus_percent is not None
+    party_dex = 6516 * (100 + result.party_bonus_percent) // 100
     potion = (100 + 237 * (party_dex + 541 - 440) // 440) / (100 + 237 * (party_dex - 440) // 440)
     source_id = int(prefix.rsplit("source-", 1)[1])
     buff_events = json.loads((tmp_path / "buff-events.json").read_text())
@@ -301,7 +304,9 @@ def _audit_dnc(tmp_path, archive_name, prefix, expected, starting):
                 * (1 + min(1, direct_chance + direct) * 0.25)
                 - (1 + critical_chance * critical_bonus) * (1 + direct_chance * 0.25)
             )
-    assert {a.name: a.potency_min for a in result.actions} == pytest.approx(dict(totals))
+    assert {action.name for action in result.actions} == set(totals)
+    for action in result.actions:
+        assert action.potency_min == pytest.approx(totals[action.name]), action.name
     assert result.auto_attacks[0].total_potency == pytest.approx(auto)
     assert result.potency_min == result.potency_max == pytest.approx(sum(totals.values()) + auto)
     assert result.potion.potted_potency_min == pytest.approx(potted)

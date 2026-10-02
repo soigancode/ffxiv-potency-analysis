@@ -18,6 +18,42 @@ from ffxiv_potency.fflogs import DownloadResult
 from .helpers import _write_selected_log
 
 
+@pytest.mark.parametrize(("job", "ndps", "combined"), [
+    ("warrior", 1000, True), ("machinist", 1000, True),
+    ("bard", 1000, False), ("dancer", 1000, False),
+    ("warrior", 999, False), ("machinist", None, False),
+])
+def test_comparison_combines_equal_damage_metrics(monkeypatch, tmp_path, capsys, job, ndps, combined):
+    result = AnalysisResult(
+        fight_name="Boss", encounter_id=1085, source_name="Player", ndps=ndps, rdps=1000,
+        duration_seconds=10, raw_damage_events=0, landed_damage_events=0,
+        matched_damage_events=0, potency_min=0, potency_max=0, actions=(),
+        auto_attacks=(), pet_deployments=(), hit_outcomes=HitOutcomeSummary(0, 0, 0, 0),
+        potion=PotionSummary(0, 0, 0, 0, 0), unmatched=(), ghosted=(),
+    )
+    monkeypatch.setattr(cli, "_source_job", lambda directory: job)
+    monkeypatch.setattr(cli, "_actions_for_job", lambda *args: tmp_path / "actions.json")
+    monkeypatch.setattr(cli, "_verify_supported_fight", lambda directory: None)
+    monkeypatch.setattr(cli, "analyze_saved_fight", lambda *args: result)
+    cli._compare_directories([tmp_path, tmp_path], None)
+    header = next(line for line in capsys.readouterr().out.splitlines() if line.startswith("Player "))
+    assert ("rDPS/nDPS" in header) is combined
+    if not combined:
+        assert "rDPS" in header and "nDPS" in header
+
+
+def test_cli_compares_supplied_warrior_logs(war_saved_sources, capsys):
+    urls = []
+    for directory in war_saved_sources[:2]:
+        reference = cli._reference_from_directory(directory)
+        assert reference is not None
+        urls.append(f"https://www.fflogs.com/reports/{reference.report_code}"
+                    f"?fight={reference.fight_id}&source={reference.source_id}")
+    assert cli.main(["compare", *urls]) == 0
+    output = capsys.readouterr().out
+    assert "Poto Gota" in output and "Chad Bradly" in output
+
+
 def test_cli_rejects_previous_partition_for_analyse_and_compare(
     tmp_path: Path, capsys,
 ) -> None:
@@ -138,6 +174,9 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
                if line.startswith(("Alice", "Bob")))
     assert "Rank" not in output
     assert "aLuck" in output and "45.12%" in output
+    header = next(line for line in output.splitlines() if line.startswith("Player"))
+    assert header.index("PPS") < header.index("aHB") < header.index("Luck")
+    assert "HB" not in header.split()
     assert "nDPS  Potency" in output
     assert "aLuck  Partition  Patch  Date" in output
     assert "Party" not in output and "Echo" not in output
@@ -358,4 +397,3 @@ def test_compare_downloads_concurrently_and_keeps_input_order(monkeypatch, tmp_p
     with cli._Progress() as progress:
         cli._download_and_compare(["a", "b", "c", "a"], tmp_path, None, progress)
     assert completed == [tmp_path / name for name in ("a", "b", "c", "a")]
-

@@ -330,4 +330,9 @@ def test_luck_score_weights_potency_and_excludes_guaranteed_outcomes(tmp_path: P
     earned_bonus = 300 * 0.627 + 100 * 0.25
     all_cdh_bonus = 400 * (1.627 * 1.25 - 1)
     assert result.luck_score == pytest.approx(earned_bonus / all_cdh_bonus)
+    # Forced outcomes enter HB, while Wildfire adds weight but no hit bonus.
+    direct_factor = (1.117 + 0.073) / 1.117
+    expected_hb = (earned_bonus + 1100 * (1.627 * 1.25 * direct_factor - 1)) / 2500
+    assert result.hit_bonus == pytest.approx(expected_hb)
+    assert result.adjusted_hit_bonus == result.hit_bonus
 

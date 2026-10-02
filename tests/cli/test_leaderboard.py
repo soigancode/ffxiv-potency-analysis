@@ -16,6 +16,17 @@ from ffxiv_potency.fflogs import ReportReference
 from .helpers import _write_selected_log
 
 
+@pytest.mark.parametrize("alias", ["war", "WAR", "warrior", "WARRIOR"])
+def test_leaderboard_accepts_warrior_aliases(monkeypatch, capsys, alias):
+    def lookup(encounter, job, **options):
+        assert encounter == 101 and job == "warrior"
+        raise ValueError("Warrior rank lookup reached")
+
+    monkeypatch.setattr(cli, "accessible_ranked_sources", lookup)
+    assert cli.main(["fflogs", alias, "m9s"]) == 1
+    assert "Warrior rank lookup reached" in capsys.readouterr().err
+
+
 def test_cached_unranked_fight_backfills_report_date(monkeypatch, tmp_path: Path) -> None:
     directory = tmp_path / "report/fight-1/source-2"
     _write_selected_log(directory, 2)

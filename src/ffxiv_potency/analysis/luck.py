@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from math import floor
 from pathlib import Path
 from typing import Any
 
@@ -110,6 +111,7 @@ def _raid_luck_adjustment(
     *,
     critical_rate: float | None = None,
     critical_multiplier: float | None = None,
+    guaranteed: bool = False,
 ) -> float:
     """Expected extra damage bonus caused by raid crit/DH rate buffs."""
     crit_bonus = direct_bonus = 0.0
@@ -129,6 +131,10 @@ def _raid_luck_adjustment(
     strength = (
         profile.critical_damage_multiplier if critical_multiplier is None else critical_multiplier
     ) - 1
+    if guaranteed:
+        critical_bonus_multiplier = floor((1 + crit_bonus * strength) * 1000 + 1e-9) / 1000
+        direct_bonus_multiplier = floor((1 + direct_bonus * 0.25) * 1000 + 1e-9) / 1000
+        return (1 + strength) * 1.25 * (critical_bonus_multiplier * direct_bonus_multiplier - 1)
     before = (1 + rate * strength) * (1 + profile.direct_rate * 0.25)
     after = (1 + min(1.0, rate + crit_bonus) * strength) * (
         1 + min(1.0, profile.direct_rate + direct_bonus) * 0.25

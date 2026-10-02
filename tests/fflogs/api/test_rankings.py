@@ -338,13 +338,16 @@ def test_current_job_rankings_resolve_report_source_ids_in_order() -> None:
     assert len(requests) == 3
 
 
-def test_research_skips_unavailable_and_anonymous_rankings() -> None:
+@pytest.mark.parametrize("job,spec,limit", [("bard", "Bard", 10), ("blackmage", "BlackMage", 3)])
+def test_research_skips_unavailable_and_anonymous_rankings(job, spec, limit) -> None:
+    reports = []
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/oauth/token":
             return httpx.Response(200, json={"access_token": "token"})
         body = json.loads(request.content)
         if "EncounterRankings" in body["query"]:
             assert body["variables"]["page"] == 1
+            assert body["variables"]["specName"] == spec
             rows = [
                 {"name": f"Person {rank}", "report": (
                     None if rank == 3 else {"code": f"code{rank}", "fightID": 4}
@@ -357,23 +360,25 @@ def test_research_skips_unavailable_and_anonymous_rankings() -> None:
         else:
             assert "RankingReportSources" in body["query"]
             rank = int(body["variables"]["code"].removeprefix("code"))
+            reports.append(rank)
             data = {"reportData": {"report": {
                 "fights": [{"id": 4, "encounterID": 1085,
                             "friendlyPlayers": [10, 11] if rank == 4 else [10]}],
                 "masterData": {"actors": ([
-                    {"id": id_, "name": "Anonymous", "type": "Player", "subType": "Bard"}
+                    {"id": id_, "name": "Anonymous", "type": "Player", "subType": spec}
                     for id_ in (10, 11)
                 ] if rank == 4 else [{
-                    "id": 10, "name": f"Person {rank}", "type": "Player", "subType": "Bard",
+                    "id": 10, "name": f"Person {rank}", "type": "Player", "subType": spec,
                 }])},
             }}}
         return httpx.Response(200, json={"data": data})
 
     ranked, skipped = accessible_ranked_sources(
-        1085, "bard", client_id="id", client_secret="secret",
+        1085, job, client_id="id", client_secret="secret", limit=limit,
         transport=httpx.MockTransport(handler),
     )
-    assert [rank for rank, _ in ranked] == [1, 2, 5, 6, 7, 8, 9, 10, 11, 12]
+    assert [rank for rank, _ in ranked] == [1, 2, 5, 6, 7, 8, 9, 10, 11, 12][:limit]
+    assert max(reports) == limit + 2
     assert [rank for rank, _ in skipped] == [3, 4]
     assert "no usable report" in skipped[0][1]
     assert "anonymous actor" in skipped[1][1]

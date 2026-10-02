@@ -34,6 +34,7 @@ from .fflogs import (
 )
 from .fflogs.download import (
     refresh_checkpoint_context,
+    refresh_encounter_damage_events,
     refresh_encounter_overkill_events,
     refresh_player_status_events,
     refresh_report_date,
@@ -60,8 +61,10 @@ from .fflogs.selection import ReportFight, report_fights
 from .jobguide.raid_buffs import update_raid_effects
 from .jobguide.schema import ACTION_SCHEMA_VERSION
 from .jobguide.snapshot import LATEST_KNOWN_PATCH, update_job_guide
+from .jobs import JOB_NAMES, job_name
 
 SUPPORTED_JOBS = {
+    "war": "warrior", "warrior": "warrior",
     "brd": "bard", "bard": "bard",
     "mch": "machinist", "machinist": "machinist",
     "dnc": "dancer", "dancer": "dancer",
@@ -134,7 +137,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     jobguide = commands.add_parser("jobguide", help="update all job guides and buffs, or one item")
-    jobguide.add_argument("item", nargs="?", help="job name or abbreviation (BRD/MCH/DNC), or 'buffs'")
+    jobguide.add_argument("item", nargs="?", help="job name or abbreviation (BRD/MCH/DNC/WAR), or 'buffs'")
     jobguide.add_argument("--output", type=Path, default=Path("data"), help="output root")
 
     clear = commands.add_parser("clear", help="remove downloaded data")
@@ -145,8 +148,14 @@ def build_parser() -> argparse.ArgumentParser:
     clear.add_argument("--output", type=Path, default=Path("data/logs"), help="logs directory")
     clear.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
 
+    research = commands.add_parser("research", help="download sample logs for a job")
+    research.add_argument("job", help="combat job name or three-letter abbreviation")
+    research.add_argument(
+        "--output", type=Path, default=Path("data/research"), help="research root"
+    )
+
     fflogs = commands.add_parser("fflogs", help="download an FF Logs fight")
-    fflogs.add_argument("url", help="'limit', a report URL or ID, or a job such as BRD/MCH/DNC")
+    fflogs.add_argument("url", help="'limit', a report URL or ID, or a job such as BRD/MCH/DNC/WAR")
     fflogs.add_argument("fight", nargs="?", help="fight abbreviation such as m9s")
     fflogs.add_argument(
         "rank", nargs="?", help="one rank, an inclusive range, or comma-separated ranks"
@@ -255,6 +264,11 @@ def _print_analysis(
     wipe = " (wipe)" if result.kill is False else ""
     print(f"Fight: {_format_fight(result)}")
     print(f"Duration: {_format_duration(result.duration_seconds)}{wipe}")
+    if result.targetable_seconds is not None:
+        print(f"Targetable time: {_format_duration(result.targetable_seconds)} ({result.targetable_time_source})")
+        print(f"Excluded time: {_format_duration(max(0, result.duration_seconds - result.targetable_seconds))}")
+    else:
+        print(f"Targetable time: {result.targetable_time_source}")
     if directory is not None:
         partition, patch = _fight_provenance(directory)
         print(f"Date: {_fight_date(directory, full_year=True)} (UTC)")
@@ -477,6 +491,8 @@ def _print_analysis(
         print(f"  {label} rate: {_format_rate_comparison(rate, baseline)}")
     if outcomes.unknown:
         print(f"  Unknown outcome: {outcomes.unknown}")
+    print(f"  Hit Bonus: {result.hit_bonus:+.2%}")
+    print(f"  Adjusted Hit Bonus: {result.adjusted_hit_bonus:+.2%}")
     print(f"  Luck baseline: {result.luck_baseline:.2%}")
     print(f"  Luck score: {_format_rate_comparison(result.luck_score, result.luck_baseline)}")
     print(
@@ -497,6 +513,30 @@ def _print_analysis(
             else f"{action.hits} {'hit' if action.hits == 1 else 'hits'}"
         )
         print(f"  {action.name}: {uses}{hits}, {potency} total potency")
+    if result.war is not None:
+        war = result.war
+        print("\nSurging Tempest:")
+        if war.tempest_uptime is not None:
+            print(f"  Surging Tempest uptime: {war.tempest_uptime:.2%} of {war.tempest_targetable_seconds:.1f}s observed targetable time")
+        coverage = f"{war.tempest_hits / war.total_hits:.2%}" if war.total_hits else "n/a"
+        print(f"  Surging Tempest: {coverage} of landed hits ({war.tempest_hits}/{war.total_hits})")
+        print(f"  Potency lost without Surging Tempest: {war.tempest_lost_potency:,.1f}")
+        for seconds, name in war.tempest_missing:
+            print(f"    {_format_duration(seconds)} {name} without Surging Tempest")
+        print("\nInner Release and follow-ups:")
+        print(f"  Inner Release: {war.inner_release_uses} uses (including pre-pull), {war.guaranteed_spenders} guaranteed spender casts")
+        print(f"    Unused charges at expiry: {war.unused_expired_charges}")
+        print(f"  Infuriate: {war.infuriate_uses} uses")
+        for ready in war.ready:
+            print(f"  {ready.name}: {ready.grants} ready grants (including pre-pull), {ready.uses} uses")
+            print(f"    Lost: {ready.expired} expired, {ready.overwritten} overwritten. Remaining: {ready.remaining}")
+        print("\nMelee downtime:")
+        print(f"  Tomahawk: {sum(1 + len(use.gaps) for use in war.tomahawks)} uses")
+        for use in war.tomahawks:
+            previous = f"{use.previous} -> {use.previous_gap:.2f}s -> " if use.previous is not None else ""
+            following = f" -> {use.following_gap:.2f}s -> {use.following}" if use.following is not None else ""
+            chain = "Tomahawk" + "".join(f" -> {gap:.2f}s -> Tomahawk" for gap in use.gaps)
+            print(f"  {_format_duration(use.seconds)}: {previous}{chain}{following}")
     if result.brd_songs:
         print("\nSongs:")
         averages = dict(result.brd_song_durations)
@@ -781,8 +821,13 @@ def _compare_directories(
     provenance_labels = (() if shared_provenance else
                          (("Partition", "Patch") if show_partition else ("Patch",)))
     use_dps = results[0].encounter_id in {4549, 4551}
-    labels = ("Duration", *(("DPS",) if use_dps else ("rDPS", "nDPS")),
-              "Potency", "PPS", "Luck", "aLuck",
+    combine_dps = jobs[0] in {"warrior", "machinist"} and all(
+        result.rdps is not None and result.ndps is not None
+        and f"{result.rdps:.1f}" == f"{result.ndps:.1f}" for result in results
+    )
+    dps_labels = ("DPS",) if use_dps else (("rDPS/nDPS",) if combine_dps else ("rDPS", "nDPS"))
+    labels = ("Duration", "Targetable", *dps_labels,
+              "Potency", "PPS", "aHB", "Luck", "aLuck",
               *provenance_labels, "Date")
     rows: list[tuple[str, ...]] = []
     for index, result in enumerate(results):
@@ -794,13 +839,15 @@ def _compare_directories(
         marker = "~" if assumed_battery else ""
         rows.append((
             _format_duration(result.duration_seconds),
+            (("~" if "estimated" in result.targetable_time_source else "") + _format_duration(result.targetable_seconds)) if result.targetable_seconds is not None else "n/a",
             *((f"{result.dps:,.1f}" if result.dps is not None else "n/a",)
-              if use_dps else (
+              if use_dps else (f"{result.rdps:,.1f}",) if combine_dps else (
                   f"{result.rdps:,.1f}" if result.rdps is not None else "n/a",
                   f"{result.ndps:,.1f}" if result.ndps is not None else "n/a",
               )),
             marker + _format_potency(result.potency_min, result.potency_max),
             marker + _format_pps(result.pps_min, result.pps_max),
+            marker + f"{result.adjusted_hit_bonus:+.2%}",
             marker + f"{result.luck_score:.2%}",
             marker + f"{result.adjusted_luck_score:.2%}",
             *provenance_values,
@@ -820,12 +867,16 @@ def _compare_directories(
         print(f"{rank}{player}{separator}" + separator.join(
             f"{value:>{width}}" for value, width in zip(row, widths)
         ))
+    if any(result.targetable_seconds is None for result in results):
+        print("n/a Targetable time unavailable. PPS uses full duration for those logs.")
+    if any("estimated" in result.targetable_time_source for result in results):
+        print("~ Targetable time estimated from recorded enemy windows.")
     if any(deployment.gauge_assumed for result in results
            for deployment in result.pet_deployments):
-        print("~ Potency, PPS, Luck, and aLuck include an unconfirmed 100 Battery Gauge carry-over.")
+        print("~ Potency, PPS, aHB, Luck, and aLuck include an unconfirmed 100 Battery Gauge carry-over.")
     if any(deployment.mch_gauge_inferred for result in results
            for deployment in result.pet_deployments):
-        print("~ Potency, PPS, Luck, and aLuck include Battery estimated from Queen damage.")
+        print("~ Potency, PPS, aHB, Luck, and aLuck include Battery estimated from Queen damage.")
     print()
     return tuple(skipped)
 
@@ -896,7 +947,7 @@ def _verify_supported_fight(directory: Path) -> None:
 
 def _actions_for_job(job: str, override: Path | None) -> Path:
     if job not in SUPPORTED_JOBS.values():
-        raise ValueError(f"job {job!r} is not supported yet; currently Bard, Machinist, and Dancer are supported")
+        raise ValueError(f"job {job!r} is not supported yet; currently Bard, Machinist, Dancer, and Warrior are supported")
     if override is not None:
         path = override
     else:
@@ -1004,7 +1055,7 @@ def _select_report_reference(url: str) -> ReportReference:
             )
         return ReportReference(selection.report_code, fight.id, player.id)
     if not players:
-        raise ValueError(f"fight {fight.id} has no supported BRD, MCH, or DNC players")
+        raise ValueError(f"fight {fight.id} has no supported BRD, MCH, DNC, or WAR players")
     if len(players) == 1:
         player = players[0]
         print(f"Player: {player.name} ({player.job}, source {player.id})")
@@ -1064,6 +1115,11 @@ def _resolve_analysis_directory(
             and (fight.get("encounterID") not in {4549, 4551} or "dps" in cached_rankings)
         ):
             refresh_report_rankings(reference, directory)
+        if (include_targetability and fight.get("encounterID") in {4549, 4550, 4551}
+                and reference is not None and os.environ.get("FFLOGS_CLIENT_ID")
+                and os.environ.get("FFLOGS_CLIENT_SECRET")
+                and not (directory / "encounter-damage-events.json").is_file()):
+            refresh_encounter_damage_events(reference, directory)
         if (include_targetability and reference is not None
                 and os.environ.get("FFLOGS_CLIENT_ID") and os.environ.get("FFLOGS_CLIENT_SECRET")
                 and not (directory / "targetability-events.json").is_file()):
@@ -1186,6 +1242,60 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     try:
+        if args.command == "research":
+            code = job_code(args.job)
+            if code not in JOB_NAMES:
+                raise ValueError(f"unknown job {args.job!r}; choose: {', '.join(JOB_NAMES)}")
+            output = args.output / code
+            saved = failures = 0
+            # Fight aliases share a leaderboard. Visit each encounter only once.
+            encounters = dict.fromkeys(CURRENT_FIGHTS.values())
+            with _Progress() as progress:
+                for encounter_id in encounters:
+                    fight = next(name for name, id_ in CURRENT_FIGHTS.items() if id_ == encounter_id)
+                    try:
+                        ranked, skipped = accessible_ranked_sources(
+                            encounter_id, job_name(code), limit=3,
+                            partition=1 if encounter_id in {101, 103} else None,
+                            **_ranking_status_options(progress),
+                        )
+                    except (FFLogsError, httpx.HTTPError) as exc:
+                        progress.clear()
+                        print(f"{fight}: {exc}", file=sys.stderr)
+                        failures += 1
+                        continue
+                    progress.clear()
+                    for rank, reason in skipped:
+                        print(f"{fight}: skipped rank {rank}: {reason}", file=sys.stderr)
+                    references = dict.fromkeys(reference for _, reference in ranked)
+                    progress.update("Downloading logs", 0, len(references), detail=fight)
+                    with ThreadPoolExecutor(max_workers=min(3, len(references))) as executor:
+                        pending = {
+                            executor.submit(
+                                _resolve_analysis_directory,
+                                f"https://www.fflogs.com/reports/{reference.report_code}"
+                                f"?fight={reference.fight_id}&source={reference.source_id}",
+                                output, announce=False, include_targetability=True,
+                            ): reference
+                            for reference in references
+                        }
+                        for completed, future in enumerate(as_completed(pending), 1):
+                            reference = pending[future]
+                            ranks = ",".join(str(rank) for rank, ref in ranked if ref == reference)
+                            try:
+                                directory = future.result()
+                            except (FFLogsError, httpx.HTTPError, OSError, ValueError) as exc:
+                                progress.clear()
+                                print(f"{fight} rank {ranks}: {exc}", file=sys.stderr)
+                                failures += 1
+                            else:
+                                saved += 1
+                                progress.clear()
+                                print(f"{fight} rank {ranks}: {directory}")
+                            progress.update("Downloading logs", completed, len(references), detail=fight)
+            print(f"Saved {saved} research logs in {output}.")
+            return 1 if failures else 0
+
         if args.command == "clear":
             logs = args.output
             cache = cache_root(logs)
@@ -1286,7 +1396,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 job = SUPPORTED_JOBS.get(args.url.casefold())
                 if job is None:
                     raise ValueError(
-                        f"unsupported job {args.url!r}; use BRD, MCH, or DNC"
+                        f"unsupported job {args.url!r}; use BRD, MCH, DNC, or WAR"
                     )
                 encounter_id = CURRENT_FIGHTS.get(args.fight.casefold())
                 if encounter_id is None:
@@ -1391,7 +1501,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         job = SUPPORTED_JOBS.get(args.item.casefold())
         if job is None:
-            raise ValueError(f"unsupported job {args.item!r}; use BRD, MCH, DNC, or buffs")
+            raise ValueError(f"unsupported job {args.item!r}; use BRD, MCH, DNC, WAR, or buffs")
         result = update_job_guide(
             job=job,
             patch=LATEST_KNOWN_PATCH,

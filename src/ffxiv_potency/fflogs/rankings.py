@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 
+from ..jobs import job_name
 from .client import FFLogsClient, FFLogsError
 from .partitions import current_partition
 from .reference import ReportReference, valid_report_code
@@ -177,7 +178,7 @@ def top_ranked_sources(
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
         rows = _ranking_rows(client.graphql(
             _character_ranking_query(encounter_id, paged=False), {
-                "encounterID": encounter_id, "specName": job.capitalize(),
+                "encounterID": encounter_id, "specName": job_name(job),
                 "partition": current_partition(encounter_id, partition),
             }
         ), encounter_id)
@@ -208,7 +209,7 @@ def ranked_source(
             if on_status is not None:
                 on_status(f"Loading leaderboard page {page}...")
             rows = _ranking_rows(client.graphql(_character_ranking_query(encounter_id, paged=True), {
-                "encounterID": encounter_id, "specName": job.capitalize(), "page": page,
+                "encounterID": encounter_id, "specName": job_name(job), "page": page,
                 "partition": current_partition(encounter_id, partition),
             }), encounter_id)
             if not rows:
@@ -272,30 +273,33 @@ def accessible_ranked_sources(
     partition: int | None = None,
     on_status: Callable[[str], None] | None = None,
     on_progress: Callable[[int, int], None] | None = None,
+    limit: int = 10,
 ) -> tuple[tuple[tuple[int, ReportReference], ...], tuple[tuple[int, str], ...]]:
-    """Collect ten accessible rankings, preserving skipped leaderboard positions."""
+    """Collect the requested accessible rankings, preserving skipped positions."""
+    if type(limit) is not int or not 1 <= limit <= MAX_RANK_RANGE:
+        raise ValueError(f"ranking limit must be between 1 and {MAX_RANK_RANGE}")
     found: list[tuple[int, ReportReference]] = []
     skipped: list[tuple[int, str]] = []
     cache: dict[tuple[str, int], tuple[list[dict[str, Any]], set[int]]] = {}
     with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
         if on_progress is not None:
-            on_progress(0, 10)
+            on_progress(0, limit)
         position = 0
         for page in range(1, 6):
             if on_status is not None:
                 on_status(f"Loading leaderboard page {page}...")
             rows = _ranking_rows(client.graphql(_character_ranking_query(encounter_id, paged=True), {
-                "encounterID": encounter_id, "specName": job.capitalize(), "page": page,
+                "encounterID": encounter_id, "specName": job_name(job), "page": page,
                 "partition": current_partition(encounter_id, partition),
             }), encounter_id)
             if not rows:
                 break
             offset = 0
             while offset < len(rows):
-                batch = rows[offset:offset + 10 - len(found)]
+                batch = rows[offset:offset + limit - len(found)]
                 if on_status is not None:
                     on_status(f"Identifying players for ranks {position + 1}-{position + len(batch)}...")
-                callback = (lambda count: on_progress(len(found) + count, 10)) if on_progress is not None else None
+                callback = (lambda count: on_progress(len(found) + count, limit)) if on_progress is not None else None
                 resolved = _resolve_rank_batch(client, batch, position + 1, encounter_id, job, cache, callback)
                 for reference in resolved:
                     position += 1
@@ -309,7 +313,7 @@ def accessible_ranked_sources(
                         continue
                     found.append((position, reference))
                 offset += len(batch)
-                if len(found) == 10:
+                if len(found) == limit:
                     return tuple(found), tuple(skipped)
     if not found:
         raise FFLogsError("none of the ranked logs have accessible report references")
@@ -352,7 +356,7 @@ def ranked_sources_at_positions(
         if on_progress is not None:
             on_progress(0, len(positions))
         variables = {
-            "encounterID": encounter_id, "specName": job.capitalize(),
+            "encounterID": encounter_id, "specName": job_name(job),
             "partition": current_partition(encounter_id, partition),
         }
         if on_status is not None:
@@ -410,7 +414,7 @@ def ranked_sources_in_range(
         if on_status is not None:
             on_status("Loading leaderboard page 1...")
         first_rows = _ranking_rows(client.graphql(_character_ranking_query(encounter_id, paged=True), {
-            "encounterID": encounter_id, "specName": job.capitalize(), "page": 1,
+            "encounterID": encounter_id, "specName": job_name(job), "page": 1,
             "partition": current_partition(encounter_id, partition),
         }), encounter_id)
         if not first_rows:
@@ -422,7 +426,7 @@ def ranked_sources_in_range(
             if on_status is not None:
                 on_status(f"Loading leaderboard page {page}...")
             rows = first_rows if page == 1 else _ranking_rows(client.graphql(_character_ranking_query(encounter_id, paged=True), {
-                "encounterID": encounter_id, "specName": job.capitalize(), "page": page,
+                "encounterID": encounter_id, "specName": job_name(job), "page": page,
                 "partition": current_partition(encounter_id, partition),
             }), encounter_id)
             if not rows:

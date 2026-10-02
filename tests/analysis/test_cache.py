@@ -50,6 +50,7 @@ def test_reuses_typed_result_and_recovers_corruption(saved_log, monkeypatch) -> 
 @pytest.mark.parametrize("filename", [
     "fight.json", "damage-events.json", "checkpoint-context.json", "combatant-info-events.json",
     "rankings.json", "master-data.json", "cast-events.json", "buff-events.json",
+    "encounter-damage-events.json",
 ])
 def test_log_content_invalidates_even_with_same_stat(saved_log, filename) -> None:
     import os

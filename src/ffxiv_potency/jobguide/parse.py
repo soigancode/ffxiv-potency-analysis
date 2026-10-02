@@ -27,7 +27,7 @@ _ACTION_DAMAGE_TRAIT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _DAMAGE_POTENCY_PATTERN = re.compile(
-    r"^(?:Delivers|Deals|Rushes)\b.*?\bpotency of\s+([\d,]+)\b", re.IGNORECASE
+    r"^(?:Delivers|Deals|Rushes|Jumps|Reduces damage taken)\b.*?\bpotency of\s+([\d,]+)\b", re.IGNORECASE
 )
 _FALLOFF_PATTERN = re.compile(
     r"\bpotency of\s+[\d,]+\s+for the first enemy,\s+"
@@ -158,7 +158,7 @@ def _direct_potency(
         (
             line
             for line in description
-            if line.casefold().startswith(("delivers", "deals", "rushes"))
+            if line.casefold().startswith(("delivers", "deals", "rushes", "jumps", "reduces damage taken"))
         ),
         None,
     )
@@ -305,7 +305,7 @@ def _parse_potency(action_name: str, description: tuple[str, ...]) -> Potency | 
     if action_name in _DNC_STEPS:
         return None
     if any(line.startswith("Cure Potency:") for line in description) and not any(
-        line.casefold().startswith(("delivers", "deals", "rushes")) for line in description
+        _DAMAGE_POTENCY_PATTERN.search(line) for line in description
     ):
         return None
 

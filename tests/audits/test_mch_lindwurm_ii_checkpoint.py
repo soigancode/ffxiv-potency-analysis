@@ -37,7 +37,7 @@ def test_mch_lindwurm_ii_infers_first_queen_and_reports_patch(
     assert "100 Battery Gauge (estimated from Queen damage)" in output
     cli._compare_directories([directory], actions)
     compared = capsys.readouterr().out
-    assert "~ Potency, PPS, Luck, and aLuck include Battery estimated from Queen damage." in compared
+    assert "~ Potency, PPS, aHB, Luck, and aLuck include Battery estimated from Queen damage." in compared
 
 
 _OPENING_CASES = json.loads(

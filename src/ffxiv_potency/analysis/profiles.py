@@ -17,6 +17,8 @@ class _CombatProfile:
     unfed_critical_damage_multiplier: float
     unfed_critical_rate: float
     unfed_determination_ratio: float
+    guaranteed_direct_multiplier: float
+    unfed_guaranteed_direct_multiplier: float
     potion_buff_id: int
     potion_action_names: tuple[str, ...]
     potion_duration_seconds: int
@@ -130,6 +132,14 @@ def _determination_factor(determination: int, level_main: int, level_divisor: in
     return (1000 + 140 * (determination - level_main) // level_divisor) / 1000
 
 
+def _guaranteed_direct_multiplier(direct_hit: int, determination: int,
+                                  level_main: int, level_sub: int, level_divisor: int) -> float:
+    """Guaranteed DH converts its attribute into an additive determination term."""
+    determination_factor = _determination_factor(determination, level_main, level_divisor)
+    direct_bonus = max(0, 140 * (direct_hit - level_sub) // level_divisor) / 1000
+    return (determination_factor + direct_bonus) / determination_factor
+
+
 def _load_combat_profile(
     job: str, action_document: dict | None = None, *, party_bonus_percent: int = 5,
     gear_path: Path | None = None,
@@ -149,14 +159,17 @@ def _load_combat_profile(
     profile = _load_json(resource, dict)
     if profile.get("level") != gear.get("level"):
         raise AnalysisError("gear and combat model have different levels")
+    main_stat = profile.get("main_stat", "dexterity")
+    if main_stat not in {"strength", "dexterity"}:
+        raise AnalysisError(f"unsupported main stat {main_stat!r}")
     if gear_path is not None:
         profile["food"] = gear["food"]
         profile["potion"] = gear["potion"]
-        solo = gear["solo_dexterity"]
+        solo = gear[f"solo_{main_stat}"]
         party = solo * 105 // 100
         potion_data = _load_json(reference_path("consumables", gear["potion"]), dict)
-        bonus = potion_data["bonuses"]["dexterity"]
-        profile["dexterity"] = {"solo_unpotted": solo, "party_unpotted": party,
+        bonus = potion_data["bonuses"][main_stat]
+        profile[main_stat] = {"solo_unpotted": solo, "party_unpotted": party,
                                 "party_potted": party + min(party * bonus["percent"] // 100, bonus["cap"])}
         profile["secondary_stats"] = {stat: gear[stat] for stat in
                                       ("critical_hit", "direct_hit", "determination", "skill_speed")}
@@ -177,7 +190,7 @@ def _load_combat_profile(
     food_det = food_bonuses.get("determination")
     if not isinstance(food_crit, dict) or not isinstance(food_det, dict):
         raise AnalysisError(f"missing critical hit or determination food bonus for job {job!r}")
-    dexterity = profile.get("dexterity", {})
+    main_stats = profile.get(main_stat, {})
     stats = profile.get("secondary_stats", {})
     modifiers = profile.get("attribute_modifiers", {})
     potion_reference = profile.get("potion")
@@ -185,8 +198,8 @@ def _load_combat_profile(
         raise AnalysisError(f"invalid potion reference for job {job!r}")
     potion = _load_json(reference_path("consumables", potion_reference), dict)
     bonuses = potion.get("bonuses")
-    dexterity_bonus = bonuses.get("dexterity") if isinstance(bonuses, dict) else None
-    if not isinstance(dexterity_bonus, dict) or potion.get("quality") != "HQ":
+    main_stat_bonus = bonuses.get(main_stat) if isinstance(bonuses, dict) else None
+    if not isinstance(main_stat_bonus, dict) or potion.get("quality") != "HQ":
         raise AnalysisError(f"invalid HQ potion for job {job!r}")
     luck = profile.get("luck", {})
     required_ints = {
@@ -195,12 +208,12 @@ def _load_combat_profile(
         "level_divisor": profile.get("level_divisor"),
         "coefficient": profile.get("attack_power_coefficient"),
         "player_damage_coefficient": profile.get("player_damage_coefficient"),
-        "solo": dexterity.get("solo_unpotted"),
-        "party": dexterity.get("party_unpotted"),
-        "potted": dexterity.get("party_potted"),
+        "solo": main_stats.get("solo_unpotted"),
+        "party": main_stats.get("party_unpotted"),
+        "potted": main_stats.get("party_potted"),
         "player_modifier": modifiers.get("player"),
-        "potion_cap": dexterity_bonus.get("cap"),
-        "potion_percent": dexterity_bonus.get("percent"),
+        "potion_cap": main_stat_bonus.get("cap"),
+        "potion_percent": main_stat_bonus.get("percent"),
         "buff_id": potion.get("buff_id"),
         "potion_duration": potion.get("duration_seconds"),
         "critical_hit": stats.get("critical_hit"),
@@ -221,9 +234,9 @@ def _load_combat_profile(
         required_ints["potion_cap"],
     )
     if required_ints["potted"] != required_ints["party"] + potion_gain:
-        raise AnalysisError(f"potted Dexterity does not match the HQ potion for job {job!r}")
+        raise AnalysisError(f"potted {main_stat.title()} does not match the HQ potion for job {job!r}")
     if required_ints["party"] != required_ints["solo"] * 105 // 100:
-        raise AnalysisError(f"configured party Dexterity must include a 5% bonus for job {job!r}")
+        raise AnalysisError(f"configured party {main_stat.title()} must include a 5% bonus for job {job!r}")
     party_stat = required_ints["solo"] * (100 + party_bonus_percent) // 100
     potted_stat = party_stat + min(
         party_stat * required_ints["potion_percent"] // 100,
@@ -254,7 +267,10 @@ def _load_combat_profile(
         and trait["level"] <= level
     ]
     strongest = max(eligible, key=lambda trait: trait["level"], default=None)
-    trait_multiplier = strongest.get("action_damage_multiplier") if strongest else None
+    trait_multiplier = (
+        strongest.get("action_damage_multiplier") if strongest
+        else profile.get("action_trait_multiplier")
+    )
     if not isinstance(trait_multiplier, (int, float)) or trait_multiplier <= 0:
         raise AnalysisError(f"missing usable action damage trait for job {job!r} at level {level}")
     action_names = potion.get("action_names")
@@ -310,6 +326,14 @@ def _load_combat_profile(
                                   required_ints["level_divisor"])
             / _determination_factor(required_ints["determination"] - required_ints["food_det_cap"],
                                     required_ints["level_main"], required_ints["level_divisor"])
+        ),
+        guaranteed_direct_multiplier=_guaranteed_direct_multiplier(
+            required_ints["direct_hit"], required_ints["determination"],
+            required_ints["level_main"], required_ints["level_sub"], required_ints["level_divisor"],
+        ),
+        unfed_guaranteed_direct_multiplier=_guaranteed_direct_multiplier(
+            required_ints["direct_hit"], required_ints["determination"] - required_ints["food_det_cap"],
+            required_ints["level_main"], required_ints["level_sub"], required_ints["level_divisor"],
         ),
         potion_buff_id=required_ints["buff_id"],
         potion_action_names=tuple(action_names),

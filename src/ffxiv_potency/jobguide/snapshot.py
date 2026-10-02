@@ -21,7 +21,8 @@ from .parse import parse_job_actions, parse_job_traits
 JOBGUIDE_URL_TEMPLATE = "https://eu.finalfantasyxiv.com/jobguide/{job}/"
 BRD_URL = JOBGUIDE_URL_TEMPLATE.format(job="bard")
 MCH_URL = JOBGUIDE_URL_TEMPLATE.format(job="machinist")
-JOBGUIDE_URLS = {"bard": BRD_URL, "machinist": MCH_URL,
+JOBGUIDE_URLS = {"warrior": JOBGUIDE_URL_TEMPLATE.format(job="warrior"),
+                 "bard": BRD_URL, "machinist": MCH_URL,
                  "dancer": JOBGUIDE_URL_TEMPLATE.format(job="dancer")}
 
 

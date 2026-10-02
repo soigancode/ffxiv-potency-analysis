@@ -179,7 +179,7 @@ def test_downloads_metadata_and_paginated_events(
                 },
             )
         if "Targetability" in query:
-            assert variables["filter"] == 'type="targetabilityupdate"'
+            assert variables["filter"] == 'type="targetabilityupdate" or type="death"'
             assert "sourceID" not in query
             return httpx.Response(200, json={"data": {"reportData": {"report": {
                 "fights": [{"startTime": 100}],

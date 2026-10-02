@@ -18,7 +18,7 @@ from .config import action_data_root, reference_path
 from .models import AnalysisResult
 
 # Increment for changes to analysis semantics or the persisted result schema.
-ANALYZER_REVISION = 12
+ANALYZER_REVISION = 17
 CACHE_FILENAME = "analysis-cache.json"
 
 

@@ -14,7 +14,7 @@ Supported duties:
 
 | Patch | Supported jobs |
 | --- | --- |
-| 7.4–7.56 | Bard (BRD), Machinist (MCH), Dancer (DNC) |
+| 7.4–7.56 | Warrior (WAR), Bard (BRD), Machinist (MCH), Dancer (DNC) |
 
 Leaderboard support covers the global partitions, including Savage Echo. Dungeon fights use their played date to identify the patch. See [Limitations](#limitations) for gear and sync assumptions.
 
@@ -28,7 +28,7 @@ Leaderboard support covers the global partitions, including Savage Echo. Dungeon
 - [Understanding the results](#understanding-the-results)
 - [Calculation details](#calculation-details)
   - [Shared calculations](#shared-calculations)
-    - [Variable potency from damage](#variable-potency-from-damage)
+  - [Warrior](#warrior)
   - [Bard](#bard)
   - [Machinist](#machinist)
   - [Dancer](#dancer)
@@ -96,7 +96,7 @@ Ranges and comma-separated selections contain 2–25 distinct leaderboard positi
 | `mistwake` | Mistwake |
 | `clyteum` | The Clyteum |
 
-Use `brd`, `mch`, or `dnc` for the job. The full job names also work.
+Use `war`, `brd`, `mch`, or `dnc` for the job. The full job names also work.
 
 The `--partition` option is optional. Savage defaults to the global 7.5 standard-composition leaderboard. To select another global leaderboard:
 
@@ -164,11 +164,13 @@ ffxiv-potency compare \
   "https://www.fflogs.com/reports/REPORT2?fight=4&source=7"
 ```
 
-The comparison shows duration, rDPS, nDPS, landed potency, PPS, Luck, adjusted Luck, partition, patch, and the fight date in UTC (`dd/mm/yy`). Saved fights are reused.
+The comparison shows full duration, targetable time, rDPS, nDPS, landed potency, PPS, aHB, Luck, adjusted Luck, partition, patch, and the fight date in UTC (`dd/mm/yy`). Saved fights are reused.
+
+WAR and MCH combine equal rDPS and nDPS values in one **rDPS/nDPS** column.
 
 ## Understanding the results
 
-**Potency** adds the potency of hits that landed, including configured personal buffs and potion gains. It also accounts for pet actions and estimates auto-attack potency. Multi-target hits use their action's falloff rules. Recorded overkill reduces the credited potency in proportion to damage dealt. Other players' damage buffs do **not** increase personal potency. **PPS** divides total potency by fight duration in seconds.
+**Potency** adds the potency of hits that landed, including configured personal buffs and potion gains. It also accounts for pet actions and estimates auto-attack potency. Multi-target hits use their action's falloff rules. Recorded overkill reduces the credited potency in proportion to damage dealt. Other players' damage buffs do **not** increase personal potency. **PPS** divides total potency by targetable time in seconds.
 
 **Luck** shows how favorable the observed Crit and Direct Hit outcomes were, weighted by each hit's potency. A critical hit contributes more than a Direct Hit because its configured damage multiplier is larger. **Luck baseline** shows the expected score from the configured unbuffed gear rates. Comparing the two indicates whether hit outcomes were favorable for that gear profile. It does not measure rotation quality.
 
@@ -180,24 +182,28 @@ FF Logs **rDPS and nDPS** remain the original reported damage metrics. Potency a
 
 ### Shared calculations
 
+#### Targetable time
+
+PPS uses time when an enemy is available for damage. Simultaneous enemies count once, while encounter transitions and travel between enemy groups are excluded. Full duration and the excluded time remain visible in analyse.
+
+Supported raid and trial kills use the duration established by FF Logs damage and DPS when consistent with the enemy timeline. Dungeon and Criterion runs use encounter-wide enemy appearances, targetability updates, deaths, and lethal hits. Unknown spawn times begin at the first party hit, so these windows are marked estimated. A missing timeline falls back to full duration and is labelled unavailable. Ordinary gaps between a player's attacks never count as downtime.
+
 #### Food
 
-The shared HQ food and potion definitions are in `data/consumables/`. The configured BiS stats already include Caramel Popcorn's food bonuses.
+Configured gear stats include food bonuses.
 
 When FF Logs records `Well Fed` ending or being reapplied, the report shows the interval without food. During that interval, BRD damage-based potency estimates use the lower Determination and Crit values, and luck baselines use the lower Crit rate. Food does not directly multiply action potency. If no food changes are recorded, the configured food is assumed throughout the fight and marked unverified in the report.
 
 #### Potions
 
-A Grade 4 Gemdraught of Dexterity [HQ] raises Dexterity by 10%, capped at 541, for 30 seconds. The reference sets use Miqo'te - Seekers of the Sun. The configured party Dexterity is 6,841 before a potion and 7,382 during it. The tool converts the resulting change in the level 100 main-stat damage factor into extra potency on hits in the potion window:
+HQ Gemdraughts increase the job's main stat by 10%, up to the item's cap, for 30 seconds. Extra potency follows the change in the tiered main-stat damage factor:
 
 ```math
 P_{\mathrm{potted}} = P_{\mathrm{base}}\times
-\frac{f_{\mathrm{main}}(7382)}{f_{\mathrm{main}}(6841)}.
+\frac{f_{\mathrm{main}}(\mathrm{potted\ stat})}{f_{\mathrm{main}}(\mathrm{unpotted\ stat})}.
 ```
 
-The factor uses level 100's tiered main-stat calculation, so a 541 Dexterity gain is not treated as 10% extra damage. MCH pets use their own configured main-stat factor. DoT ticks and MCH Wildfire use the potion state snapshotted when their effect was applied.
-
-The values above describe a five-role party. For another composition, the tool recomputes party Dexterity and the potion factor from the fight roster.
+Party bonuses come from the fight roster. At level 100, the main-stat coefficient is 190 for tanks and 237 for the supported ranged jobs. Pet damage uses its own configured factor. DoTs and delayed effects such as Wildfire retain the potion state at application.
 
 #### Damage penalties
 
@@ -207,12 +213,12 @@ Damage Down strength is configured by encounter. The tool reduces potency on lan
 
 #### Auto-attacks
 
-Auto-attacks have no current official listed potency in the job guide. The reference values are **80** for BRD and MCH's Shot and **90** for DNC's melee Attack. These values agree with damage-per-potency comparisons in the supplied logs. The tool estimates weapon delay from consecutive hits and matches it to a known delay for the job. BRD's Shots under Army's Paeon or Army's Muse still count toward potency, but do not set the base weapon-delay estimate. It reports an error if no known delay is close enough. Action-comparable potency per auto-attack is:
+Auto-attacks have no current official listed potency in the job guide. The reference values are **90** for WAR and DNC's melee Attack and **80** for BRD and MCH's Shot. These values agree with damage-per-potency comparisons in the supplied logs. The tool estimates weapon delay from consecutive hits and matches it to a known delay for the job. BRD's Shots under Army's Paeon or Army's Muse still count toward potency, but do not set the base weapon-delay estimate. It reports an error if no known delay is close enough. Action-comparable potency per auto-attack is:
 
 ```math
 P_{\mathrm{auto}}=P_{\mathrm{base}}\times
 \frac{\left\lfloor F\times\text{weapon delay}/3\right\rfloor}{F}
-\times\frac{\text{Skill Speed factor}}{1.2}.
+\times\frac{\text{Skill Speed factor}}{\text{action-damage trait multiplier}}.
 ```
 
 ```math
@@ -221,7 +227,13 @@ F=\left\lfloor\frac{\text{level main stat}\times
 +\text{weapon damage}.
 ```
 
-Dividing by `1.2` accounts for the action-damage trait read from the job guide, which does not apply to auto-attacks. With the configured MCH stats and 2.64 s weapon delay, the result is about **58.65 action-comparable potency per Shot** before potion effects. DNC's 3.12 s delay gives about **77.88 potency per Attack**. These approximations agree with the damage-per-potency comparisons in checked logs.
+WAR uses an action-damage trait multiplier of `1.0`. BRD, MCH, and DNC divide by `1.2` because their action-damage trait does not apply to auto-attacks. With the configured stats, WAR's 3.36 s weapon delay gives about **100.59 action-comparable potency per Attack**, MCH's 2.64 s delay gives **58.65 potency per Shot**, and DNC's 3.12 s delay gives **77.88 potency per Attack**, before potion effects. These approximations agree with the damage-per-potency comparisons in checked logs.
+
+#### Hit Bonus and Adjusted Hit Bonus
+
+**HB** is the potency-weighted damage bonus from recorded Crits and Direct Hits, including guaranteed outcomes. **aHB** subtracts the expected contribution from external Crit/DH rate buffs. A value of +48% means those outcomes add 48% damage over the same observed attacks without their Crit/DH bonuses. Only aHB appears between PPS and Luck in leaderboards and comparisons. Analyse uses the full names **Hit Bonus** and **Adjusted Hit Bonus**.
+
+Guaranteed hits include both the Direct Hit attribute conversion and the deterministic damage benefit from external Crit/DH rate buffs. Explicitly non-random damage such as Wildfire contributes potency with no hit bonus. Periodic damage without a recorded outcome is excluded. The metric uses configured gear and observed outcomes, rather than converting potency into FF Logs nDPS. Unlike Luck, it also depends on the mix of attacks used.
 
 #### Luck and adjusted Luck
 
@@ -264,73 +276,73 @@ A_i=(1+p'_C(C-1))(1+0.25p'_D)
 
 Tracked effects are Battle Litany, Battle Voice, Army's Paeon, the Wanderer's Minuet, Devilment on the Dancer or Dance Partner, and Chain Stratagem on the target. The adjustment subtracts the **expected** buff benefit. It does not erase actual Crits or Direct Hits.
 
+### Warrior
+
+#### Potencies and personal buffs
+
+| Action | Before 7.5 | From 7.5 |
+| --- | ---: | ---: |
+| Inner Chaos | 660 | 700 |
+| Primal Rend | 700 | 720 |
+| Primal Ruination | 780 | 800 |
+
+Comboed Maim has 340 potency, Storm's Path and Storm's Eye have 500, and Mythril Tempest has 140. Other hits use their base potency. Primal Rend, Primal Ruination, and Primal Wrath deal 50% potency to additional targets. WAR's other damaging AoEs have no falloff.
+
+Surging Tempest adds 10% personal damage. The attack that first grants it uses the preceding buff state. Damnation contributes 55 potency per landed counterattack. Its defensive cast is not a ghosted attack when no counterattack occurs.
+
+Inner Chaos, Chaotic Cyclone, Primal Rend, and Primal Ruination guarantee critical direct hits. Inner Release guarantees them for Fell Cleave and Decimate, but not other actions. Beast Gauge controls spender availability without changing potency.
+
+#### Execution summary
+
+Analyse shows Surging Tempest uptime, attacks without it, and their lost potency. Inner Release lists uses and unused charges at confirmed expiry. Primal Rend, Primal Ruination, Primal Wrath, and Nascent Chaos list ready grants, uses, expirations, and overwrites. Pre-pull effects count as grants. Consuming a ready effect counts as use even if the damage ghosts. Effects still active at the fight's end are not counted as wasted.
+
+Melee downtime groups consecutive Tomahawks into one line, timestamped at the first Tomahawk. It shows the preceding and following melee GCDs and every gap between casts. Abilities woven between GCDs do not break the chain. No exact replacement loss is assigned because the available melee action is uncertain.
+
+### Bard
+
+#### Songs and personal buffs
+
+Songs grant distinct Codas. Radiant Finale consumes them for a 2%, 4%, or 6% personal damage bonus. Radiant Encore then deals 700, 800, or 1,100 potency, with 50% potency on additional targets. Raging Strikes adds 15% damage. The report shows consumed Codas, Encore potency, and song durations.
+
+Barrage makes Refulgent Arrow strike three times or raises Shadowbite to 300 potency. Caustic Bite and Stormbite retain their personal buff snapshot on each target. Iron Jaws refreshes both effects with a new snapshot. Application damage and tick potency are reported separately.
+
 #### Variable potency from damage
 
-Some actions have a potency determined by a resource that FF Logs does not expose directly. For BRD, the tool estimates it from the same player's fixed-potency hits: Burst Shot (220), Refulgent Arrow (280), Empyreal Arrow (260), and Heartbreak Shot (180). Each reference hit gives an estimate of **damage per potency** after normalization. It uses the median of up to 30 hits on the same target nearest in time. When fewer than three are available, it uses up to 20 reference hits, prioritizing the same target, and marks the baseline as less certain. Overkill hits are excluded from the reference set.
+Pitch Perfect has 100, 220, or 360 potency for one, two, or three stacks. Apex Arrow has $140+7(G-20)$ potency for Soul Voice Gauge $G$ from 20 to 100. Using at least 80 gauge grants Blast Arrow Ready.
 
-For each reference or variable-potency hit, the tool divides logged damage by its configured Crit multiplier if it crit, by 1.25 if it Direct Hit, and by FF Logs' recorded damage multiplier. That multiplier includes recorded damage buffs, target debuffs, and FF Logs' **1.05** contribution for Medicated. A potted hit also needs a correction: the actual potion effect uses the configured Dexterity damage factor, which differs from 1.05.
+Hidden resource values are estimated from normalized damage. Burst Shot (220), Refulgent Arrow (280), Empyreal Arrow (260), and Heartbreak Shot (180) provide fixed-potency references. Each hit is divided by its Crit/DH outcome and recorded damage multiplier. Potted hits correct FF Logs' recorded 1.05 factor to the configured potion factor $Q$:
 
 ```math
 D_{\mathrm{norm}}=\frac{D_{\mathrm{logged}}}{C^{I_C}\,1.25^{I_D}\,M_{\mathrm{FF}}}\times Q.
 ```
 
-Here $I_C$ and $I_D$ are 1 when the hit crits or Direct Hits, otherwise 0. $M_{\mathrm{FF}}$ is FF Logs' multiplier (assumed to be 1 if absent). $Q$ is **1.05 ÷ configured potion factor** for Medicated hits, otherwise 1. The median of reference values $D_{\mathrm{norm}}/P_{\mathrm{known}}$ is the baseline $B$. The variable hit's estimated potency is $D_{\mathrm{norm}}/B$.
+The median normalized damage per reference potency establishes a local baseline. Up to 30 nearby same-target hits are used. Fewer than three references trigger a less-certain fallback. Overkill hits cannot establish the baseline.
 
-The estimate is compared with the action's possible potencies. For **Pitch Perfect**, those are 100, 220, or 360 for one, two, or three stacks, and half those values for an additional target. Relative damage between multiple landed targets narrows which hit could have received full potency. A single landed hit is treated as full potency unless another target in the same use was immune. The tool allows a **94%–106%** damage roll plus **0.5%** tolerance for the estimated baseline and rounded multiplier: a candidate $P$ is plausible when estimated potency lies between $0.935P$ and $1.065P$. It lists multiple plausible fits when their ranges overlap. If none fits, it still selects the nearest candidate and reports how far outside the expected range the hit was.
-
-For **Apex Arrow**, candidate potency is $140+7(g-20)$ for Soul Voice Gauge $g$ from 20 to 100 in steps of five. A following Blast Arrow narrows the candidates to 80–100 gauge. The best fit minimizes relative error across its landed hits, while candidates within **6.5%** on every hit remain plausible. **Radiant Encore** uses Codas reconstructed from song casts. The report marks ambiguous assignments. Selected potencies are deterministic estimates, not recovered gauge or stack values.
-
-### Bard
-
-#### Songs, Codas, and variable potency
-
-Each song grants its own Coda. Radiant Finale consumes the available distinct Codas and grants 2%, 4%, or 6% damage for one, two, or three Codas. Radiant Encore then deals 700, 800, or 1,100 potency, with 50% potency on additional targets. The report shows the Codas spent, Encore damage, and average duration of each song.
-
-Pitch Perfect deals 100, 220, or 360 potency for one, two, or three Repertoire stacks. Apex Arrow scales with Soul Voice Gauge. At 20 gauge it deals 140 potency, increasing by 7 for each additional gauge point up to 700 at 100 gauge. An Apex Arrow at 80 or more gauge grants Blast Arrow Ready. These hidden resource values are estimated from [normalized damage and reference hits](#variable-potency-from-damage). The report lists plausible alternatives when damage rolls leave more than one possible value.
-
-#### Damage-over-time snapshots
-
-Caustic Bite and Stormbite have separate direct-hit and damage-over-time components. Each target retains the personal damage buffs and potion state present when the effect was applied. Iron Jaws refreshes both effects and takes a new snapshot. Later buff changes do not change an existing DoT's potency. The report separates application damage from tick potency.
-
-#### Personal buffs and Barrage
-
-Raging Strikes adds 15% personal damage. Radiant Finale adds its Coda-dependent bonus. Both affect direct actions, snapshotted DoTs, and auto-attacks. Crit/DH rate effects instead contribute to the expected benefit used for adjusted Luck.
-
-Barrage makes Refulgent Arrow strike three times or raises Shadowbite to 300 potency. Only landed hits contribute. Shadowbite's additional-target falloff is applied separately, and ordinary and Barrage-enhanced damage both appear in the action totals.
+Candidate potencies allow a 94%–106% damage roll plus 0.5% rounding tolerance. Multi-target damage narrows falloff assignments, and Blast Arrow narrows Apex candidates to 80–100 gauge. Multiple plausible fits remain visible. The nearest fit is flagged when none matches. These are deterministic estimates rather than recovered gauge values.
 
 ### Machinist
 
-#### Hypercharge and guaranteed hits
+#### Hypercharge and Wildfire
 
-Hypercharge grants five Overheated stacks. Its 20-potency bonus applies to single-target weaponskills, including Blazing Shot, but not Auto Crossbow. Reassemble guarantees a critical direct hit on the next eligible weaponskill. Full Metal Field guarantees that outcome independently. Their landed potency counts normally, while guaranteed outcomes are excluded from Luck and adjusted Luck.
+Hypercharge grants five stacks that add 20 potency to single-target weaponskills, including Blazing Shot. Auto Crossbow receives no bonus. Reassemble guarantees a critical direct hit on the next eligible weaponskill. Full Metal Field guarantees that outcome independently.
 
-#### Wildfire
-
-Wildfire adds 240 potency per weaponskill that lands during its ten-second window, up to six weaponskills and 1,440 potency. Auto-attacks and pet attacks do not contribute. Detonator can end the window early. Wildfire uses the potion state at application and does not roll Crit or DH. The report lists landed weaponskills and resulting potency for each detonation.
+Wildfire adds 240 potency per weaponskill that lands during its ten-second window, up to six hits and 1,440 potency. Pet attacks and auto-attacks do not contribute. Detonator can end the window early. Wildfire does not roll Crit or DH. Each detonation lists its contributing weaponskills and potency.
 
 #### Automaton Queen and Battery
 
-Automaton Queen spends between 50 and 100 Battery. Its attack potency scales linearly between the values at those endpoints:
+Queen spends 50–100 Battery, with attack potency scaled linearly between those endpoints:
 
 ```math
 P(G)=P_{50}+(P_{100}-P_{50})\frac{G-50}{50}.
 ```
 
-Queen and Rook Autoturret damage is converted to player-comparable potency using the configured **0.89** factor. This is an approximation. Summoning and Queen Overdrive add no damage themselves. The report groups landed pet attacks by deployment, identifies missing Queen finishers, and shows early Overdrive use.
+Queen and Rook damage uses an approximate 0.89 conversion to player-comparable potency. The report groups attacks by deployment and identifies missing Queen finishers and early Overdrive use. Successful action resolutions grant Battery even if their damage later ghosts.
 
-Battery gains follow successful action resolutions. An action can grant Battery even when its damage fails to land because the target disappears. Such an action adds no landed potency.
-
-#### Lindwurm II opening Battery
-
-Battery carried from phase one is included when the preceding kill is available. A Queen summoned before the pull is treated separately, so its spent Battery is not counted again for the next Queen.
-
-When carried Battery is unknown, an unexplained opening Queen initially uses an unconfirmed 100-Battery assumption. Damage from later Queens with known Battery can narrow this to a unique estimate at 50, 60, 70, 80, 90, or 100 Battery. At least two opening hits and two comparable later Queens must support the fit. Comparisons use the same attack, Crit outcome, and potion state, with corrections for Direct Hits and recorded damage modifiers. They allow a 95%–105% damage roll, multiplier rounding of ±0.005, and damage rounding of ±2. Overkill and damage-penalty hits do not establish the reference. Inferred Battery remains labelled as an estimate.
+For Lindwurm II, the preceding phase-one kill establishes carried Battery when available. A pre-pull Queen's spent Battery is counted separately. Otherwise, later Queens with known Battery can narrow the opening gauge to 50, 60, 70, 80, 90, or 100. A unique fit requires at least two opening hits and two comparable later Queens, allowing a 95%–105% damage roll, multiplier rounding of ±0.005, and damage rounding of ±2. Overkill and damage-penalty hits cannot establish the reference. An unresolved opening Queen retains a labelled 100-Battery assumption.
 
 ### Dancer
 
-#### Dance finishes and personal buffs
-
-Finish potency depends on the number of successfully completed steps:
+#### Finishes and personal buffs
 
 | Successful steps | Standard Finish | Technical Finish |
 | ---: | ---: | ---: |
@@ -340,63 +352,39 @@ Finish potency depends on the number of successfully completed steps:
 | 3 | — | 900 |
 | 4 | — | 1,300 |
 
-Standard Finish grants 2% damage for one step or 5% for two steps, lasting 60 seconds. Technical Finish grants 1%, 2%, 3%, or 5% for one through four steps, lasting 20 seconds. Finishing Move deals 850 potency and grants the full Standard Finish bonus. Zero-step finishes add damage but grant no finish damage bonus.
+Standard Finish grants 2% or 5% damage for one or two steps, lasting 60 seconds. Technical Finish grants 1%, 2%, 3%, or 5% for one through four steps, lasting 20 seconds. Zero steps grant no bonus. Finishing Move deals 850 potency and grants the full Standard Finish bonus.
 
-The Dancer's own finish bonuses count toward personal potency, including auto-attacks. They multiply when both are active. Another Dancer's finish bonuses do not add personal potency. A finish deals damage using the buff state before it applies or refreshes its own bonus. The report lists each finish's step count, landed hits, and potency.
+The Dancer's own finish bonuses multiply together. Another Dancer's bonuses do not add personal potency. Finish damage uses the buff state before its own grant or refresh. Pre-pull strength must have a unique fit from recorded damage multipliers.
 
-A finish bonus already present at the pull has an unlogged step count. Its strength is inferred from rounded damage multipliers, using later hits with the same external buffs when necessary. Only a unique fit is accepted. An unresolved initial strength produces an explicit error.
+Major damaging AoEs deal 40% potency to additional targets. Starfall Dance deals 25% and guarantees a critical direct hit. Devilment adds 20 percentage points to Crit and DH chances for the Dancer and Dance Partner.
 
-#### Multi-target damage and guaranteed hits
+#### Feathers and Threefold
 
-Dancer's major multi-target actions deal 40% potency after the first enemy. Starfall Dance deals 25%. The full-potency target is identified after correcting damage for Crit, Direct Hit, and recorded damage modifiers. Each landed target contributes its own potency, including overkill clipping.
+Cascade and Windmill have a 50% Symmetry chance. Comboed Fountain and Bladeshower have a 50% Flow chance. The enabled proc GCD then has a separate 50% Feather chance, making the ordinary two-roll chain 25%. Flourish skips the unlock roll and grants a separate guaranteed Threefold effect. Fan Dance and Fan Dance II spend one feather and each make another 50% Threefold roll.
 
-Starfall Dance guarantees a critical direct hit. Its potency counts normally, but it is excluded from Luck and adjusted Luck. Devilment adds 20 percentage points to Crit and DH chances for the Dancer and Dance Partner. This changes the expected Crit/DH benefit on eligible hits, rather than their listed potency.
+The report separates random and Flourish grants, consumption, overwrites, expiry, death losses, and remaining effects. AoEs make one proc roll per use, rather than per target. Esprit controls Saber Dance availability without changing its 540 potency. Dance of the Dawn replaces an eligible use with 1,000 potency. Random party-generated Esprit is not reconstructed.
 
-#### Feathers and proc luck
+The Feather gauge holds four. Starting feathers are zero for fresh pulls and complete Dungeon or Criterion runs. M12S phase-two carry-over or missing checkpoint context allows 0–4. Generating actions, spending actions, the cap, and death resets bound successful Feather rolls. Ending gauge and overcap are unlogged, so displayed Feather scores are minimums supported by the log.
 
-Cascade and Windmill each have a 50% chance to grant Silken Symmetry. A comboed Fountain or Bladeshower has a 50% chance to grant Silken Flow. Symmetry enables Reverse Cascade or Rising Windmill, and Flow enables Fountainfall or Bloodshower. Flourish grants separate Flourishing Symmetry and Flow effects without a random roll.
+#### Luck indices and combined score
 
-The detailed report shows initial opportunities and grants, Flourish grants, proc GCD uses, consumption, overlaps, expiration, death losses, and unused effects. The Feather-chain index combines the initial unlock and Feather rolls. Threefold has its own index. The final Feather luck score combines all three observed random proc rates. Flourish's guaranteed grants are excluded from random proc rates. Feather expectations use the generating actions actually resolved, and Threefold expectations use Fan Dance actions that resolved. Initial proc luck therefore changes the number of later opportunities without changing their individual chances.
-
-Reverse Cascade, Fountainfall, Rising Windmill, and Bloodshower each have a 50% chance to grant one Fourfold Feather on successful resolution. An AoE action makes one roll per use, rather than one per target. With $N$ eligible uses, the expected number of successful rolls is $0.5N$. The gauge holds four feathers, so a successful roll at the cap adds no usable feather.
-
-Fan Dance and Fan Dance II each spend one feather. The analysis counts their uses and bounds the number of feathers gained during the fight using the order of generating actions, spending actions, the four-feather cap, and death resets. Fresh Savage, Extreme, and Ultimate pulls start at zero feathers, including pulls after a wipe. M12S phase two uses zero after a verified checkpoint wipe, while carry-over or missing checkpoint context allows 0–4 starting feathers. Supported Dungeon and Criterion logs cover the complete run, including trash and bosses, and also start at zero feathers. Ending gauge values and cap losses are unlogged. These bounds describe possible resource histories, not an exact reconstruction or a confidence interval. The displayed Feather luck score is the minimum supported by the log. Invisible Feather overcap can make the true score higher. Expected rolls include possible cap losses and should not be compared directly with feathers spent.
-
-Each successful Fan Dance or Fan Dance II has a separate 50% chance to grant Threefold Fan Dance. These random procs are counted from their buff applications and refreshes. Flourish also grants Threefold Fan Dance, but its guaranteed grants are reported separately and excluded from random proc luck. The report shows their expected count, observed count, and proc rate. A granted proc can be overwritten, expire, or be lost on death, so grants and uses need not match.
-
-#### Proc rarity indices
-
-An ordinary Cascade or Windmill, or a correctly comboed Fountain or Bladeshower, has a 50% chance to unlock a proc GCD. That proc GCD then has a 50% chance to grant a feather. Assuming it is used successfully, the whole chain has a 25% chance to produce a feather. Flourish skips the first roll, so its guaranteed proc GCD has a 50% Feather chance. Fan Dance and Fan Dance II make a separate 50% roll for Threefold after spending a feather.
-
-The detailed proc indices use an approximate normal-reference index from 0 to 100, with 50 representing expected luck. Below 50 is below expectation, and above 50 is above expectation. They are separate from damage Luck and do not represent proc chance, an exact percentile, or a confidence interval.
-
-For each random stage, expected grants are $np$ and variance is $np(1-p)$. Let $R$ be initial random grants, $S$ successful Feather rolls, and $E_R$ and $E_S$ their expectations. Initial grants are weighted by their subsequent Feather chance $q$, currently 0.5. The Feather-chain index is:
+Stage rarity indices use $100\Phi(Z)$, where $\Phi$ is the standard normal cumulative distribution function. The baseline is 50. For the Feather chain, initial grants $R$ are weighted by their subsequent Feather chance $q=0.5$ and combined with successful Feather rolls $S$:
 
 ```math
 Z=\frac{q(R-E_R)+(S-E_S)}{\sqrt{q^2V_R+V_S}},\qquad
-\mathrm{Index}=100\Phi(Z).
+E=np,\quad V=np(1-p).
 ```
 
-$\Phi$ is the standard normal cumulative distribution function. Separate weights are used if the two initial proc families have different Feather chances. This standardizes the surplus against the number of opportunities and accounts for both rolls of the Feather chain. Guaranteed Flourish grants and execution losses do not count as random luck.
+Threefold has its own rarity index. These indices describe surplus relative to sample size, rather than proc chance or an exact percentile. They can approach 100 without every roll succeeding.
 
-The report displays only the Feather-chain index calculated from the minimum feasible number of successful Feather rolls. It labels this as a minimum because cap losses are unlogged. Equal displayed scores do not establish equal luck, and a higher minimum does not prove one run was luckier. Threefold uses its own observed random grants and variance, without changing the Feather-chain index. These indices measure how unusual a surplus is for the sample size. They can approach 100 without every roll succeeding. Missing or inconsistent evidence, or zero variance, leaves the affected score unavailable. Small samples and rotation-dependent opportunities make these descriptive comparison indices rather than calibrated probabilities.
-
-#### Combined Feather luck score
-
-The final score combines the initial GCD unlock rate, the Feather generation rate, and the random Threefold rate. Initial GCD rate pools random Symmetry and Flow grants over their combined opportunities. Each later rate uses that stage's actual opportunities, including eligible actions enabled by Flourish. Guaranteed Flourish grants are excluded from successful random grants.
+The final **Feather luck score** combines all three observed random rates:
 
 ```math
 \mathrm{FeatherLuck}=100\sqrt[3]{
 \frac{R}{N_R}\times\frac{S_{\min}}{N_S}\times\frac{T}{N_T}}.
 ```
 
-$R$ is the observed initial random grant count, $S_{\min}$ is the minimum feasible successful Feather roll count, and $T$ is the observed random Threefold grant count. Each $N$ is that stage's number of random opportunities. All three stages currently have an expected 50% rate. Rates of 50% at all stages give a score of 50, rates of 75% give 75, and every roll succeeding gives 100. Scaling all counts by the same amount leaves the score unchanged. This is a geometric mean of observed rates, rather than a probability or rarity index.
-
-The score is labelled as a minimum because Feather overcap and ending gauge are unlogged. Carry-over pulls also allow unknown starting feathers. A missing stage, zero opportunities at any stage, or inconsistent evidence leaves the combined score unavailable. Small samples are less reliable for comparison, and different minimum scores alone cannot prove which run had greater true luck. Unused resources and proc losses describe execution separately from the successful rolls.
-
-#### Esprit
-
-Esprit governs Saber Dance use, but does not vary its fixed 540 potency. Dance of the Dawn replaces an eligible Saber Dance with a fixed 1,000-potency action. Random party-generated Esprit is not reconstructed. The analyser counts the actions actually used rather than treating unspent or unobserved resources as damage.
+$T$ is random Threefold grants. Each $N$ is that stage's actual opportunities. Guaranteed grants are excluded. Rates of 50% at all stages give 50, rates of 75% give 75, and every roll succeeding gives 100. The score is a geometric mean of rates, separate from damage Luck and the rarity indices. Missing or inconsistent evidence leaves it unavailable. Small samples and invisible Feather overcap limit comparisons between runs.
 
 ## Limitations
 

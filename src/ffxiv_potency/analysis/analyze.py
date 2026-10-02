@@ -19,9 +19,9 @@ from .brd.songs import _brd_coda, _brd_song_durations
 from .brd.variable_potency import _brd_damage_estimates
 from .buffs import damage_snapshot_times, self_damage_multiplier
 from .consumables import food_active, food_gaps, identify_consumable, initial_food_aura
-from .damage import landed_fraction
+from .damage import falloff_primary_hits, landed_fraction
 from .dnc.buffs import dnc_self_buff_windows
-from .dnc.finishes import dnc_primary_hits, summarize_dnc_finishes
+from .dnc.finishes import summarize_dnc_finishes
 from .dnc.procs import summarize_dnc_procs
 from .dnc.starting_gauge import starting_feathers
 from .echo import (
@@ -67,9 +67,12 @@ from .penalties import (
     summarize_status_windows,
 )
 from .pets import _deployment_for_event, _reconstruct_pet_deployments
-from .potency import _direct_potency, _is_channeled_action
+from .potency import _direct_potency, _is_channeled_action, _is_counterattack_action
 from .potion import _potion_windows
 from .profiles import _load_combat_profile, _load_pet_profiles
+from .targetability import resolve_targetable_time
+from .war.buffs import INNER_RELEASE, war_self_buff_windows
+from .war.summary import summarize_war
 
 
 def _find_ranking_amount(
@@ -313,6 +316,8 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     luck_weighted_bonus = luck_weighted_maximum = luck_weighted_raid_adjustment = 0.0
     luck_weighted_expected = critical_rate_sum = direct_rate_sum = cdh_rate_sum = 0.0
     eligible_hit_count = 0
+    hit_bonus_weight = hit_bonus_total = hit_bonus_adjustment = 0.0
+    war_hit_rows: list[tuple[float, str, float, float]] = []
     missing_food: tuple[tuple[float, float], ...] = ()
 
     def record_damage_down_loss(
@@ -341,12 +346,14 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             revival_losses[status_id][0] += penalized_min * fraction_lost
             revival_losses[status_id][1] += penalized_max * fraction_lost
 
-    def record_luck(event: dict[str, Any], potency_weight: float) -> None:
-        """Accumulate the same weighted outcome for actions, pets, and auto-attacks."""
+    def record_hit_outcome(event: dict[str, Any], potency_weight: float, *,
+                           guaranteed: bool = False, non_random: bool = False) -> None:
+        """Share outcome arithmetic across HB and random-only Luck."""
+        nonlocal hit_bonus_weight, hit_bonus_total, hit_bonus_adjustment
         nonlocal luck_weighted_bonus, luck_weighted_maximum, luck_weighted_raid_adjustment
         nonlocal luck_weighted_expected, critical_rate_sum, direct_rate_sum, cdh_rate_sum
         nonlocal eligible_hit_count
-        if event.get("tick"):
+        if event.get("tick") and not non_random:
             return
         timestamp = event.get("timestamp")
         unfed = isinstance(timestamp, (int, float)) and not food_active(timestamp, missing_food)
@@ -357,14 +364,28 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         critical_rate = (
             combat_profile.unfed_critical_rate if unfed else combat_profile.critical_rate
         )
-        contribution = _luck_contribution(event, critical_multiplier)
+        contribution = 0.0 if non_random else _luck_contribution(event, critical_multiplier)
         if contribution is None:
             return
-        luck_weighted_bonus += potency_weight * contribution
-        luck_weighted_raid_adjustment += potency_weight * _raid_luck_adjustment(
+        adjustment = 0.0 if non_random else _raid_luck_adjustment(
             event, raid_effects, ability_names, combat_profile,
             critical_rate=critical_rate, critical_multiplier=critical_multiplier,
+            guaranteed=guaranteed,
         )
+        if guaranteed:
+            direct_multiplier = (combat_profile.unfed_guaranteed_direct_multiplier if unfed
+                                 else combat_profile.guaranteed_direct_multiplier)
+            contribution = (1 + contribution) * direct_multiplier - 1
+            adjustment *= direct_multiplier
+        hit_bonus_weight += potency_weight
+        # Rate buffs on guaranteed outcomes convert into deterministic damage
+        # that is not represented by the recorded Crit/DH outcome flags.
+        hit_bonus_total += potency_weight * (contribution + adjustment if guaranteed else contribution)
+        hit_bonus_adjustment += potency_weight * adjustment
+        if guaranteed or non_random or event.get("tick"):
+            return
+        luck_weighted_bonus += potency_weight * contribution
+        luck_weighted_raid_adjustment += potency_weight * adjustment
         maximum = critical_multiplier * 1.25 - 1
         luck_weighted_maximum += potency_weight * maximum
         luck_weighted_expected += potency_weight * (
@@ -382,11 +403,11 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         job, action_document, party_bonus_percent=party_bonus if party_bonus is not None else 5,
         gear_path=selection.gear if selection else None,
     )
-    if job.casefold() == "dancer":
-        # Dancer's travelling AoEs can hit an enemy other than the selected
+    if job.casefold() in {"dancer", "warrior"}:
+        # Travelling AoEs can hit an enemy other than the selected
         # target first. At 40%/25% falloff, normalizing Crit/DH and recorded
         # damage modifiers separates the full hit despite the damage roll.
-        primary_hits.update(dnc_primary_hits(landed_by_packet, actions, ability_names,
+        primary_hits.update(falloff_primary_hits(landed_by_packet, actions, ability_names,
                                             combat_profile.critical_damage_multiplier))
     missing_food = food_gaps(
         buffs, source_id, combat_profile.food_buff_id, float(start), float(end),
@@ -413,6 +434,12 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         if rankings.get("metric") == "ndps"
         else None
     )
+    dps = _find_ranking_amount(rankings.get("dps"), source_id, str(source_name))
+    encounter_damage_path = directory / "encounter-damage-events.json"
+    encounter_damage = (_load_json(encounter_damage_path, list)
+                        if encounter_damage_path.is_file() else None)
+    targetable_time = resolve_targetable_time(fight, actors, raw_damage, targetability_events,
+                                            encounter_overkills, dps, encounter_damage)
     potion_windows = _potion_windows(
         sorted_casts,
         landed,
@@ -440,6 +467,11 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         self_buff_windows, dnc_initial_buffs = dnc_self_buff_windows(
             sorted_casts, buffs, ability_names, actions, source_id,
             int(start), int(end), combatants, raw_damage,
+        )
+        snapshot_times = damage_snapshot_times(raw_damage, sorted_casts)
+    elif job.casefold() == "warrior" and source_id is not None:
+        self_buff_windows = war_self_buff_windows(
+            buffs, actions, raw_damage, sorted_casts, source_id, int(start), int(end),
         )
         snapshot_times = damage_snapshot_times(raw_damage, sorted_casts)
     brd_ticks = (
@@ -646,12 +678,12 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             )
             factor = self_damage_multiplier(buff_string, buff_time, self_buff_windows)
             values = values[0] * factor, values[1] * factor
-        elif job.casefold() == "dancer":
+        elif job.casefold() in {"dancer", "warrior"}:
             key = (event.get("packetID"), event.get("abilityGameID"))
             snapshot = snapshot_times.get(key, float(event.get("timestamp", 0)))
             # A finish's damage uses the buff state before that same action
             # refreshes Standard Finish, even though its landed record is later.
-            if action.get("damage_buff"):
+            if action.get("damage_buff") or (job.casefold() == "warrior" and name in {"Storm's Eye", "Mythril Tempest"}):
                 snapshot -= .001
             factor = self_damage_multiplier(str(event.get("buffs", "")), snapshot, self_buff_windows)
             values = values[0] * factor, values[1] * factor
@@ -713,9 +745,19 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             key not in guaranteed_packets
             and name not in combat_profile.non_random_damage_actions
             and not _has_inherently_guaranteed_outcome(action)
+            and not (job.casefold() == "warrior" and name in {"Fell Cleave", "Decimate"}
+                     and _has_buff(event, INNER_RELEASE))
         )
-        if is_random_outcome:
-            record_luck(event, sum(values) / 2)
+        non_random = name in combat_profile.non_random_damage_actions
+        record_hit_outcome(event, sum(values) / 2,
+                         guaranteed=not is_random_outcome and not non_random,
+                         non_random=non_random)
+        if job.casefold() == "warrior":
+            war_time = snapshot_times.get(key, float(event.get("timestamp", 0)))
+            if name in {"Storm's Eye", "Mythril Tempest"}:
+                war_time -= .001
+            war_factor = self_damage_multiplier(str(event.get("buffs", "")), war_time, self_buff_windows)
+            war_hit_rows.append((war_time, name, sum(values) / 2, war_factor))
 
         matched_events += 1
         row = totals[name]
@@ -946,6 +988,8 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         if name in channel_casts:
             continue
         action = actions.get(name)
+        if action is not None and _is_counterattack_action(action):
+            continue
         potency = action.get("potency") if action else None
         if not isinstance(potency, dict) or not isinstance(potency.get("base"), int):
             continue
@@ -1003,7 +1047,11 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             potency_weight *= revival_multiplier(event, combat_profile)
             record_damage_down_loss(event, potency_weight, potency_weight)
             record_revival_loss(event, potency_weight, potency_weight)
-            record_luck(event, potency_weight)
+            record_hit_outcome(event, potency_weight)
+            if job.casefold() == "warrior":
+                time = float(event.get("_snapshot_time", event.get("timestamp", 0)))
+                factor = self_damage_multiplier(str(event.get("buffs", "")), time, self_buff_windows)
+                war_hit_rows.append((time, str(event["_resolved_name"]), potency_weight, factor))
     gear_baseline = (
         luck_weighted_expected / luck_weighted_maximum if luck_weighted_maximum else 0.0
     )
@@ -1082,7 +1130,9 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         echo_status=initial_echo,
         ndps=ndps,
         rdps=rdps,
-        dps=_find_ranking_amount(rankings.get("dps"), source_id, str(source_name)),
+        dps=dps,
+        targetable_seconds=targetable_time.seconds,
+        targetable_time_source=targetable_time.source,
         duration_seconds=duration,
         raw_damage_events=len(raw_damage),
         landed_damage_events=len(landed),
@@ -1165,6 +1215,10 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             and isinstance(event.get("overkill"), (int, float))
             and event["overkill"] > 0
         ),
+        hit_bonus=hit_bonus_total / hit_bonus_weight if hit_bonus_weight else 0.0,
+        adjusted_hit_bonus=max(0.0, (hit_bonus_total - hit_bonus_adjustment) / hit_bonus_weight) if hit_bonus_weight else 0.0,
+        war=summarize_war(sorted_casts, buffs, combatants or [], ability_names, actions,
+                          source_id, start, end, war_hit_rows, targetable_time, self_buff_windows) if job.casefold() == "warrior" and source_id is not None else None,
         luck_score=luck_weighted_bonus / luck_weighted_maximum if luck_weighted_maximum else 0.0,
         adjusted_luck_score=(
             max(

@@ -15,6 +15,19 @@ from ffxiv_potency.fflogs import DownloadResult, ReportReference
 from .helpers import _write_selected_log
 
 
+def test_cli_analyses_historical_warrior_log(war_saved_sources, capsys):
+    assert cli.main(["analyse", str(war_saved_sources[0])]) == 0
+    output = capsys.readouterr().out
+    assert "Actions: valid since 7.4" in output
+    assert "Gear: 7.4 Savage BiS (assumed)" in output
+    assert "Grade 4 Gemdraught of Strength [HQ]" in output
+    assert "Surging Tempest:" in output and "Inner Release and follow-ups:" in output
+    assert "Melee downtime:" in output
+    assert "  Surging Tempest: 0 uses" not in output
+    assert "Tomahawk:" in output
+    assert output.index("Hit Bonus:") < output.index("Luck baseline:")
+
+
 def test_cli_analyses_saved_brd_fight(
     monkeypatch, tmp_path: Path, extract_fight, capsys
 ) -> None:
@@ -209,3 +222,27 @@ def test_cli_selects_actions_from_detected_job(monkeypatch, tmp_path: Path, caps
     assert cli.main(["analyse", str(directory)]) == 1
     assert "correct actions selected" in capsys.readouterr().err
 
+
+def test_criterion_backfills_encounter_appearances_once(monkeypatch, tmp_path):
+    directory = tmp_path / "abc123/fight-9/source-18"
+    _write_selected_log(directory, 18)
+    fight_path = directory / "fight.json"
+    fight = json.loads(fight_path.read_text())
+    fight.update(encounterID=4550, friendlyPlayers=[18])
+    fight_path.write_text(json.dumps(fight))
+    (directory / "rankings.json").write_text('{"metric":"ndps","rankings":{},"rdps":{},"dps":{}}')
+    for name in ("combatant-info-events.json", "targetability-events.json", "encounter-overkill-events.json",
+                 "life-events.json", "revival-buff-events.json"):
+        (directory / name).write_text("[]")
+    monkeypatch.setenv("FFLOGS_CLIENT_ID", "test")
+    monkeypatch.setenv("FFLOGS_CLIENT_SECRET", "test")
+    calls = []
+    def refresh(reference, saved):
+        assert reference.source_id == 18 and saved == directory
+        calls.append(saved)
+        (saved / "encounter-damage-events.json").write_text("[]")
+    monkeypatch.setattr(cli, "refresh_encounter_damage_events", refresh)
+    url = "https://www.fflogs.com/reports/abc123?fight=9&source=18"
+    assert cli._resolve_analysis_directory(url, tmp_path, include_targetability=True) == directory
+    assert cli._resolve_analysis_directory(url, tmp_path, include_targetability=True) == directory
+    assert calls == [directory]

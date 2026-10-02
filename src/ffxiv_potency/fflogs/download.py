@@ -299,14 +299,14 @@ def _download_targetability_events(
             "code": reference.report_code,
             "fightIDs": [reference.fight_id],
             "startTime": start_time,
-            "filter": 'type="targetabilityupdate"',
+            "filter": 'type="targetabilityupdate" or type="death"',
         }))
         page = report.get("events")
         if not isinstance(page, dict) or not isinstance(page.get("data"), list):
             raise FFLogsError("invalid targetability event response")
         events.extend(
             event for event in page["data"]
-            if isinstance(event, dict) and event.get("type") == "targetabilityupdate"
+            if isinstance(event, dict) and event.get("type") in {"targetabilityupdate", "death"}
         )
         next_timestamp = page.get("nextPageTimestamp")
         if next_timestamp is None:
@@ -433,6 +433,7 @@ def _download_events(
     data_type: str,
     *,
     include_resources: bool = False,
+    encounter_wide: bool = False,
 ) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
     start_time: float | None = None
@@ -443,7 +444,7 @@ def _download_events(
             {
                 "code": reference.report_code,
                 "fightIDs": [reference.fight_id],
-                "sourceID": None if data_type in {"Buffs", "Debuffs"} else reference.source_id,
+                "sourceID": None if encounter_wide or data_type in {"Buffs", "Debuffs"} else reference.source_id,
                 "targetID": reference.source_id if data_type in {"Buffs", "Debuffs"} else None,
                 "startTime": start_time,
                 "includeResources": include_resources,
@@ -460,6 +461,33 @@ def _download_events(
         if not isinstance(next_timestamp, (int, float)) or next_timestamp == start_time:
             raise FFLogsError(f"invalid {data_type} pagination timestamp")
         start_time = float(next_timestamp)
+
+
+def _download_encounter_damage(client: _GraphQLClient, reference: ReportReference,
+                               master_data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Save only each enemy instance's first party hit to establish appearances."""
+    actors = {a["id"]: a for a in master_data.get("actors", [])}
+    first: dict[tuple[Any, Any], dict[str, Any]] = {}
+    for event in _download_events(client, reference, "DamageDone", encounter_wide=True):
+        source = actors.get(event.get("sourceID"), {})
+        target = actors.get(event.get("targetID"), {})
+        if (event.get("type") != "damage" or event.get("amount", 0) <= 0
+                or target.get("type") != "NPC" or target.get("petOwner") is not None
+                or not (source.get("type") == "Player" or source.get("petOwner") is not None)):
+            continue
+        key = event.get("targetID"), event.get("targetInstance", 1)
+        if key not in first or event["timestamp"] < first[key]["timestamp"]:
+            first[key] = event
+    return sorted(first.values(), key=lambda e: e["timestamp"])
+
+
+def refresh_encounter_damage_events(reference: ReportReference, directory: Path) -> Path:
+    master_data = json.loads((directory / "master-data.json").read_text(encoding="utf-8"))
+    with FFLogsClient.from_environment() as client:
+        events = _download_encounter_damage(client, reference, master_data)
+        targetability = _download_targetability_events(client, reference)
+    _write_json(directory / "targetability-events.json", targetability)
+    return _write_json(directory / "encounter-damage-events.json", events)
 
 
 def _checkpoint_context(client: _GraphQLClient, reference: ReportReference,
@@ -584,8 +612,12 @@ def download_report_events(
         )
         targetability_events = _download_targetability_events(client, reference)
         encounter_overkills = _download_encounter_overkills(client, reference)
+        encounter_damage = (_download_encounter_damage(client, reference, master_data)
+                            if fights[0].get("encounterID") in {4549, 4550, 4551} else None)
 
     fight = {**fights[0], "reportStartTime": report.get("startTime")}
+    if encounter_damage is not None:
+        _write_json(directory / "encounter-damage-events.json", encounter_damage)
     fight_path = _write_json(directory / "fight.json", fight)
     master_path = _write_json(directory / "master-data.json", master_data)
     damage_path = _write_json(directory / "damage-events.json", damage_events)

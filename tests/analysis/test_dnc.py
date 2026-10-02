@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from ffxiv_potency.analysis import AnalysisError, analyze_saved_fight
+from ffxiv_potency.analysis.damage import falloff_primary_hits
 from ffxiv_potency.analysis.dnc.buffs import dnc_self_buff_windows
-from ffxiv_potency.analysis.dnc.finishes import dnc_primary_hits
 from ffxiv_potency.analysis.potency import _direct_potency
 
 
@@ -140,7 +140,7 @@ def test_dancer_primary_target_uses_normalized_damage_not_selected_target():
         "multiplier": 1.1,
     }
     assert (
-        dnc_primary_hits(
+        falloff_primary_hits(
             {(1, 15997): [secondary, primary]}, actions, {15997: "Saber Dance"}, 1.627
         )[(1, 15997)]
         is primary

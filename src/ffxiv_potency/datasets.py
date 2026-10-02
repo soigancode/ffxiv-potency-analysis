@@ -5,14 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .jobs import job_code
 from .patches import KNOWN_PATCHES, LATEST_KNOWN_PATCH, patch_order, played_patch
 from .reference_data import reference_path
-
-JOB_CODES = {"bard": "brd", "machinist": "mch", "dancer": "dnc", "scholar": "sch", "dragoon": "drg"}
-
-
-def job_code(job: str) -> str:
-    return JOB_CODES.get(job.casefold(), job.casefold())
 
 
 def validate_manifest(document: dict[str, Any], root: Path) -> None:

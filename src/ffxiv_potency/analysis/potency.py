@@ -68,3 +68,9 @@ def _direct_potency(
 def _is_channeled_action(action: dict[str, Any]) -> bool:
     description = " ".join(action.get("description", ())).casefold()
     return "effect ends upon using another action or moving" in description
+
+
+def _is_counterattack_action(action: dict[str, Any]) -> bool:
+    """A defensive cast does not itself resolve its later retaliation damage."""
+    description = " ".join(action.get("description", ())).casefold()
+    return "every time you suffer physical damage" in description
