@@ -14,7 +14,7 @@ Supported duties:
 
 | Patch | Supported jobs |
 | --- | --- |
-| 7.4–7.56 | Warrior (WAR), Bard (BRD), Machinist (MCH), Dancer (DNC) |
+| 7.4–7.56 | Paladin (PLD), Warrior (WAR), Bard (BRD), Machinist (MCH), Dancer (DNC) |
 
 Leaderboard support covers the global partitions, including Savage Echo. Dungeon fights use their played date to identify the patch. See [Limitations](#limitations) for gear and sync assumptions.
 
@@ -28,6 +28,7 @@ Leaderboard support covers the global partitions, including Savage Echo. Dungeon
 - [Understanding the results](#understanding-the-results)
 - [Calculation details](#calculation-details)
   - [Shared calculations](#shared-calculations)
+  - [Paladin](#paladin)
   - [Warrior](#warrior)
   - [Bard](#bard)
   - [Machinist](#machinist)
@@ -96,7 +97,7 @@ Ranges and comma-separated selections contain 2–25 distinct leaderboard positi
 | `mistwake` | Mistwake |
 | `clyteum` | The Clyteum |
 
-Use `war`, `brd`, `mch`, or `dnc` for the job. The full job names also work.
+Use `pld`, `war`, `brd`, `mch`, or `dnc` for the job. The full job names also work.
 
 The `--partition` option is optional. Savage defaults to the global 7.5 standard-composition leaderboard. To select another global leaderboard:
 
@@ -152,7 +153,7 @@ The tool remembers calculated results to speed up later views. Clearing logs fre
 
 The analysis shows the patch in effect on the fight date and the gear assumed for that patch. This can differ from FF Logs’ broader ranking patch bracket shown above a leaderboard. Gear is an assumption, not equipment recovered from the log.
 
-The default is **7.4 Savage BiS** before patch 7.55 and **7.55 Relic BiS** from 7.55 until 8.0. To choose a different set, add `--gear savage_7_4` or `--gear relic_7_55` to `analyse`, `compare`, or a leaderboard command. The choice applies to all logs in that command. Run `analyse` to see the gear used for a particular log.
+The default is **7.4 Savage BiS** before patch 7.55. From 7.55 until 8.0, PLD assumes **7.55 Real BiS** and other jobs assume **7.55 Relic BiS**. To choose a different set, add `--gear savage_7_4`, `--gear relic_7_55`, or PLD's `--gear real_7_55` to `analyse`, `compare`, or a leaderboard command. The choice applies to all logs in that command. Run `analyse` to see the gear used for a particular log.
 
 ### Compare your logs
 
@@ -166,7 +167,7 @@ ffxiv-potency compare \
 
 The comparison shows duration, targetable time, damage metrics, potency, PPS, and the PPS difference from the first selected log. Leaderboards use rank 1 as the reference when included, otherwise the highest selected rank. Raid comparisons show adjusted Hit Bonus and adjusted Luck. Dungeon DPS comparisons show Hit Bonus and Luck. Notes mark deaths (`KO`), Damage Down (`DD`), and confirmed attacks lost to target death or untargetability (`G`). Saved fights are reused.
 
-WAR and MCH combine equal rDPS and nDPS values in one **rDPS/nDPS** column.
+PLD, WAR and MCH combine equal rDPS and nDPS values in one **rDPS/nDPS** column.
 
 ## Understanding the results
 
@@ -227,7 +228,7 @@ F=\left\lfloor\frac{\text{level main stat}\times
 +\text{weapon damage}.
 ```
 
-WAR uses an action-damage trait multiplier of `1.0`. BRD, MCH, and DNC divide by `1.2` because their action-damage trait does not apply to auto-attacks. With the configured stats, WAR's 3.36 s weapon delay gives about **100.59 action-comparable potency per Attack**, MCH's 2.64 s delay gives **58.65 potency per Shot**, and DNC's 3.12 s delay gives **77.88 potency per Attack**, before potion effects. These approximations agree with the damage-per-potency comparisons in checked logs.
+PLD and WAR use an action-damage trait multiplier of `1.0`. BRD, MCH, and DNC divide by `1.2` because their action-damage trait does not apply to auto-attacks. With the configured stats, PLD's 2.24 s weapon delay gives about **66.83 action-comparable potency per Attack**, WAR's 3.36 s weapon delay gives about **100.59 action-comparable potency per Attack**, MCH's 2.64 s delay gives **58.65 potency per Shot**, and DNC's 3.12 s delay gives **77.88 potency per Attack**, before potion effects. These approximations agree with the damage-per-potency comparisons in checked logs.
 
 #### Hit Bonus and Adjusted Hit Bonus
 
@@ -275,6 +276,16 @@ A_i=(1+p'_C(C-1))(1+0.25p'_D)
 ```
 
 Tracked effects are Battle Litany, Battle Voice, Army's Paeon, the Wanderer's Minuet, Devilment on the Dancer or Dance Partner, and Chain Stratagem on the target. The adjustment subtracts the **expected** buff benefit. It does not erase actual Crits or Direct Hits.
+
+### Paladin
+
+PLD uses Strength for both weaponskills and damaging spells. Listed guide potencies already include level-100 trait upgrades. Fight or Flight adds 25% personal damage. Circle of Scorn contributes a 140-potency application and 30-potency periodic ticks, retaining the application's personal buff, potion and damage-penalty snapshot.
+
+Holy Spirit has 400 base potency, 500 with Divine Might, or 700 with Requiescat. Holy Circle has 100, 250, or 350 respectively. Divine Might takes priority and leaves Requiescat charges intact. Confiteor and Blades of Faith, Truth and Valor have 500, 260, 380 and 500 base potency, increasing to 1,000, 760, 880 and 1,000 with Requiescat. Expiacion, Imperator and the Confiteor/Blade actions deal 40% potency to additional targets.
+
+Spell enhancements replay recorded grants, stacks, consumption, expiry and death before each cast resolves. Blade follow-ups remain grouped under the preceding burst. Casts without an active Requiescat charge use unenhanced potency. Analyse shows cooldown use counts, ready-effect outcomes, spell enhancements, cast-time evidence and each burst's completed casts and landed follow-up potency.
+
+Melee downtime groups consecutive Shield Lobs and confirmed hard-cast Holy Spirits, with neighboring GCDs and every cast gap. Instant Holy Spirit and the opening Holy Spirit are excluded. Missing begin-cast evidence remains unconfirmed.
 
 ### Warrior
 

@@ -4,6 +4,8 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 from ffxiv_potency import cli
 from ffxiv_potency.analysis import (
     ActionSummary,
@@ -23,9 +25,32 @@ from ffxiv_potency.analysis.models import (
     ConsumableIdentity,
     ReducedDamageHit,
 )
+from ffxiv_potency.analysis.penalties import DamagePenaltySummary, StatusWindow
 from ffxiv_potency.analysis.war.summary import WarSummary, WarTomahawk
 
 from .helpers import _write_selected_log
+
+
+@pytest.mark.parametrize("refreshes,note", [
+    ((353.307,), ""),
+    ((353.307, 360.1), "    Refreshed: 06m00s"),
+    ((360.1, 360.2), "    Refreshed: 06m00s"),
+])
+def test_penalty_refresh_notes_show_distinct_displayed_times(capsys, refreshes, note):
+    result = AnalysisResult(
+        fight_name="Boss", encounter_id=4550, source_name="Player", ndps=None,
+        duration_seconds=400, raw_damage_events=0, landed_damage_events=0,
+        matched_damage_events=0, potency_min=0, potency_max=0, actions=(),
+        auto_attacks=(), pet_deployments=(), hit_outcomes=HitOutcomeSummary(0, 0, 0, 0),
+        potion=PotionSummary(0, 0, 0, 0, 0), unmatched=(), ghosted=(),
+        status_windows=(StatusWindow("Damage Down", 353.262, 383.307, "expired", refreshes),),
+        damage_penalties=(DamagePenaltySummary("Damage Down", 0.85, 353.262, 383.307, 0),),
+    )
+    cli._print_analysis(result)
+    output = capsys.readouterr().out
+    notes = [line for line in output.splitlines() if "Refreshed:" in line]
+    assert notes == ([note] if note else [])
+    assert result.status_windows[0].refresh_seconds == refreshes
 
 
 def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) -> None:

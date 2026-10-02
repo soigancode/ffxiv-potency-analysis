@@ -292,6 +292,7 @@ def summarize_execution(
     )
     counts = Counter(_event_name(e, names) for e in own)
     selected = {
+        "paladin": ("Fight or Flight", "Imperator", "Circle of Scorn", "Expiacion", "Intervene"),
         "warrior": ("Inner Release", "Infuriate"),
         "bard": ("Raging Strikes", "Battle Voice", "Radiant Finale"),
         "machinist": (

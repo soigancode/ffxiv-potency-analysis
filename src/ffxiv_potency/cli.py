@@ -64,6 +64,7 @@ from .jobguide.snapshot import LATEST_KNOWN_PATCH, update_job_guide
 from .jobs import JOB_NAMES, job_name
 
 SUPPORTED_JOBS = {
+    "pld": "paladin", "paladin": "paladin",
     "war": "warrior", "warrior": "warrior",
     "brd": "bard", "bard": "bard",
     "mch": "machinist", "machinist": "machinist",
@@ -387,7 +388,7 @@ def _compare_directories(
     provenance_labels = (() if shared_provenance else
                          (("Partition", "Patch") if show_partition else ("Patch",)))
     use_dps = results[0].encounter_id in {4549, 4551}
-    combine_dps = jobs[0] in {"warrior", "machinist"} and all(
+    combine_dps = jobs[0] in {"paladin", "warrior", "machinist"} and all(
         result.rdps is not None and result.ndps is not None
         and f"{result.rdps:.1f}" == f"{result.ndps:.1f}" for result in results
     )
@@ -521,7 +522,7 @@ def _verify_supported_fight(directory: Path) -> None:
 
 def _actions_for_job(job: str, override: Path | None) -> Path:
     if job not in SUPPORTED_JOBS.values():
-        raise ValueError(f"job {job!r} is not supported yet; currently Bard, Machinist, Dancer, and Warrior are supported")
+        raise ValueError(f"job {job!r} is not supported yet; currently Paladin, Warrior, Bard, Machinist, and Dancer are supported")
     if override is not None:
         path = override
     else:

@@ -1,0 +1,25 @@
+{
+  "id": "relic_7_55",
+  "label": "7.55 Relic BiS",
+  "patch": "7.55",
+  "food": "food/7.4/caramel_popcorn_hq.json",
+  "potion": "potions/7.4/grade_4_gemdraught_of_strength_hq.json",
+  "level": 100,
+  "solo_strength": 6450,
+  "party_strength": 6772,
+  "combat_profile": "combat_profiles/level_100.json",
+  "source": {
+    "url": "https://xivgear.app/?page=bis%7Cpld%7Ccurrent",
+    "set": "2.50 Relic Weapon",
+    "race_assumption": "Au Ra - Xaela, matching the supplied XivGear export",
+    "sword_id": 51000,
+    "shield_id": 51021
+  },
+  "critical_hit": 3595,
+  "direct_hit": 1230,
+  "determination": 3146,
+  "skill_speed": 420,
+  "tenacity": 676,
+  "weapon_damage": 158,
+  "weapon_delay_seconds": 2.24
+}

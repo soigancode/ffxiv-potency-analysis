@@ -1,19 +1,15 @@
 {
   "schema_version": 1,
-  "job": "warrior",
+  "job": "paladin",
   "action_sets": [
     {
       "id": "actions_7_4",
       "file": "7.4/actions.json",
       "valid_from": "7.4",
-      "valid_until": "7.5",
-      "verified_through": "7.45"
-    },
-    {
-      "id": "actions_7_5",
-      "file": "7.5/actions.json",
-      "valid_from": "7.5",
-      "verified_through": "7.56"
+      "verified_through": "7.56",
+      "applicability_sources": [
+        "https://eu.finalfantasyxiv.com/lodestone/topics/detail/9beb8a7b5c46944cd80ed92b2b8e972395fbea80"
+      ]
     }
   ],
   "gear_sets": [
@@ -23,7 +19,8 @@
       "file": "gear_sets/7.4_savage.json",
       "valid_from": "7.4",
       "valid_until": "7.55",
-      "verified_through": "7.56"
+      "verified_through": "7.56",
+      "automatic": true
     },
     {
       "id": "relic_7_55",
@@ -31,7 +28,17 @@
       "file": "gear_sets/7.55_relic.json",
       "valid_from": "7.55",
       "valid_until": "8.0",
-      "verified_through": "7.56"
+      "verified_through": "7.56",
+      "automatic": false
+    },
+    {
+      "id": "real_7_55",
+      "name": "7.55 Real BiS",
+      "file": "gear_sets/7.55_real.json",
+      "valid_from": "7.55",
+      "valid_until": "8.0",
+      "verified_through": "7.56",
+      "automatic": true
     }
   ],
   "pet_scaling_sets": [],
@@ -65,9 +72,9 @@
   "last_capture": {
     "patch": "7.56",
     "source": {
-      "url": "https://eu.finalfantasyxiv.com/jobguide/warrior/",
-      "retrieved_at": "2026-10-02T22:24:04.214367Z",
-      "sha256": "f6cd39f76e6982b50ed1bbfb778cf5c720f42ba408a487acc2613f2d2c5230da"
+      "url": "https://eu.finalfantasyxiv.com/jobguide/paladin/",
+      "retrieved_at": "2026-10-02T22:24:03.417833Z",
+      "sha256": "697fa7d112ad487ca54d4be4fe9470070892689df0578d1979df7ad473237fdd"
     }
   }
 }

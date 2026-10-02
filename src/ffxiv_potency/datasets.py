@@ -45,7 +45,8 @@ def validate_manifest(document: dict[str, Any], root: Path) -> None:
                         raise ValueError(f"unknown patch label {row[key]!r}")
         ids = set()
         previous_end = None
-        for index, row in enumerate(sorted(rows, key=lambda item: patch_order(item["valid_from"]))):
+        has_automatic = False
+        for row in sorted(rows, key=lambda item: patch_order(item["valid_from"])):
             if row["id"] in ids:
                 raise ValueError(f"duplicate {category} ID {row['id']}")
             ids.add(row["id"])
@@ -56,9 +57,14 @@ def validate_manifest(document: dict[str, Any], root: Path) -> None:
                 raise ValueError(f"invalid range for {row['id']}")
             if verified < start:
                 raise ValueError(f"invalid verification boundary for {row['id']}")
-            if index and (previous_end is None or start < previous_end):
-                raise ValueError(f"overlapping {category} ranges")
-            previous_end = end
+            if "automatic" in row and (category != "gear_sets" or type(row["automatic"]) is not bool):
+                raise ValueError("automatic selection must be a boolean on gear sets")
+            automatic = row.get("automatic", True)
+            if automatic:
+                if has_automatic and (previous_end is None or start < previous_end):
+                    raise ValueError(f"overlapping {category} ranges")
+                previous_end = end
+                has_automatic = True
             path = root / row["file"]
             if Path(row["file"]).is_absolute() or not path.resolve().is_relative_to(root.resolve()) or not path.is_file():
                 raise ValueError(f"missing or invalid dataset file: {row['file']}")
@@ -100,7 +106,8 @@ def select_set(document: dict[str, Any], category: str, patch: str,
         matches = [row for row in rows if row["id"] == selected]
     else:
         point = patch_order(patch)
-        matches = [row for row in rows if patch_order(row["valid_from"]) <= point
+        matches = [row for row in rows if row.get("automatic", True)
+                   and patch_order(row["valid_from"]) <= point
                    and (not row.get("valid_until") or point < patch_order(row["valid_until"]))]
     if len(matches) != 1:
         raise ValueError(f"no unique {category} dataset for patch {patch}" +

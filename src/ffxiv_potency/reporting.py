@@ -98,6 +98,15 @@ def ready_line(effect):
     )
 
 
+def ready_loss_findings(effects):
+    """Use the same loss wording for every job's tracked ready effects."""
+    return [
+        f"{effect.name}: " + " | ".join(loss_details(effect, include_remaining=False))
+        for effect in effects
+        if effect.expired or effect.overwritten or getattr(effect, "death_lost", 0)
+    ]
+
+
 def confirmed_ghosts(result: AnalysisResult) -> list[tuple[float, str, str, str]]:
     low = {(time, name) for name, events in result.ghosted_target_low_hp for time, _ in events}
     targets = {
@@ -181,7 +190,7 @@ def print_analysis(
     if result.encounter_id in {4549, 4551}:
         metrics.append(f"DPS: {result.dps:,.1f}" if result.dps is not None else "DPS: n/a")
     elif (
-        job in {"warrior", "machinist"}
+        job in {"paladin", "warrior", "machinist"}
         and result.rdps is not None
         and result.ndps is not None
         and round(result.rdps, 1) == round(result.ndps, 1)
@@ -217,27 +226,22 @@ def print_analysis(
             )
         if w.unused_expired_charges:
             findings.append(
-                f"Inner Release: {w.unused_expired_charges} unused "
-                + ("charge" if w.unused_expired_charges == 1 else "charges")
-                + " at expiry"
+                f"Inner Release: Expired: {w.unused_expired_charges}"
             )
-        for r in w.ready:
-            if r.expired or r.overwritten:
-                findings.append(
-                    f"{r.name}: " + " | ".join(loss_details(r, include_remaining=False))
-                )
+        findings.extend(ready_loss_findings(w.ready))
         if w.tomahawks:
             findings.append(tomahawk_summary(w))
+    if result.pld:
+        findings.extend(ready_loss_findings(result.pld.ready))
+        if result.pld.ranged:
+            count = len(result.pld.ranged)
+            findings.append(f"Melee downtime: {count} ranged " + ("chain" if count == 1 else "chains"))
     if execution:
         for c in execution.coverage:
             gaps = reported_coverage_gaps(c)  # Opening setup remains in actual coverage.
             if gaps:
                 findings.append(f"{c.name}: {sum(b - a for a, b in gaps):.1f}s targetable gaps")
-        for r in execution.ready:
-            if r.expired or r.overwritten or r.death_lost:
-                findings.append(
-                    f"{r.name}: " + " | ".join(loss_details(r, include_remaining=False))
-                )
+        findings.extend(ready_loss_findings(execution.ready))
         for time in execution.repertoire_losses:
             findings.append(
                 f"{stamp(time)}: at least 1 unused Repertoire stack (Empyreal Arrow confirmed)"
@@ -256,11 +260,7 @@ def print_analysis(
             )
     proc = result.dnc_procs
     if proc:
-        for r in proc.ready_procs:
-            if r.expired or r.overwritten or r.death_lost:
-                findings.append(
-                    f"{r.name}: " + " | ".join(loss_details(r, include_remaining=False))
-                )
+        findings.extend(ready_loss_findings(proc.ready_procs))
     ghosts = confirmed_ghosts(result)
     if ghosts:
         findings.append(
@@ -326,6 +326,68 @@ def print_analysis(
             for a, b in reported_coverage_gaps(c):
                 print(f"{indent}  {stamp(a)} - {stamp(b)}: {b - a:.1f}s targetable gap")
 
+    if result.pld:
+        p = result.pld
+        print("\nFight or Flight and offensive abilities:")
+        for name in ("Fight or Flight", "Imperator", "Requiescat", "Circle of Scorn", "Expiacion", "Intervene"):
+            if name != "Requiescat" or counts.get(name):
+                value = counts.get(name, 0)
+                print(f"  {name}: {uses(name)} " + ("use" if value == 1 else "uses"))
+        print("\nReady effects and spell charges:")
+        for r in p.ready:
+            print("  " + ready_line(r))
+            for time, reason in r.losses:
+                print(f"    {stamp(time)}: {reason}")
+        print("\nSpell casts:")
+        enhancement_order = {"Divine Might": 0, "Requiescat": 1, "None": 2}
+        spell_counts = sorted(p.spell_counts, key=lambda row: (
+            row[0], enhancement_order.get(row[1], 3), row[2],
+        ))
+        table(("Spell", "Enhancement", "Cast evidence", "Casts"),
+              [(name, effect, kind, str(n)) for name, effect, kind, n in spell_counts])
+        print("  Unconfirmed cast time includes openers whose begin-cast is outside the saved interval.")
+        print("\nImperator/Requiescat follow-ups:")
+        table(("Burst", "Trigger", "Confiteor", "Faith", "Truth", "Valor", "Honor", "Landed potency"),
+              [(stamp(b.seconds), b.trigger, *(str(f.casts) for f in b.follow_ups),
+                f"{sum(f.potency for f in b.follow_ups):,.1f}") for b in p.bursts])
+        print("  Follow-up columns count completed casts. Potency includes only landed hits.")
+        for b in p.bursts:
+            for note in b.notes:
+                print(f"    {stamp(b.seconds)}: {note}")
+        print("\nCircle of Scorn:")
+        table(("Applications", "Periodic ticks", "Application potency", "Periodic potency"),
+              [(str(p.circle.applications), str(p.circle.ticks),
+                f"{p.circle.application_potency:,.1f}", f"{p.circle.tick_potency:,.1f}")])
+        print("\nMelee downtime:")
+        if p.ranged:
+            count = len(p.ranged)
+            total = sum(len(c.actions) for c in p.ranged)
+            print(f"  {total} ranged " + ("GCD" if total == 1 else "GCDs")
+                  + f" in {count} " + ("chain" if count == 1 else "chains"))
+        else:
+            print("  No ranged GCD chains identified.")
+        holy_spirit_casts = {round(time, 6): kind for time, kind in p.holy_spirit_casts}
+
+        def ranged_name(name, time):
+            if name != "Holy Spirit":
+                return name
+            kind = holy_spirit_casts.get(round(time, 6), "unconfirmed")
+            return f"HS ({'hard-cast' if kind == 'hard cast' else kind})"
+
+        for c in p.ranged:
+            before = (f"{ranged_name(c.previous, c.seconds - c.previous_gap)}"
+                      + f" -> {c.previous_gap:.2f}s -> "
+                      if c.previous and c.previous_gap is not None else "")
+            time = c.seconds
+            chain = ranged_name(c.actions[0], time)
+            for gap, name in zip(c.gaps, c.actions[1:]):
+                time += gap
+                chain += f" -> {gap:.2f}s -> {ranged_name(name, time)}"
+            after = (f" -> {c.following_gap:.2f}s -> "
+                     + ranged_name(c.following, time + c.following_gap)
+                     if c.following and c.following_gap is not None else "")
+            print(f"    {stamp(c.seconds)}: {before}{chain}{after}")
+        print("  Instant Holy Spirit and the opening Holy Spirit are excluded.")
     if result.war:
         w = result.war
         print("\nSurging Tempest:")
@@ -850,9 +912,11 @@ def print_analysis(
                         "removed early" if w.end_reason == "removed" else w.end_reason,
                     )
                 )
+                refresh_times = tuple(dict.fromkeys(
+                    stamp(t) for t in w.refresh_seconds if stamp(t) != stamp(w.start_seconds)
+                ))
                 penalty_notes.append(
-                    "Refreshed: " + ", ".join(stamp(t) for t in w.refresh_seconds)
-                    if w.refresh_seconds else ""
+                    "Refreshed: " + ", ".join(refresh_times) if refresh_times else ""
                 )
             duration = sum(w.end_seconds - w.start_seconds for w in windows)
             reduction = (

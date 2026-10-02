@@ -166,7 +166,9 @@ def _direct_potency(
     base = int(base_match.group(1).replace(",", "")) if base_match is not None else None
     if base is None:
         named_match = _first_match(_NAMED_POTENCY_PATTERN, description)
-        if named_match is not None:
+        if named_match is not None and named_match[1].casefold() not in {
+            "divine might", "requiescat", "barrage", "cure", "healing", "barrier", "shield"
+        }:
             base = int(named_match.group(2))
     if falloff_match := (
         _FALLOFF_PATTERN.search(damage_line or "")
@@ -189,6 +191,14 @@ def _combo_potency(action_name: str, description: tuple[str, ...]) -> ComboPoten
             combo_value = int(match.group(1))
 
     if (combo_action is None) != (combo_value is None):
+        # These spell combos gate a sequence, rather than raising base potency.
+        if combo_action is not None and combo_value is None and action_name in {
+            "Blade of Faith", "Blade of Truth", "Blade of Valor"
+        }:
+            expected = {"Blade of Faith": "Confiteor", "Blade of Truth": "Blade of Faith",
+                        "Blade of Valor": "Blade of Truth"}
+            if combo_action == expected[action_name]:
+                return None
         raise JobGuideParseError(f"Incomplete combo potency for {action_name!r}")
 
     if combo_action is not None and combo_value is not None:
@@ -304,11 +314,11 @@ def _parse_potency(action_name: str, description: tuple[str, ...]) -> Potency | 
         return None
     if action_name in _DNC_STEPS:
         return None
-    if any(line.startswith("Cure Potency:") for line in description) and not any(
-        _DAMAGE_POTENCY_PATTERN.search(line) for line in description
+    if not any(_DAMAGE_POTENCY_PATTERN.search(line) for line in description) and any(
+        phrase in " ".join(description).casefold()
+        for phrase in ("equivalent to a heal", "healing potency", "cure potency:")
     ):
         return None
-
     base, falloff = _direct_potency(action_name, description)
     combo = _combo_potency(action_name, description)
     damage_over_time = _damage_over_time(action_name, description)
@@ -322,6 +332,16 @@ def _parse_potency(action_name: str, description: tuple[str, ...]) -> Potency | 
         stack_potency = StackPotency("Steps", tuple(int(row.group(2).replace(",", "")) for row in rows), 0)
         base = stack_potency.values[0]
     barrage_potency = _brd_barrage_potency(action_name, description)
+    spell_conditions = tuple(
+        ConditionalPotency(match[1].title(), int(match[2].replace(",", "")))
+        for line in description
+        if (match := re.fullmatch(r"(Divine Might|Requiescat) Potency: ([\d,]+)",
+                                 line, re.IGNORECASE))
+    )
+    if spell_conditions and base is None:
+        raise JobGuideParseError(f"Missing base spell potency for {action_name!r}")
+    if len({p.condition for p in spell_conditions}) != len(spell_conditions):
+        raise JobGuideParseError(f"Duplicate conditional spell potency for {action_name!r}")
     triggered = _mch_triggered_potency(action_name, description)
     modifier = _mch_potency_modifier(action_name, description)
 
@@ -340,8 +360,8 @@ def _parse_potency(action_name: str, description: tuple[str, ...]) -> Potency | 
         triggered=triggered,
         modifier=modifier,
         stack_potency=stack_potency,
-        conditional_potencies=(ConditionalPotency("Barrage", barrage_potency),)
-        if barrage_potency is not None else (),
+        conditional_potencies=spell_conditions + ((ConditionalPotency("Barrage", barrage_potency),)
+                                                  if barrage_potency is not None else ()),
     )
 
 

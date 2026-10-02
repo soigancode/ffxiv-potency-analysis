@@ -7,6 +7,7 @@ from .brd.songs import BrdFinaleSummary
 from .execution import ExecutionSummary
 from .mch.wildfire import MchWildfireSummary
 from .penalties import DamagePenaltySummary, StatusWindow
+from .pld.summary import PldSummary
 from .war.summary import WarSummary
 
 
@@ -230,6 +231,7 @@ class AnalysisResult:
     hit_bonus: float = 0.0
     adjusted_hit_bonus: float = 0.0
     war: WarSummary | None = None
+    pld: PldSummary | None = None
     execution: ExecutionSummary | None = None
     random_hit_outcomes: HitOutcomeSummary | None = None
     luck_score: float = 0.0

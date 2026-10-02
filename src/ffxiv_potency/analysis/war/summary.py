@@ -5,6 +5,7 @@ from itertools import pairwise
 from typing import Any
 
 from ..events import _event_name
+from ..ranged import ranged_chains
 from ..targetability import TargetableTime
 
 
@@ -228,32 +229,11 @@ def summarize_war(
         for e in own_casts
         if "weaponskill" in str(actions.get(_event_name(e, names), {}).get("type", "")).casefold()
     ]
-    tomahawks = []
-    index = 0
-    while index < len(gcds):
-        cast = gcds[index]
-        if _event_name(cast, names) != "Tomahawk":
-            index += 1
-            continue
-        last = index
-        while last + 1 < len(gcds) and _event_name(gcds[last + 1], names) == "Tomahawk":
-            last += 1
-        previous = gcds[index - 1] if index else None
-        following = gcds[last + 1] if last + 1 < len(gcds) else None
-        tomahawks.append(
-            WarTomahawk(
-                (cast["timestamp"] - start) / 1000,
-                _event_name(previous, names) if previous else None,
-                (cast["timestamp"] - previous["timestamp"]) / 1000 if previous else None,
-                _event_name(following, names) if following else None,
-                (following["timestamp"] - gcds[last]["timestamp"]) / 1000 if following else None,
-                tuple(
-                    (gcds[i + 1]["timestamp"] - gcds[i]["timestamp"]) / 1000
-                    for i in range(index, last)
-                ),
-            )
-        )
-        index = last + 1
+    packets = {(e.get("packetID"), e.get("abilityGameID")) for e in gcds
+               if _event_name(e, names) == "Tomahawk"}
+    tomahawks = tuple(WarTomahawk(c.seconds, c.previous, c.previous_gap,
+                                 c.following, c.following_gap, c.gaps)
+                     for c in ranged_chains(gcds, names, start, packets))
     setup = _tempest_setup_windows(
         own_casts, own_buffs, names, actions, initial, start, end, targetable_time, windows
     )

@@ -101,7 +101,7 @@ def test_cli_jobguide_without_item_updates_all_jobs_and_buffs(
     monkeypatch.setattr(cli, "update_raid_effects", fake_update_raid_effects)
 
     assert cli.main(["jobguide", "--output", str(tmp_path)]) == 0
-    assert updated == ["warrior", "bard", "machinist", "dancer", "buffs"]
+    assert updated == ["paladin", "warrior", "bard", "machinist", "dancer", "buffs"]
     output = capsys.readouterr().out
-    assert output.count("Wrote 1 actions:") == 4
+    assert output.count("Wrote 1 actions:") == 5
     assert "Saved raid effects:" in output

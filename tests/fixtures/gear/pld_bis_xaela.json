@@ -1,0 +1,530 @@
+{
+  "job": "PLD",
+  "race": "Xaela",
+  "partyBonus": 5,
+  "level": 100,
+  "sets": [
+    {
+      "name": "2.50 Savage Weapon",
+      "items": {
+        "Body": {
+          "id": 49604,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Ears": {
+          "id": 49715,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Feet": {
+          "id": 49607,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Hand": {
+          "id": 49682,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Head": {
+          "id": 49680,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Legs": {
+          "id": 49683,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Neck": {
+          "id": 49643,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "OffHand": {
+          "id": 49679,
+          "materia": []
+        },
+        "RingLeft": {
+          "id": 49730,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "RingRight": {
+          "id": 49653,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41774,
+              "locked": false
+            }
+          ]
+        },
+        "Weapon": {
+          "id": 49658,
+          "materia": [
+            {
+              "id": 41773,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Wrist": {
+          "id": 49648,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        }
+      },
+      "food": 49240,
+      "computedStats": {
+        "strength": 6450,
+        "crit": 3595,
+        "dhit": 1230,
+        "determination": 3066,
+        "skillspeed": 420,
+        "tenacity": 622,
+        "wdPhys": 158,
+        "weaponDelay": 2.24
+      },
+      "effectiveFoodBonuses": {
+        "crit": 91,
+        "determination": 151
+      }
+    },
+    {
+      "name": "2.50 Relic Weapon",
+      "items": {
+        "Body": {
+          "id": 49604,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Ears": {
+          "id": 49715,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Feet": {
+          "id": 49607,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Hand": {
+          "id": 49682,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Head": {
+          "id": 49680,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Legs": {
+          "id": 49683,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Neck": {
+          "id": 49643,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "OffHand": {
+          "id": 51021,
+          "materia": [],
+          "relicStats": {
+            "crit": 128,
+            "determination": 128,
+            "dhit": 0,
+            "skillspeed": 0,
+            "tenacity": 32
+          }
+        },
+        "RingLeft": {
+          "id": 49730,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "RingRight": {
+          "id": 49653,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Weapon": {
+          "id": 51000,
+          "materia": [],
+          "relicStats": {
+            "crit": 319,
+            "determination": 319,
+            "dhit": 0,
+            "skillspeed": 0,
+            "tenacity": 76
+          }
+        },
+        "Wrist": {
+          "id": 49648,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        }
+      },
+      "food": 49240,
+      "computedStats": {
+        "strength": 6450,
+        "crit": 3595,
+        "dhit": 1230,
+        "determination": 3146,
+        "skillspeed": 420,
+        "tenacity": 676,
+        "wdPhys": 158,
+        "weaponDelay": 2.24
+      },
+      "effectiveFoodBonuses": {
+        "crit": 91,
+        "determination": 151
+      }
+    },
+    {
+      "name": "2.50 DMU Weapon + Relic Shield",
+      "items": {
+        "Body": {
+          "id": 49604,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Ears": {
+          "id": 49715,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Feet": {
+          "id": 49607,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Hand": {
+          "id": 49682,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Head": {
+          "id": 49680,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Legs": {
+          "id": 49683,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Neck": {
+          "id": 49643,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "OffHand": {
+          "id": 51021,
+          "materia": [],
+          "relicStats": {
+            "crit": 128,
+            "determination": 128,
+            "dhit": 0,
+            "skillspeed": 0,
+            "tenacity": 32
+          }
+        },
+        "RingLeft": {
+          "id": 49730,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "RingRight": {
+          "id": 49653,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Weapon": {
+          "id": 52299,
+          "materia": [
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        },
+        "Wrist": {
+          "id": 49648,
+          "materia": [
+            {
+              "id": 41772,
+              "locked": false
+            },
+            {
+              "id": 41771,
+              "locked": false
+            }
+          ]
+        }
+      },
+      "food": 49240,
+      "computedStats": {
+        "strength": 6450,
+        "crit": 3595,
+        "dhit": 1392,
+        "determination": 3050,
+        "skillspeed": 420,
+        "tenacity": 600,
+        "wdPhys": 158,
+        "weaponDelay": 2.24
+      },
+      "effectiveFoodBonuses": {
+        "crit": 91,
+        "determination": 151
+      }
+    }
+  ],
+  "verification": {
+    "computed_stats_source": "https://api.xivgear.app/fulldata/bis/pld/current?partyBonus=0",
+    "note": "Item IDs, materia and relic allocations match supplied export. Xaela and The Lost both add 3 Strength. computedStats include food but no party bonus or potion.",
+    "race_source": "https://github.com/xiv-gear-planner/gear-planner/blob/main/packages/xivmath/src/xivconstants.ts"
+  }
+}

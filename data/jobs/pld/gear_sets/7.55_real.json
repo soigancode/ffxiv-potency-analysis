@@ -1,0 +1,25 @@
+{
+  "id": "real_7_55",
+  "label": "7.55 Real BiS",
+  "patch": "7.55",
+  "food": "food/7.4/caramel_popcorn_hq.json",
+  "potion": "potions/7.4/grade_4_gemdraught_of_strength_hq.json",
+  "level": 100,
+  "solo_strength": 6450,
+  "party_strength": 6772,
+  "combat_profile": "combat_profiles/level_100.json",
+  "source": {
+    "url": "https://xivgear.app/?page=bis%7Cpld%7Ccurrent",
+    "set": "2.50 DMU Weapon + Relic Shield",
+    "race_assumption": "Au Ra - Xaela, matching the supplied XivGear export",
+    "sword_id": 52299,
+    "shield_id": 51021
+  },
+  "critical_hit": 3595,
+  "direct_hit": 1392,
+  "determination": 3050,
+  "skill_speed": 420,
+  "tenacity": 600,
+  "weapon_damage": 158,
+  "weapon_delay_seconds": 2.24
+}

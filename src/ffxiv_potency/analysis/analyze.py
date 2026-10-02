@@ -70,6 +70,9 @@ from .penalties import (
 )
 from .pets import _deployment_for_event, _reconstruct_pet_deployments
 from .phase_locks import phase_lock_windows as find_phase_locks
+from .pld.buffs import circle_snapshots, pld_self_buff_windows
+from .pld.state import replay_spells
+from .pld.summary import PldDotSummary, summarize_pld
 from .potency import _direct_potency, _is_channeled_action, _is_counterattack_action
 from .potion import _potion_windows
 from .profiles import _load_combat_profile, _load_pet_profiles
@@ -216,7 +219,8 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
 
     sorted_casts = sorted(
         (e for e in casts if isinstance(e, dict)
-         and not (job.casefold() == "dancer" and e.get("fake"))),
+         and not (job.casefold() in {"dancer", "paladin"} and e.get("fake"))
+         and not (job.casefold() == "paladin" and e.get("type") != "cast")),
         key=lambda e: e.get("timestamp", 0)
     )
     player_source_counts = Counter(
@@ -323,6 +327,10 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     eligible_hit_count = 0
     hit_bonus_weight = hit_bonus_total = hit_bonus_adjustment = 0.0
     war_hit_rows: list[tuple[float, str, float, float]] = []
+    pld_hit_rows: list[tuple[tuple[int | None, int | None], str, float]] = []
+    pld_circle_direct = pld_circle_periodic = 0.0
+    pld_circle_ticks = 0
+    pld_circle_applications: set[tuple[int | None, int | None]] = set()
     random_outcomes = [0, 0, 0, 0]
     missing_food: tuple[tuple[float, float], ...] = ()
 
@@ -425,7 +433,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         job, action_document, party_bonus_percent=party_bonus if party_bonus is not None else 5,
         gear_path=selection.gear if selection else None,
     )
-    if job.casefold() in {"dancer", "warrior"}:
+    if job.casefold() in {"dancer", "warrior", "paladin"}:
         # Travelling AoEs can hit an enemy other than the selected
         # target first. At 40%/25% falloff, normalizing Crit/DH and recorded
         # damage modifiers separates the full hit despite the damage roll.
@@ -476,6 +484,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         snapshot_extension_ms=(
             45000 if job.casefold() == "bard"
             else 12000 if job.casefold() == "machinist"
+            else 15000 if job.casefold() == "paladin"
             else 0
         ),
     )
@@ -484,6 +493,9 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         if job.casefold() == "bard" and source_id is not None else {}
     )
     snapshot_times = {}
+    pld_state = None
+    pld_spell_potencies = {}
+    pld_tick_snapshots = {}
     dnc_initial_buffs = ()
     if job.casefold() == "dancer" and source_id is not None:
         self_buff_windows, dnc_initial_buffs = dnc_self_buff_windows(
@@ -496,6 +508,17 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             buffs, actions, raw_damage, sorted_casts, source_id, int(start), int(end),
         )
         snapshot_times = damage_snapshot_times(raw_damage, sorted_casts)
+    elif job.casefold() == "paladin" and source_id is not None:
+        self_buff_windows = pld_self_buff_windows(
+            buffs, actions, raw_damage, sorted_casts, combatants or [], source_id, int(start), int(end),
+        )
+        snapshot_times = damage_snapshot_times(raw_damage, sorted_casts)
+        pld_state = replay_spells(casts, buffs, life, combatants or [], ability_names,
+                                  source_id, start, end)
+        for spell in pld_state.spells:
+            conditional = actions.get(spell.name, {}).get("potency", {}).get("conditional_potencies", {})
+            pld_spell_potencies[spell.packet, spell.ability_id] = conditional.get(spell.enhancement)
+        pld_tick_snapshots = circle_snapshots(raw_damage, sorted_casts, ability_names, source_id)
     brd_ticks = (
         {
             (tick.timestamp, tick.application_packet, tick.target_id): tick
@@ -614,6 +637,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
 
     apex_potency_by_packet: dict[tuple[int | None, int | None], float] = defaultdict(float)
     for event in landed:
+        event = pld_tick_snapshots.get(id(event), event)
         name = _event_name(event, ability_names)
         if _is_auto_attack(event, name):
             auto_attack_events.append({**event, "_resolved_name": name,
@@ -666,7 +690,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                     if key in brd_barrage_shadowbites
                     and isinstance(potency, dict)
                     and isinstance(potency.get("conditional_potencies"), dict)
-                    else None
+                    else pld_spell_potencies.get(key)
                 ),
                 )
         if values is None:
@@ -700,9 +724,9 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             )
             factor = self_damage_multiplier(buff_string, buff_time, self_buff_windows)
             values = values[0] * factor, values[1] * factor
-        elif job.casefold() in {"dancer", "warrior"}:
+        elif job.casefold() in {"dancer", "warrior", "paladin"}:
             key = (event.get("packetID"), event.get("abilityGameID"))
-            snapshot = snapshot_times.get(key, float(event.get("timestamp", 0)))
+            snapshot = event.get("_snapshot_time", snapshot_times.get(key, float(event.get("timestamp", 0))))
             # A finish's damage uses the buff state before that same action
             # refreshes Standard Finish, even though its landed record is later.
             if action.get("damage_buff") or (job.casefold() == "warrior" and name in {"Storm's Eye", "Mythril Tempest"}):
@@ -784,6 +808,15 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                 war_time -= .001
             war_factor = self_damage_multiplier(str(event.get("buffs", "")), war_time, self_buff_windows)
             war_hit_rows.append((war_time, name, sum(values) / 2, war_factor))
+        if job.casefold() == "paladin":
+            pld_hit_rows.append((key, name, sum(values) / 2))
+            if name == "Circle of Scorn":
+                if event.get("tick"):
+                    pld_circle_ticks += 1
+                    pld_circle_periodic += sum(values) / 2
+                else:
+                    pld_circle_applications.add(key)
+                    pld_circle_direct += sum(values) / 2
 
         matched_events += 1
         row = totals[name]
@@ -877,7 +910,21 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                 ghosted_targets[name].append((seconds, target["name"]))
             target_resources = cast.get("targetResources")
             hit_points = target_resources.get("hitPoints") if isinstance(target_resources, dict) else None
+            # A cast after recorded encounter-wide targetability closes is a
+            # downtime use, rather than a hit lost while the target disappears.
+            during_downtime = bool(targetable_time.intervals
+                    and not any(a <= timestamp < b for a, b in targetable_time.intervals)
+                    and any(
+                        event.get("type") == "targetabilityupdate"
+                        and event.get("targetable") == 0
+                        and actors.get(event.get("sourceID"), {}).get("type") == "NPC"
+                        and any(event.get("timestamp") == b <= timestamp
+                                for _, b in targetable_time.intervals)
+                        for event in targetability_events
+                    ))
             if not isinstance(target_id, int) or not isinstance(target, dict) or target.get("name") == "Environment":
+                if during_downtime:
+                    ghosted_ending_times[name].append((seconds, "downtime"))
                 return
             if isinstance(hit_points, int) and not isinstance(hit_points, bool) and hit_points in (0, 1):
                 ghosted_target_low_hp[name].append((seconds, hit_points))
@@ -946,6 +993,8 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                 ghosted_ending_times[name].append(
                     (seconds, "target stopped taking damage before hit landed")
                 )
+            elif during_downtime:
+                ghosted_ending_times[name].append((seconds, "downtime"))
             elif end - timestamp <= 1500:
                 ghosted_ending_times[name].append((seconds, "fight ending"))
 
@@ -1209,6 +1258,11 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         adjusted_hit_bonus=max(0.0, (hit_bonus_total - hit_bonus_adjustment) / hit_bonus_weight) if hit_bonus_weight else 0.0,
         war=summarize_war(sorted_casts, buffs, combatants or [], ability_names, actions,
                           source_id, start, end, war_hit_rows, targetable_time, self_buff_windows) if job.casefold() == "warrior" and source_id is not None else None,
+        pld=summarize_pld(sorted_casts, buffs, life, combatants or [], ability_names, actions,
+                          source_id, start, end, pld_state, pld_hit_rows,
+                          PldDotSummary(len(pld_circle_applications),
+                                        pld_circle_ticks, pld_circle_direct, pld_circle_periodic))
+        if pld_state is not None else None,
         luck_score=luck_weighted_bonus / luck_weighted_maximum if luck_weighted_maximum else 0.0,
         adjusted_luck_score=(
             max(
