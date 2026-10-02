@@ -25,7 +25,7 @@ def test_cli_analyses_historical_warrior_log(war_saved_sources, capsys):
     assert "Melee downtime:" in output
     assert "  Surging Tempest: 0 uses" not in output
     assert "Tomahawk:" in output
-    assert output.index("Hit Bonus:") < output.index("Luck baseline:")
+    assert output.index("Luck baseline:") < output.index("Hit Bonus:")
 
 
 def test_cli_analyses_saved_brd_fight(
@@ -41,9 +41,9 @@ def test_cli_analyses_saved_brd_fight(
     assert "Pitch Perfect" in output
     assert "Apex Arrow" in output
     assert "phase transition" not in output
-    variable_section = output.split("Variable potency:", 1)[1].split("\n\n", 1)[0]
+    variable_section = output.split("Apex Arrow and Pitch Perfect:", 1)[1].split("\n\n", 1)[0]
     assert "Radiant Encore" not in variable_section
-    assert "  Radiant Encore:" in output  # Still counted in the actions summary.
+    assert "Radiant Encore" in output.split("Action totals:", 1)[1]  # Still counted in the actions summary.
 
 
 

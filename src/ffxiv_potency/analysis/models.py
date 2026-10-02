@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .brd.dots import BrdDotActionSummary
 from .brd.songs import BrdFinaleSummary
+from .execution import ExecutionSummary
 from .mch.wildfire import MchWildfireSummary
 from .penalties import DamagePenaltySummary, StatusWindow
 from .war.summary import WarSummary
@@ -41,6 +42,7 @@ class PetDeploymentSummary:
     mch_overdrive_seconds: float | None = None
     mch_gauge_inferred: bool = False
     mch_prepull: bool = False
+    landed_actions: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,6 +88,7 @@ class DncReadyProcSummary:
     remaining: int
     unknown_consumed: int
     unknown_removals: int
+    losses: tuple[tuple[float, str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +135,9 @@ class BrdPitchHitEstimate:
     plausible_fits: tuple[str, ...]
     outside_expected: bool
     distance_from_bound_percent: float | None = None
+    observed_damage: float | None = None
+    lower_damage: float | None = None
+    upper_damage: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,6 +230,8 @@ class AnalysisResult:
     hit_bonus: float = 0.0
     adjusted_hit_bonus: float = 0.0
     war: WarSummary | None = None
+    execution: ExecutionSummary | None = None
+    random_hit_outcomes: HitOutcomeSummary | None = None
     luck_score: float = 0.0
     adjusted_luck_score: float = 0.0
     luck_baseline: float = 0.0

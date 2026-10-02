@@ -33,6 +33,7 @@ from .echo import (
 )
 from .errors import AnalysisError
 from .events import _event_name, _has_buff, _load_json
+from .execution import summarize_execution
 from .luck import (
     _guaranteed_outcome_packets,
     _has_inherently_guaranteed_outcome,
@@ -53,6 +54,7 @@ from .mch.wildfire import MchWildfireTracker
 from .models import (
     ActionSummary,
     AnalysisResult,
+    HitOutcomeSummary,
     PetDeploymentSummary,
     PotionSummary,
     ReducedDamageHit,
@@ -67,6 +69,7 @@ from .penalties import (
     summarize_status_windows,
 )
 from .pets import _deployment_for_event, _reconstruct_pet_deployments
+from .phase_locks import phase_lock_windows as find_phase_locks
 from .potency import _direct_potency, _is_channeled_action, _is_counterattack_action
 from .potion import _potion_windows
 from .profiles import _load_combat_profile, _load_pet_profiles
@@ -305,7 +308,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     dnc_finish_totals: dict[tuple[Any, Any], list[float]] = defaultdict(lambda: [0.0, 0.0])
     encore_totals: dict[tuple[Any, Any], list[float]] = defaultdict(lambda: [0, 0.0, 0.0])
     pet_totals: dict[PetDeploymentSummary, list[float]] = defaultdict(lambda: [0.0, 0.0])
-    pet_landed_actions: dict[PetDeploymentSummary, set[str]] = defaultdict(set)
+    pet_landed_actions: dict[PetDeploymentSummary, Counter[str]] = defaultdict(Counter)
     use_keys: dict[str, set[tuple[Any, ...]]] = defaultdict(set)
     unmatched: dict[str, int] = defaultdict(int)
     auto_attack_events: list[dict[str, Any]] = []
@@ -313,12 +316,21 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     potted_min = potted_max = potion_gain_min = potion_gain_max = 0.0
     damage_down_losses: dict[int, list[float]] = defaultdict(lambda: [0.0, 0.0])
     revival_losses: dict[int, list[float]] = defaultdict(lambda: [0.0, 0.0])
+    penalty_hit_losses: dict[int, list[tuple[float, float, float]]] = defaultdict(list)
+    penalty_snapshot_times = damage_snapshot_times(raw_damage, sorted_casts)
     luck_weighted_bonus = luck_weighted_maximum = luck_weighted_raid_adjustment = 0.0
     luck_weighted_expected = critical_rate_sum = direct_rate_sum = cdh_rate_sum = 0.0
     eligible_hit_count = 0
     hit_bonus_weight = hit_bonus_total = hit_bonus_adjustment = 0.0
     war_hit_rows: list[tuple[float, str, float, float]] = []
+    random_outcomes = [0, 0, 0, 0]
     missing_food: tuple[tuple[float, float], ...] = ()
+
+    def penalty_hit_time(event: dict[str, Any]) -> float:
+        snapshot = event.get("_snapshot_time", penalty_snapshot_times.get(
+            (event.get("packetID"), event.get("abilityGameID")), event["timestamp"]
+        ))
+        return (float(snapshot) - start) / 1000
 
     def record_damage_down_loss(
         event: dict[str, Any], penalized_min: float, penalized_max: float,
@@ -329,6 +341,10 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                 fraction_lost = 1 / multiplier - 1
                 damage_down_losses[status_id][0] += penalized_min * fraction_lost
                 damage_down_losses[status_id][1] += penalized_max * fraction_lost
+                penalty_hit_losses[status_id].append((
+                    penalty_hit_time(event),
+                    penalized_min * fraction_lost, penalized_max * fraction_lost,
+                ))
 
     def record_revival_loss(
         event: dict[str, Any], penalized_min: float, penalized_max: float,
@@ -345,6 +361,10 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             fraction_lost = 1 / multiplier - 1
             revival_losses[status_id][0] += penalized_min * fraction_lost
             revival_losses[status_id][1] += penalized_max * fraction_lost
+            penalty_hit_losses[status_id].append((
+                penalty_hit_time(event),
+                penalized_min * fraction_lost, penalized_max * fraction_lost,
+            ))
 
     def record_hit_outcome(event: dict[str, Any], potency_weight: float, *,
                            guaranteed: bool = False, non_random: bool = False) -> None:
@@ -384,6 +404,8 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         hit_bonus_adjustment += potency_weight * adjustment
         if guaranteed or non_random or event.get("tick"):
             return
+        outcome_index = (1 if event.get("hitType") == 2 else 0) + (2 if event.get("directHit") is True else 0)
+        random_outcomes[outcome_index] += 1
         luck_weighted_bonus += potency_weight * contribution
         luck_weighted_raid_adjustment += potency_weight * adjustment
         maximum = critical_multiplier * 1.25 - 1
@@ -719,9 +741,13 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             potion_gain_max += values[1] * potion_multiplier - unpotted_values[1]
             values = values[0] * potion_multiplier, values[1] * potion_multiplier
 
-        record_damage_down_loss(event, *values)
+        penalty_event = (
+            {**event, "_snapshot_time": brd_tick.snapshot_timestamp}
+            if brd_tick is not None and brd_tick.snapshot_timestamp is not None else event
+        )
+        record_damage_down_loss(penalty_event, *values)
         if source_actor is None:
-            record_revival_loss(event, *values, potted=potted)
+            record_revival_loss(penalty_event, *values, potted=potted)
 
         if name == "Wildfire" and wildfire is not None and event.get("tick"):
             wildfire.set_landed_potency(event, sum(values) / 2)
@@ -735,7 +761,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             pet_row = pet_totals[deployment]
             pet_row[0] += values[0]
             pet_row[1] += values[1]
-            pet_landed_actions[deployment].add(name)
+            pet_landed_actions[deployment][name] += 1
 
         key = (event.get("packetID"), event.get("abilityGameID"))
         if job.casefold() == "dancer" and action.get("damage_buff"):
@@ -791,55 +817,9 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         if isinstance(event, dict) and isinstance(event.get("targetID"), int):
             boss_events[event["targetID"]].append(event)
 
-    # Repeated overkill ticks while a boss remains present indicate a phase HP
-    # lock. A single overkill instead fits an add dying at the end of a cast.
-    overkill_by_target: dict[int, list[float]] = defaultdict(list)
-    for event in encounter_overkills:
-        target_id = event.get("targetID")
-        event_time = event.get("timestamp")
-        if (isinstance(target_id, int) and isinstance(event_time, (int, float))
-                and isinstance(event.get("overkill"), (int, float))
-                and event["overkill"] > 0):
-            overkill_by_target[target_id].append(event_time)
-    phase_lock_windows: dict[int, list[tuple[float, float]]] = defaultdict(list)
-    for target_id, times in overkill_by_target.items():
-        if actors.get(target_id, {}).get("subType") != "Boss":
-            # Adds such as Charnel Cells may keep receiving overkill from their
-            # assigned player; this alone is not evidence of a boss HP lock.
-            continue
-        ordered = sorted(set(times))
-        clusters: list[list[float]] = []
-        for event_time in ordered:
-            if not clusters or event_time - clusters[-1][-1] > 5000:
-                clusters.append([])
-            clusters[-1].append(event_time)
-        for cluster in clusters:
-            first, later = cluster[0], cluster[-1]
-            # A shorter run of overkill can still be an HP lock when the
-            # boss remains castable well after the first overkill. A defeat
-            # may leave one lingering DoT tick, so require three distinct
-            # overkill times and a later targeted player cast.
-            short_lock_evidence = (
-                later - first >= 1000 and len(cluster) >= 3
-                and any(
-                    cast.get("targetID") == target_id
-                    and isinstance(cast.get("timestamp"), (int, float))
-                    and first + 1500 <= cast["timestamp"] <= later + 2500
-                    for cast in casts
-                )
-            )
-            if later - first < 2000 and not short_lock_evidence:
-                continue
-            disappear = min(
-                (
-                    event["timestamp"] for event in targetability_events
-                     if event.get("sourceID") == target_id
-                     and event.get("targetable") == 0
-                     and isinstance(event.get("timestamp"), (int, float))
-                     and later <= event["timestamp"] <= later + 5000),
-                default=later + 4000,
-            )
-            phase_lock_windows[target_id].append((first - 1000, disappear))
+    phase_lock_windows = find_phase_locks(
+        encounter_overkills, casts, raw_damage, actors, targetability_events, end, encounter_id
+    )
 
     # FF Logs can record the death event about two seconds after the lethal
     # damage. Match both records so an earlier, survived overkill does not
@@ -861,6 +841,12 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     ]
 
     def record_ghost(name: str, cast: dict[str, Any]) -> None:
+        timestamp = cast.get("timestamp")
+        if (name == "Tillana" and isinstance(timestamp, (int, float))
+                and targetable_time.intervals
+                and not any(a <= timestamp < b for a, b in targetable_time.intervals)):
+            # Tillana remains a valid Esprit/ready-effect use during downtime.
+            return
         ghosted[name] += 1
         timestamp = cast.get("timestamp")
         if isinstance(timestamp, (int, float)):
@@ -925,7 +911,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                 for began, finished in phase_lock_windows[target_id]
             )
             if phase_locked:
-                ghosted_ending_times[name].append((seconds, "phase HP lock; damage excluded"))
+                ghosted_ending_times[name].append((seconds, "phase HP lock"))
             elif target_untargetable:
                 ghosted_ending_times[name].append(
                     (seconds, "target became untargetable before hit landed")
@@ -1159,7 +1145,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         dnc_procs=summarize_dnc_procs(
             sorted_casts, raw_damage, buffs if buffs_path.is_file() else None,
             life, ability_names, actions, source_id,
-            starting_feathers=dnc_start, starting_source=dnc_start_source,
+            starting_feathers=dnc_start, starting_source=dnc_start_source, fight_start=start,
         ) if job.casefold() == "dancer" else None,
         hit_outcomes=_summarize_hit_outcomes(landed),
         potion=PotionSummary(
@@ -1174,15 +1160,15 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         food=food,
         damage_penalties=(
             *summarize_damage_penalties(
-                landed, penalty_rules, float(start), damage_down_losses,
+                landed, penalty_rules, float(start), damage_down_losses, penalty_hit_losses,
             ),
             *summarize_revival_penalties(
-                landed, ability_names, float(start), combat_profile, revival_losses,
+                landed, ability_names, float(start), combat_profile, revival_losses, penalty_hit_losses,
             ),
         ),
         status_windows=summarize_status_windows(
             debuffs, life, ability_names, source_id, float(start), float(end), sorted_casts,
-            revival_buffs,
+            revival_buffs, encounter_overkills=encounter_overkills, actors=actors,
         ),
         food_missing_windows=tuple(
             ((begin - start) / 1000, (finish - start) / 1000)
@@ -1215,6 +1201,10 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             and isinstance(event.get("overkill"), (int, float))
             and event["overkill"] > 0
         ),
+        execution=summarize_execution(job.casefold(), sorted_casts, raw_damage, buffs, debuffs, life,
+                                      combatants or [], ability_names, actions, actors, source_id,
+                                      start, end, targetable_time, self_buff_windows),
+        random_hit_outcomes=HitOutcomeSummary(*random_outcomes),
         hit_bonus=hit_bonus_total / hit_bonus_weight if hit_bonus_weight else 0.0,
         adjusted_hit_bonus=max(0.0, (hit_bonus_total - hit_bonus_adjustment) / hit_bonus_weight) if hit_bonus_weight else 0.0,
         war=summarize_war(sorted_casts, buffs, combatants or [], ability_names, actions,

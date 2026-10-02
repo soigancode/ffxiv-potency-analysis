@@ -26,6 +26,8 @@ def test_warrior_actions_and_traits_match_current_guide():
     assert actions["Vengeance"]["potency"]["base"] == 55
     assert actions["Primal Rend"]["potency"]["falloff"]["additional_target_multiplier"] == 0.5
     assert actions["Equilibrium"]["potency"] is None
+    assert actions["Inner Release"]["recast_seconds"] == 60
+    assert actions["Infuriate"]["recast_seconds"] == 60
     assert "Tank Mastery" in {trait.name for trait in traits}
     assert "Increases the potency of Heavy Swing to 240" in " ".join(
         next(trait for trait in traits if trait.name == "Melee Mastery II").description

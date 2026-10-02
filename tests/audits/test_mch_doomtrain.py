@@ -28,14 +28,14 @@ def test_doomtrain_self_targeted_flamethrower_cast_has_no_landed_ticks(
     )
     assert dict(result.ghosted_times)["Flamethrower"] == (57.496,)
     assert "Flamethrower" not in dict(result.ghosted_targets)
-    assert _format_fight(result) == "Doomtrain (1083)"
+    assert _format_fight(result) == "Doomtrain (doomtrain)"
     assert result.food is not None
     assert result.food_missing_windows == ()
     _print_analysis(result)
     output = capsys.readouterr().out
     assert "Flamethrower" in output
     assert "Flamethrower on " not in output
-    assert _format_fight(replace(result, fight_name="グラシャラボラス")) == "Doomtrain (1083)"
+    assert _format_fight(replace(result, fight_name="グラシャラボラス")) == "Doomtrain (doomtrain)"
 
 
 def test_no_initial_food_or_application_means_unfed_fight(

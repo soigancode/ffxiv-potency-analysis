@@ -25,7 +25,8 @@
           "amount": 5,
           "requires_combo": false
         }
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Slug Shot",
@@ -53,7 +54,8 @@
           "amount": 5,
           "requires_combo": true
         }
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Hot Shot",
@@ -73,7 +75,8 @@
           "amount": 20,
           "requires_combo": false
         }
-      ]
+      ],
+      "recast_seconds": 40.0
     },
     {
       "name": "Reassemble",
@@ -86,7 +89,8 @@
         "Increases damage dealt when under an effect that raises critical hit rate or direct hit rate.",
         "This action does not affect damage over time effects.",
         "Maximum Charges: 2"
-      ]
+      ],
+      "recast_seconds": 55.0
     },
     {
       "name": "Gauss Round",
@@ -98,7 +102,8 @@
       "description": [
         "Delivers an attack with a potency of 130.",
         "Maximum Charges: 3"
-      ]
+      ],
+      "recast_seconds": 30.0
     },
     {
       "name": "Spread Shot",
@@ -117,7 +122,8 @@
           "amount": 5,
           "requires_combo": false
         }
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Clean Shot",
@@ -151,7 +157,8 @@
           "amount": 10,
           "requires_combo": true
         }
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Hypercharge",
@@ -170,7 +177,8 @@
         "Overheated Effect: Increases the potency of single-target weaponskills by 20",
         "Heat Gauge Cost: 50",
         "Overheated effect only applicable to machinist job actions."
-      ]
+      ],
+      "recast_seconds": 10.0
     },
     {
       "name": "Heat Blast",
@@ -184,7 +192,8 @@
         "Additional Effect: Reduces the recast time of both Gauss Round and Ricochet by 15s",
         "Can only be executed when firearm is Overheated.",
         "This weaponskill does not share a recast timer with any other actions. Upon execution, the recast timer for this action will be applied to all other weaponskills and magic actions."
-      ]
+      ],
+      "recast_seconds": 1.5
     },
     {
       "name": "Rook Autoturret",
@@ -200,7 +209,8 @@
         "Shuts down when time expires or upon execution of Rook Overdrive.",
         "Shares a recast timer with Rook Overdrive."
       ],
-      "deploys_actor": "Rook Autoturret"
+      "deploys_actor": "Rook Autoturret",
+      "recast_seconds": 6.0
     },
     {
       "name": "Rook Overdrive",
@@ -214,7 +224,8 @@
         "The rook autoturret shuts down after execution. If this action is not used manually while the rook autoturret is active, it will be triggered automatically immediately before shutting down.",
         "Shares a recast timer with Rook Autoturret."
       ],
-      "triggers_action": "Rook Overload"
+      "triggers_action": "Rook Overload",
+      "recast_seconds": 15.0
     },
     {
       "name": "Rook Overload",
@@ -231,7 +242,7 @@
         "Delivers an attack with a potency of 160.",
         "Potency increases as Battery Gauge exceeds required cost at time of deployment, up to a maximum of 320.",
         "The rook autoturret shuts down after execution. If this action is not used manually while the rook autoturret is active, it will be triggered automatically immediately before shutting down.",
-        "\u203bThis action cannot be assigned to a hotbar."
+        "※This action cannot be assigned to a hotbar."
       ],
       "source_actor": "Rook Autoturret"
     },
@@ -251,7 +262,8 @@
         "Potency is increased by 240 for each of your own weaponskills you land prior to the end of the effect.",
         "Can be stacked up to 6 times.",
         "Duration: 10s"
-      ]
+      ],
+      "recast_seconds": 120.0
     },
     {
       "name": "Detonator",
@@ -261,9 +273,10 @@
       "description": [
         "Ends the effect of Wildfire, dealing damage to the target.",
         "Can only be executed while under the effect of Wildfire.",
-        "\u203bThis action cannot be assigned to a hotbar.",
-        "\u203bWildfire changes to Detonator when requirements for execution are met."
-      ]
+        "※This action cannot be assigned to a hotbar.",
+        "※Wildfire changes to Detonator when requirements for execution are met."
+      ],
+      "recast_seconds": 1.0
     },
     {
       "name": "Ricochet",
@@ -278,7 +291,8 @@
       "description": [
         "Deals damage to target and all enemies nearby it with a potency of 130 for the first enemy, and 30% less for all remaining enemies.",
         "Maximum Charges: 3"
-      ]
+      ],
+      "recast_seconds": 30.0
     },
     {
       "name": "Auto Crossbow",
@@ -291,7 +305,8 @@
         "Delivers an attack with a potency of 180 to all enemies in a cone before you.",
         "Can only be executed when firearm is Overheated.",
         "This weaponskill does not share a recast timer with any other actions. Upon execution, the recast timer for this action will be applied to all other weaponskills and magic actions."
-      ]
+      ],
+      "recast_seconds": 1.5
     },
     {
       "name": "Heated Split Shot",
@@ -310,7 +325,8 @@
           "amount": 5,
           "requires_combo": false
         }
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Tactician",
@@ -321,7 +337,8 @@
         "Reduces damage taken by self and nearby party members by 15%.",
         "Duration: 15s",
         "Effect cannot be stacked with bard's Troubadour or dancer's Shield Samba."
-      ]
+      ],
+      "recast_seconds": 90.0
     },
     {
       "name": "Drill",
@@ -334,7 +351,8 @@
         "Delivers an attack with a potency of 660.",
         "Maximum Charges: 2",
         "Shares a recast timer with Bioblaster."
-      ]
+      ],
+      "recast_seconds": 20.0
     },
     {
       "name": "Heated Slug Shot",
@@ -361,7 +379,8 @@
           "amount": 5,
           "requires_combo": true
         }
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Dismantle",
@@ -371,7 +390,8 @@
       "description": [
         "Lowers target's damage dealt by 10%.",
         "Duration: 10s"
-      ]
+      ],
+      "recast_seconds": 120.0
     },
     {
       "name": "Heated Clean Shot",
@@ -404,7 +424,8 @@
           "amount": 10,
           "requires_combo": true
         }
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Barrel Stabilizer",
@@ -417,7 +438,8 @@
         "Additional Effect: Grants Full Metal Machinist",
         "Duration: 30s",
         "Can only be executed while in combat."
-      ]
+      ],
+      "recast_seconds": 120.0
     },
     {
       "name": "Blazing Shot",
@@ -431,7 +453,8 @@
         "Additional Effect: Reduces the recast time of both Double Check and Checkmate by 15s",
         "Can only be executed when firearm is Overheated.",
         "This weaponskill does not share a recast timer with any other actions. Upon execution, the recast timer for this action will be applied to all other weaponskills and magic actions."
-      ]
+      ],
+      "recast_seconds": 1.5
     },
     {
       "name": "Flamethrower",
@@ -450,7 +473,8 @@
         "Effect ends upon using another action or moving (including facing a different direction).",
         "Cancels auto-attack upon execution.",
         "Triggers the cooldown of weaponskills upon execution. Cannot be executed during the cooldown of weaponskills."
-      ]
+      ],
+      "recast_seconds": 60.0
     },
     {
       "name": "Bioblaster",
@@ -470,7 +494,8 @@
         "Duration: 15s",
         "Maximum Charges: 2",
         "Shares a recast timer with Drill."
-      ]
+      ],
+      "recast_seconds": 20.0
     },
     {
       "name": "Air Anchor",
@@ -490,7 +515,8 @@
           "amount": 20,
           "requires_combo": false
         }
-      ]
+      ],
+      "recast_seconds": 40.0
     },
     {
       "name": "Automaton Queen",
@@ -506,7 +532,8 @@
         "Shuts down when time expires or upon execution of Queen Overdrive.",
         "Shares a recast timer with Queen Overdrive."
       ],
-      "deploys_actor": "Automaton Queen"
+      "deploys_actor": "Automaton Queen",
+      "recast_seconds": 6.0
     },
     {
       "name": "Queen Overdrive",
@@ -520,7 +547,8 @@
         "The Automaton Queen shuts down after execution. If this action is not used manually while the Automaton Queen is active, it will be triggered automatically immediately before shutting down.",
         "Shares a recast timer with Automaton Queen."
       ],
-      "triggers_action": "Pile Bunker"
+      "triggers_action": "Pile Bunker",
+      "recast_seconds": 15.0
     },
     {
       "name": "Arm Punch",
@@ -536,9 +564,10 @@
       "description": [
         "Delivers an attack with a potency of 120.",
         "Potency increases as Battery Gauge exceeds required cost at time of deployment, up to a maximum of 240.",
-        "\u203bThis action cannot be assigned to a hotbar."
+        "※This action cannot be assigned to a hotbar."
       ],
-      "source_actor": "Automaton Queen"
+      "source_actor": "Automaton Queen",
+      "recast_seconds": 1.5
     },
     {
       "name": "Roller Dash",
@@ -554,9 +583,10 @@
       "description": [
         "Rushes target and delivers an attack with a potency of 240.",
         "Potency increases as Battery Gauge exceeds required cost at time of deployment, up to a maximum of 480.",
-        "\u203bThis action cannot be assigned to a hotbar."
+        "※This action cannot be assigned to a hotbar."
       ],
-      "source_actor": "Automaton Queen"
+      "source_actor": "Automaton Queen",
+      "recast_seconds": 3.0
     },
     {
       "name": "Pile Bunker",
@@ -573,7 +603,7 @@
         "Delivers an attack with a potency of 340.",
         "Potency increases as Battery Gauge exceeds required cost at time of deployment, up to a maximum of 680.",
         "If this action is not used manually while the Automaton Queen is active, it will be triggered automatically immediately before shutting down.",
-        "\u203bThis action cannot be assigned to a hotbar."
+        "※This action cannot be assigned to a hotbar."
       ],
       "source_actor": "Automaton Queen"
     },
@@ -594,7 +624,8 @@
           "amount": 10,
           "requires_combo": false
         }
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Crowned Collider",
@@ -611,7 +642,7 @@
         "Delivers an attack with a potency of 390.",
         "Potency increases as Battery Gauge exceeds required cost at time of deployment, up to a maximum of 780.",
         "The Automaton Queen shuts down after execution. If this action is not used manually while the Automaton Queen is active, it will be triggered automatically immediately before shutting down.",
-        "\u203bThis action cannot be assigned to a hotbar."
+        "※This action cannot be assigned to a hotbar."
       ],
       "source_actor": "Automaton Queen"
     },
@@ -638,7 +669,8 @@
           "amount": 20,
           "requires_combo": false
         }
-      ]
+      ],
+      "recast_seconds": 60.0
     },
     {
       "name": "Double Check",
@@ -653,7 +685,8 @@
       "description": [
         "Delivers an attack to target and all enemies nearby it with a potency of 180 for the first enemy, and 30% less for all remaining enemies.",
         "Maximum Charges: 3"
-      ]
+      ],
+      "recast_seconds": 30.0
     },
     {
       "name": "Checkmate",
@@ -668,7 +701,8 @@
       "description": [
         "Delivers an attack to target and all enemies nearby it with a potency of 180 for the first enemy, and 30% less for all remaining enemies.",
         "Maximum Charges: 3"
-      ]
+      ],
+      "recast_seconds": 30.0
     },
     {
       "name": "Excavator",
@@ -684,8 +718,8 @@
         "Delivers an attack to target and all enemies nearby it with a potency of 660 for the first enemy, and 25% less for all remaining enemies.",
         "Additional Effect: Increases Battery Gauge by 20",
         "Can only be executed while under the effect of Excavator Ready.",
-        "\u203bThis action cannot be assigned to a hotbar.",
-        "\u203bChain Saw changes to Excavator when requirements for execution are met."
+        "※This action cannot be assigned to a hotbar.",
+        "※Chain Saw changes to Excavator when requirements for execution are met."
       ],
       "gauge_gains": [
         {
@@ -693,7 +727,8 @@
           "amount": 20,
           "requires_combo": false
         }
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Full Metal Field",
@@ -710,7 +745,8 @@
         "Damage dealt is increased when under an effect that raises critical hit rate or direct hit rate.",
         "This action is not affected by Reassemble.",
         "Can only be executed while under the effect of Full Metal Machinist."
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Volley Fire",

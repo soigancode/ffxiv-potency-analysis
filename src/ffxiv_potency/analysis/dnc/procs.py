@@ -25,6 +25,7 @@ def summarize_dnc_procs(
     *,
     starting_feathers: tuple[int, ...] = tuple(range(5)),
     starting_source: str = "unknown",
+    fight_start: float = 0,
 ) -> DncProcSummary:
     rules = {}
     for name, action in actions.items():
@@ -125,7 +126,7 @@ def summarize_dnc_procs(
                 )
         states = next_states
     ready_procs = summarize_ready_procs(
-        own_casts, resolutions, buffs, life, abilities, rules, source_id
+        own_casts, resolutions, buffs, life, abilities, rules, source_id, fight_start
     )
     full_use = 0.0
     for ready in ready_procs[:2]:

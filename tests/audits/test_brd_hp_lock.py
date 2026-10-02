@@ -16,7 +16,7 @@ def test_dancing_mad_hp_locks_explain_ghosted_casts(
     )
     actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     _print_analysis(analyze_saved_fight(tmp_path, actions))
-    output = capsys.readouterr().out.split("Ghosted damaging casts:\n", 1)[1].split("\n\n", 1)[0]
+    output = capsys.readouterr().out.split("Ghosted attacks and reduced hits:\n", 1)[1].split("\n\n", 1)[0]
 
     assert "03m18s Burst Shot on Kefka (target became untargetable before hit landed)" in output
     for timestamp, action, target in (
@@ -26,7 +26,7 @@ def test_dancing_mad_hp_locks_explain_ghosted_casts(
         ("11m50s", "Burst Shot", "Exdeath"),
         ("11m58s", "Burst Shot", "Exdeath"),
     ):
-        assert f"{timestamp} {action} on {target} (phase HP lock; damage excluded)" in output
+        assert f"{timestamp} {action} on {target} (phase HP lock)" in output
     assert "target defeated" not in output
 
 
@@ -54,7 +54,7 @@ def test_top_two_bards_have_phase_hp_locks_not_defeated_targets(
     extract_fight(archive_name, prefix)
     actions = Path(__file__).resolve().parents[2] / "data/jobs/brd/7.4/actions.json"
     _print_analysis(analyze_saved_fight(tmp_path, actions))
-    output = capsys.readouterr().out.split("Ghosted damaging casts:\n", 1)[1].split("\n\n", 1)[0]
+    output = capsys.readouterr().out.split("Ghosted attacks and reduced hits:\n", 1)[1].split("\n\n", 1)[0]
     for line in expected:
-        assert line + " (phase HP lock; damage excluded)" in output
+        assert line + " (phase HP lock)" in output
     assert "target defeated" not in output

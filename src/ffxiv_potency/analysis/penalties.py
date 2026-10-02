@@ -25,6 +25,7 @@ class DamagePenaltySummary:
     main_stat_reduction: int | None = None
     lost_potency_min: float | None = None
     lost_potency_max: float | None = None
+    hit_losses: tuple[tuple[float, float, float], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +45,8 @@ def summarize_status_windows(
     ability_names: dict[int, str], source_id: int | None,
     start: float, end: float, casts: list[dict[str, Any]] | None = None,
     revival_buffs: list[dict[str, Any]] | None = None,
+    *, encounter_overkills: list[dict[str, Any]] | None = None,
+    actors: dict[int, dict[str, Any]] | None = None,
 ) -> tuple[StatusWindow, ...]:
     """Use revival statuses; bound missing events by the next player cast."""
     if source_id is None:
@@ -153,10 +156,20 @@ def summarize_status_windows(
                         or (name == "Damage Down" and ability_id in expires_at
                             and abs(timestamp - expires_at[ability_id]) <= 1_000)
                     )
+                    boss_defeated = name == "Damage Down" and any(
+                        hit.get("type") == "damage" and not hit.get("tick")
+                        and hit.get("overkill", 0) > 0
+                        and isinstance(target_id := hit.get("targetID"), int)
+                        and (actors or {}).get(target_id, {}).get("subType") == "Boss"
+                        and isinstance(hit.get("timestamp"), (int, float))
+                        and 0 <= timestamp - hit["timestamp"] <= 250
+                        for hit in encounter_overkills or ()
+                    )
                     expires_at.pop(ability_id, None)
                     windows.append(StatusWindow(name, (begun - start) / 1000,
                                                 (timestamp - start) / 1000,
                                                 "expired" if expired else
+                                                "boss defeated" if boss_defeated else
                                                 "fight ended" if end - timestamp < 1000
                                                 else "removed",
                                                 tuple(refreshes.pop(ability_id, ()))))
@@ -233,6 +246,7 @@ def revival_multiplier(
 def summarize_damage_penalties(
     landed: list[dict[str, Any]], rules: dict[int, tuple[str, float]],
     fight_start: float, lost_potency: dict[int, list[float]],
+    hit_losses: dict[int, list[tuple[float, float, float]]] | None = None,
 ) -> tuple[DamagePenaltySummary, ...]:
     observed: dict[int, list[float]] = defaultdict(list)
     for event in landed:
@@ -247,6 +261,7 @@ def summarize_damage_penalties(
             name, multiplier, min(times), max(times), len(times),
             lost_potency_min=lost_potency.get(status_id, [0.0, 0.0])[0],
             lost_potency_max=lost_potency.get(status_id, [0.0, 0.0])[1],
+            hit_losses=tuple((hit_losses or {}).get(status_id, ())),
         )
         for status_id, times in sorted(observed.items())
         for name, multiplier in (rules[status_id],)
@@ -257,6 +272,7 @@ def summarize_revival_penalties(
     landed: list[dict[str, Any]], ability_names: dict[int, str],
     fight_start: float, profile: _CombatProfile,
     lost_potency: dict[int, list[float]],
+    hit_losses: dict[int, list[tuple[float, float, float]]] | None = None,
 ) -> tuple[DamagePenaltySummary, ...]:
     """Show observed Weakness and Brink even when an older archive lacks raw events.
 
@@ -283,6 +299,7 @@ def summarize_revival_penalties(
             revival_multiplier({"buffs": f"{status_id}."}, profile, potted=False),
             min(times), max(times), counts[status_id], relevant[status_id][1],
             *lost_potency.get(status_id, (0.0, 0.0)),
+            hit_losses=tuple((hit_losses or {}).get(status_id, ())),
         )
         for status_id, times in sorted(observed.items())
     )

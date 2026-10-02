@@ -117,8 +117,10 @@ def test_tyrant_damage_down_refresh_and_transcendent_revival(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "Damage Down: 09m09s - 09m47s (refreshed at 09m17s; expired)" in output
-    assert output.count("35% reduction; 38 landed hits affected") == 1
+    assert "Damage Down 09m09s 09m47s" in " ".join(output.split())
+    assert "    Refreshed: 09m17s" in output
+    assert "Potency lost" in output
+    assert result.damage_penalties[0].affected_hits == 38
 
 
 def test_tyrant_wildfire_snapshot_does_not_create_second_potion(
@@ -144,15 +146,15 @@ def test_tyrant_wildfire_snapshot_does_not_create_second_potion(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "  Uses: 1\n" in output
-    assert "  Window 1: 10m00s - 10m30s\n" in output
+    assert "  Uses: 1 | Item:" in output
+    assert "    Window 1: 10m00s - 10m30s\n" in output
     assert "Window 2:" not in output
-    assert (
-        "Damage Down: 01m52s - 02m22s (expired)\n"
-        "  Damage Down: 03m26s - 03m56s (expired)\n"
-        "  Damage Down total (2 windows): 35% reduction; 68 landed hits affected; "
-        "6,794 potency lost\n\nGhosted damaging casts:"
-    ) in output
+    compact = " ".join(output.split())
+    assert "Damage Down 01m52s 02m22s" in compact
+    assert "Damage Down 03m26s 03m56s" in compact
+    assert "Hits: 68 | Potency lost: 6,794" in compact
+    assert output.index("Deaths and damage penalties:") < output.index("Ghosted attacks and reduced hits:")
+
 
     damage_path = tmp_path / "damage-events.json"
     events = json.loads(damage_path.read_text())

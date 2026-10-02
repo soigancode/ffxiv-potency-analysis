@@ -19,7 +19,8 @@
         "Delivers an attack with a potency of 160.",
         "Additional Effect: 20% chance of granting Hawk's Eye",
         "Duration: 30s"
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Straight Shot",
@@ -31,7 +32,8 @@
       "description": [
         "Delivers an attack with a potency of 200.",
         "Can only be executed when under the effect of Hawk's Eye or Barrage."
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Raging Strikes",
@@ -41,7 +43,8 @@
       "description": [
         "Increases damage dealt by 15%.",
         "Duration: 20s"
-      ]
+      ],
+      "recast_seconds": 120.0
     },
     {
       "name": "Venomous Bite",
@@ -59,7 +62,8 @@
         "Additional Effect: Venom",
         "Potency: 15",
         "Duration: 45s"
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Bloodletter",
@@ -72,7 +76,8 @@
         "Delivers an attack with a potency of 130.",
         "Maximum Charges: 3",
         "Shares a recast timer with Rain of Death."
-      ]
+      ],
+      "recast_seconds": 15.0
     },
     {
       "name": "Repelling Shot",
@@ -82,7 +87,8 @@
       "description": [
         "Jump 10 yalms away from current target.",
         "Cannot be executed while bound."
-      ]
+      ],
+      "recast_seconds": 30.0
     },
     {
       "name": "Quick Nock",
@@ -95,7 +101,8 @@
         "Delivers an attack with a potency of 110 to all enemies in a cone before you.",
         "Additional Effect: 20% chance of granting Hawk's Eye",
         "Duration: 30s"
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Wide Volley",
@@ -111,7 +118,8 @@
         "Delivers an attack with a potency of 140 to target and all enemies nearby it.",
         "Barrage Potency: 220",
         "Can only be executed while under the effect of Hawk's Eye or Barrage."
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Windbite",
@@ -129,7 +137,8 @@
         "Additional Effect: Wind damage over time",
         "Potency: 20",
         "Duration: 45s"
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Mage's Ballad",
@@ -144,7 +153,8 @@
         "Repertoire Effect: Reduces the recast time of Heartbreak Shot and Rain of Death by 7.5s",
         "Additional Effect: Grants Mage's Coda",
         "Can only be executed while in combat."
-      ]
+      ],
+      "recast_seconds": 120.0
     },
     {
       "name": "The Warden's Paean",
@@ -154,7 +164,8 @@
       "description": [
         "Removes one select detrimental effect from self or target party member. If the target is not enfeebled, a barrier is created nullifying the target's next detrimental effect suffered.",
         "Duration: 30s"
-      ]
+      ],
+      "recast_seconds": 45.0
     },
     {
       "name": "Barrage",
@@ -166,7 +177,8 @@
         "Duration: 10s",
         "Additional Effect: Grants Resonant Arrow Ready",
         "Duration: 30s"
-      ]
+      ],
+      "recast_seconds": 120.0
     },
     {
       "name": "Army's Paeon",
@@ -182,7 +194,8 @@
         "Can be stacked up to 4 times.",
         "Additional Effect: Grants Army's Coda",
         "Can only be executed while in combat."
-      ]
+      ],
+      "recast_seconds": 120.0
     },
     {
       "name": "Rain of Death",
@@ -195,7 +208,8 @@
         "Delivers an attack with a potency of 100 to target and all enemies nearby it.",
         "Maximum Charges: 3",
         "Shares a recast timer with Heartbreak Shot."
-      ]
+      ],
+      "recast_seconds": 15.0
     },
     {
       "name": "Battle Voice",
@@ -205,7 +219,8 @@
       "description": [
         "Increases direct hit rate of self and all nearby party members by 20%.",
         "Duration: 20s"
-      ]
+      ],
+      "recast_seconds": 120.0
     },
     {
       "name": "The Wanderer's Minuet",
@@ -221,7 +236,8 @@
         "Can be stacked up to 3 times.",
         "Additional Effect: Grants Wanderer's Coda",
         "Can only be executed while in combat."
-      ]
+      ],
+      "recast_seconds": 120.0
     },
     {
       "name": "Pitch Perfect",
@@ -246,7 +262,8 @@
         "2 Repertoire Stacks: 220",
         "3 Repertoire Stacks: 360",
         "Can only be executed when the Wanderer's Minuet is active and you have at least one stack of Repertoire."
-      ]
+      ],
+      "recast_seconds": 1.0
     },
     {
       "name": "Empyreal Arrow",
@@ -258,7 +275,8 @@
       "description": [
         "Delivers an attack with a potency of 260.",
         "Additional Effect: Grants Repertoire while singing Mage's Ballad, Army's Paeon, or the Wanderer's Minuet"
-      ]
+      ],
+      "recast_seconds": 15.0
     },
     {
       "name": "Iron Jaws",
@@ -272,7 +290,8 @@
         "Additional Effect: If the target is suffering from a Caustic Bite or Stormbite effect inflicted by you, the effect timer is reset",
         "Additional Effect: 35% chance of granting Hawk's Eye",
         "Duration: 30s"
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Sidewinder",
@@ -283,7 +302,8 @@
       },
       "description": [
         "Delivers an attack with a potency of 400."
-      ]
+      ],
+      "recast_seconds": 60.0
     },
     {
       "name": "Troubadour",
@@ -294,7 +314,8 @@
         "Reduces damage taken by self and nearby party members by 15%.",
         "Duration: 15s",
         "Effect cannot be stacked with machinist's Tactician or dancer's Shield Samba."
-      ]
+      ],
+      "recast_seconds": 90.0
     },
     {
       "name": "Caustic Bite",
@@ -314,7 +335,8 @@
         "Duration: 45s",
         "Additional Effect: 35% chance of granting Hawk's Eye",
         "Duration: 30s"
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Stormbite",
@@ -334,7 +356,8 @@
         "Duration: 45s",
         "Additional Effect: 35% chance of granting Hawk's Eye",
         "Duration: 30s"
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Nature's Minne",
@@ -344,7 +367,8 @@
       "description": [
         "Increases HP recovery via healing actions by 15% for self and nearby party members.",
         "Duration: 15s"
-      ]
+      ],
+      "recast_seconds": 120.0
     },
     {
       "name": "Refulgent Arrow",
@@ -356,7 +380,8 @@
       "description": [
         "Delivers an attack with a potency of 280.",
         "Can only be executed when under the effect of Hawk's Eye or Barrage."
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Shadowbite",
@@ -372,7 +397,8 @@
         "Delivers an attack with a potency of 200 to target and all enemies nearby it.",
         "Barrage Potency: 300",
         "Can only be executed when under the effect of Hawk's Eye or Barrage."
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Burst Shot",
@@ -385,7 +411,8 @@
         "Delivers an attack with a potency of 220.",
         "Additional Effect: 35% chance of granting Hawk's Eye",
         "Duration: 30s"
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Apex Arrow",
@@ -406,7 +433,8 @@
         "Additional Effect: Grants Blast Arrow Ready upon execution while Soul Voice Gauge is 80 or higher",
         "Duration: 10s",
         "Consumes Soul Voice Gauge upon execution."
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Ladonsbite",
@@ -419,7 +447,8 @@
         "Delivers an attack with a potency of 140 to all enemies in a cone before you.",
         "Additional Effect: 35% chance of granting Hawk's Eye",
         "Duration: 30s"
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Blast Arrow",
@@ -434,9 +463,10 @@
       "description": [
         "Delivers an attack to all enemies in a straight line before you with a potency of 700 for the first enemy, and 50% less for all remaining enemies.",
         "Can only be executed while under the effect of Blast Arrow Ready.",
-        "\u203bThis action cannot be assigned to a hotbar.",
-        "\u203bApex Arrow changes to Blast Arrow when requirements for execution are met."
-      ]
+        "※This action cannot be assigned to a hotbar.",
+        "※Apex Arrow changes to Blast Arrow when requirements for execution are met."
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Radiant Finale",
@@ -453,7 +483,8 @@
         "Additional Effect: Grants Radiant Encore Ready",
         "Duration: 30s",
         "Can only be executed when at least 1 coda is active."
-      ]
+      ],
+      "recast_seconds": 110.0
     },
     {
       "name": "Heartbreak Shot",
@@ -466,7 +497,8 @@
         "Delivers an attack with a potency of 180.",
         "Maximum Charges: 3",
         "Shares a recast timer with Rain of Death."
-      ]
+      ],
+      "recast_seconds": 15.0
     },
     {
       "name": "Resonant Arrow",
@@ -481,7 +513,8 @@
       "description": [
         "Delivers an attack to target and all enemies nearby it with a potency of 640 for the first enemy, and 50% less for all remaining enemies.",
         "Can only be executed while under the effect of Resonant Arrow Ready."
-      ]
+      ],
+      "recast_seconds": 2.5
     },
     {
       "name": "Radiant Encore",
@@ -507,7 +540,8 @@
         "2 Coda: 800",
         "3 Coda: 1,100",
         "Can only be executed while under the effect of Radiant Encore Ready."
-      ]
+      ],
+      "recast_seconds": 2.5
     }
   ],
   "traits": [

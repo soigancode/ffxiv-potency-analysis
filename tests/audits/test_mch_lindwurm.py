@@ -30,8 +30,8 @@ def test_real_lindwurm_final_queen_lands_bunker_but_not_collider(
     assert result.unmatched == ()
     cli._print_analysis(result)
     assert (
-        "06m29s Automaton Queen: 50 Battery Gauge, 837 total potency (missing Crowned Collider)"
-        in capsys.readouterr().out
+        "06m29s 50 3 1 Collider"
+        in " ".join(capsys.readouterr().out.split())
     )
 
 
@@ -58,7 +58,7 @@ def test_queen_overdrive_marks_its_deployment(
     assert queen.mch_overdrive_seconds == pytest.approx(391.551)
     assert queen.potency_min == pytest.approx(836.6)
     cli._print_analysis(result)
-    assert "(Queen Overdrive at 06m32s)" in capsys.readouterr().out
+    assert "06m32s Queen Overdrive" in capsys.readouterr().out
 
 
 def test_real_lindwurm_ii_queen_lands_both_finishers(

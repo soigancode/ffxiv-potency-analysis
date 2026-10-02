@@ -1,6 +1,7 @@
 """Warrior execution summaries from visible casts, ready effects, and landed hits."""
 
 from dataclasses import dataclass
+from itertools import pairwise
 from typing import Any
 
 from ..events import _event_name
@@ -16,6 +17,7 @@ class WarReadySummary:
     overwritten: int
     remaining: int
     unconfirmed: int
+    losses: tuple[tuple[float, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +44,7 @@ class WarSummary:
     ready: tuple[WarReadySummary, ...]
     infuriate_uses: int
     tomahawks: tuple[WarTomahawk, ...]
+    expired_charges: tuple[tuple[float, int], ...] = ()
 
 
 READY = (
@@ -50,6 +53,45 @@ READY = (
     (1003901, "Primal Wrath", ("Primal Wrath",)),
     (1001897, "Nascent Chaos", ("Inner Chaos", "Chaotic Cyclone")),
 )
+
+
+def _tempest_setup_windows(
+    casts: list[dict[str, Any]],
+    buffs: list[dict[str, Any]],
+    names: dict[int, str],
+    actions: dict[str, dict[str, Any]],
+    initial: set[Any],
+    start: float,
+    end: float,
+    targetable: TargetableTime,
+    windows: dict[int, tuple[tuple[int, int, float], ...]],
+) -> list[tuple[float, float]]:
+    """Exempt one required combo and its autos at pull or confirmed downtime expiry."""
+    contexts = [start] if 1002677 not in initial else []
+    tempest = windows.get(1002677, ())
+    grants = sorted(
+        (
+            e
+            for e in buffs
+            if e.get("abilityGameID") == 1002677 and e.get("type") in {"applybuff", "refreshbuff"}
+        ),
+        key=lambda e: e["timestamp"],
+    )
+    for (_, gap_start), (gap_end, _) in zip(targetable.intervals, targetable.intervals[1:]):
+        for _, finish, _ in tempest:
+            if not gap_start < finish <= gap_end:
+                continue
+            grant = next((e for e in reversed(grants) if e["timestamp"] < finish), None)
+            if grant is not None and isinstance(grant.get("duration"), (int, float)):
+                expiry = grant["timestamp"] + grant["duration"]
+                if abs(expiry - finish) <= 100:
+                    contexts.append(gap_end)
+    # Opening warnings start only after the first application, even when
+    # free spenders precede the combo. Reopeners need confirmed natural expiry.
+    return [
+        (context, min((begin for begin, _, _ in tempest if begin >= context), default=end))
+        for context in contexts
+    ]
 
 
 def _ready_summary(
@@ -68,6 +110,7 @@ def _ready_summary(
     active = initial
     expiry = None
     consumed_at = None
+    losses = []
     timeline = [
         (e["timestamp"], 1, e)
         for e in buffs
@@ -78,6 +121,7 @@ def _ready_summary(
     for time, _, event in sorted(timeline, key=lambda row: row[:2]):
         if active and expiry is not None and time > expiry:
             expired += 1
+            losses.append(((expiry - start) / 1000, "expired"))
             active = False
         if event["type"] == "cast":
             uses += 1
@@ -86,6 +130,8 @@ def _ready_summary(
                 consumed_at = time
         elif event["type"] in {"applybuff", "refreshbuff"}:
             overwritten += int(active)
+            if active:
+                losses.append(((time - start) / 1000, "overwritten"))
             grants += 1
             active = True
             duration = event.get("duration")
@@ -99,13 +145,17 @@ def _ready_summary(
             )
             if not near_cast and expiry is not None and time >= expiry - 100:
                 expired += 1
+                losses.append(((time - start) / 1000, "expired"))
             elif not near_cast and consumed_at is None:
                 unconfirmed += 1
             active = False
-    if active and expiry is not None and expiry <= end:
+    if active and expiry is not None and expiry < end:
         expired += 1
+        losses.append(((expiry - start) / 1000, "expired"))
         active = False
-    return WarReadySummary(name, grants, uses, expired, overwritten, int(active), unconfirmed)
+    return WarReadySummary(
+        name, grants, uses, expired, overwritten, int(active), unconfirmed, tuple(losses)
+    )
 
 
 def summarize_war(
@@ -140,6 +190,7 @@ def summarize_war(
     charges = 3 if 1001177 in initial else 0
     expiry = None
     guaranteed = unused = 0
+    expired_charges = []
     timeline = [
         (e["timestamp"], 1, e)
         for e in own_buffs
@@ -152,8 +203,9 @@ def summarize_war(
         if _event_name(e, names) in {"Fell Cleave", "Decimate"}
     ]
     for time, _, event in sorted(timeline, key=lambda row: row[:2]):
-        if expiry is not None and time > expiry:
+        if charges and expiry is not None and time > expiry:
             unused += charges
+            expired_charges.append(((expiry - start) / 1000, charges))
             charges = 0
         if event["type"] in {"applybuff", "refreshbuff"}:
             charges = 3
@@ -165,9 +217,12 @@ def summarize_war(
         elif event["type"] == "removebuff":
             if expiry is not None and time >= expiry - 100:
                 unused += charges
+                if charges:
+                    expired_charges.append(((time - start) / 1000, charges))
             charges = 0
-    if charges and expiry is not None and expiry <= end:
+    if charges and expiry is not None and expiry < end:
         unused += charges
+        expired_charges.append(((expiry - start) / 1000, charges))
     gcds = [
         e
         for e in own_casts
@@ -192,21 +247,36 @@ def summarize_war(
                 (cast["timestamp"] - previous["timestamp"]) / 1000 if previous else None,
                 _event_name(following, names) if following else None,
                 (following["timestamp"] - gcds[last]["timestamp"]) / 1000 if following else None,
-                tuple((gcds[i + 1]["timestamp"] - gcds[i]["timestamp"]) / 1000
-                      for i in range(index, last)),
+                tuple(
+                    (gcds[i + 1]["timestamp"] - gcds[i]["timestamp"]) / 1000
+                    for i in range(index, last)
+                ),
             )
         )
         index = last + 1
-    missing = tuple(
-        sorted(
-            ((time - start) / 1000, name)
-            for time, name, _, factor in hit_rows
-            if factor == 1 and name != "Damnation"
-        )
+    setup = _tempest_setup_windows(
+        own_casts, own_buffs, names, actions, initial, start, end, targetable_time, windows
     )
+    tempest_intervals = sorted(windows.get(1002677, ()))
+    application_gaps = [
+        (previous_end, next_begin)
+        for (_, previous_end, _), (next_begin, _, _) in pairwise(tempest_intervals)
+        if 0 <= next_begin - previous_end <= 1000
+    ]
+    avoidable = [
+        (time, name, value)
+        for time, name, value, factor in hit_rows
+        if factor == 1
+        and name != "Damnation"
+        and not (any(begin <= time <= finish for begin, finish in setup + application_gaps))
+    ]
+    missing = tuple(sorted({((time - start) / 1000, name) for time, name, _ in avoidable}))
     observed = sum(b - a for a, b in targetable_time.intervals)
-    covered = sum(max(0, min(b, d) - max(a, c)) for a, b in targetable_time.intervals
-                  for c, d, _ in windows.get(1002677, ()))
+    covered = sum(
+        max(0, min(b, d) - max(a, c))
+        for a, b in targetable_time.intervals
+        for c, d, _ in windows.get(1002677, ())
+    )
     uptime = covered / observed if observed else None
     targetable_seconds = observed / 1000 if observed else None
     return WarSummary(
@@ -215,12 +285,12 @@ def summarize_war(
         sum(factor > 1 for _, _, _, factor in hit_rows),
         len(hit_rows),
         missing,
-        sum(value * 0.1 for _, _, value, factor in hit_rows if factor == 1),
+        sum(value * 0.1 for _, _, value in avoidable),
         sum(_event_name(e, names) == "Inner Release" for e in own_casts) + int(1001177 in initial),
         guaranteed,
         unused,
         ready,
         sum(_event_name(e, names) == "Infuriate" for e in own_casts),
         tuple(tomahawks),
+        tuple(expired_charges),
     )
-

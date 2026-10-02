@@ -219,3 +219,25 @@ def test_dot_uses_application_potion_and_tick_revival_status() -> None:
                        "", "", True)
     assert brd_dot_potency(no_brink, 25, potion_multiplier=1,
                            self_buff_windows={}, combat_profile=profile) == 25
+
+
+def test_damage_down_cleared_on_boss_defeat_needs_nearby_direct_lethal_hit():
+    debuffs = [
+        {"type": "applydebuff", "targetID": 2, "timestamp": 1000,
+         "abilityGameID": 1002911, "duration": 30000},
+        {"type": "removedebuff", "targetID": 2, "timestamp": 20000,
+         "abilityGameID": 1002911},
+    ]
+    hit = {"type": "damage", "targetID": 3, "timestamp": 19955, "overkill": 100}
+
+    def reason(hit, subtype="Boss"):
+        return summarize_status_windows(
+            debuffs, [], {1002911: "Damage Down"}, 2, 0, 60000,
+            encounter_overkills=[hit], actors={3: {"subType": subtype}},
+        )[0].end_reason
+
+    assert reason(hit) == "boss defeated"
+    assert reason(hit, "NPC") == "removed"
+    assert reason({**hit, "timestamp": 19000}) == "removed"
+    assert reason({**hit, "tick": True}) == "removed"
+    assert reason({**hit, "overkill": 0}) == "removed"

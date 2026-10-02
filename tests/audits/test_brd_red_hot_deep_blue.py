@@ -67,11 +67,8 @@ def test_anonymous_brd_analysis_groups_landed_events(
     cli._print_analysis(analyze_saved_fight(tmp_path, actions))
     output = capsys.readouterr().out
     assert "Player: Anonymous\n" in output
-    assert (
-        "Landed damage events: 910\n"
-        "  Matched action events: 761\n"
-        "  Matched auto-attacks: 149\n"
-    ) in output
+    assert "Action totals:" in output and "Auto-attacks:" in output
+    assert "Shot: 149 hits" in output
     assert "Matched potency events" not in output
 
 
@@ -96,5 +93,5 @@ def test_one_leaderboard_rank_shows_full_anonymous_analysis(
     monkeypatch.setattr(cli, "_actions_for_job", lambda job, override: actions)
     assert cli.main(["fflogs", "brd", "m10s", "9"]) == 0
     output = capsys.readouterr().out
-    assert "Player: Anonymous\nRank: 9\nFight: Red Hot" in output
-    assert "Matched auto-attacks: 149" in output
+    assert "Player: Anonymous | Rank: 9\nFight: Red Hot" in output
+    assert "Shot: 149 hits" in output

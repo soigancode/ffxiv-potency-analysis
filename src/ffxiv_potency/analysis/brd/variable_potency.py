@@ -39,8 +39,12 @@ def _brd_damage_estimates(
     The returned values are base potency, before applying the potion in the
     normal event loop. Uncertain hits still get a deterministic best estimate.
     """
-    fixed = {"Burst Shot": 220, "Refulgent Arrow": 280,
-             "Empyreal Arrow": 260, "Heartbreak Shot": 180}
+    fixed = {
+        "Burst Shot": 220,
+        "Refulgent Arrow": 280,
+        "Empyreal Arrow": 260,
+        "Heartbreak Shot": 180,
+    }
 
     def normalized(event: dict[str, Any]) -> float:
         amount = float(event["amount"])
@@ -49,7 +53,8 @@ def _brd_damage_estimates(
         if event.get("hitType") == 2:
             amount /= (
                 unfed_critical_multiplier
-                if unfed and unfed_critical_multiplier is not None else critical_multiplier
+                if unfed and unfed_critical_multiplier is not None
+                else critical_multiplier
             )
         if event.get("directHit") is True:
             amount /= 1.25
@@ -76,16 +81,20 @@ def _brd_damage_estimates(
     references: dict[Any, list[tuple[float, float]]] = defaultdict(list)
     for event in landed:
         potency = fixed.get(_event_name(event, names))
-        if (potency is not None and isinstance(event.get("timestamp"), (int, float))
-                and not event.get("overkill")):
+        if (
+            potency is not None
+            and isinstance(event.get("timestamp"), (int, float))
+            and not event.get("overkill")
+        ):
             references[event.get("targetID")].append(
                 (float(event["timestamp"]), normalized(event) / potency)
             )
     if not references:
         return {}, ()
     encore_coda, _, _ = _brd_coda(casts, names)
-    all_references = [(target, time, value) for target, rows in references.items()
-                      for time, value in rows]
+    all_references = [
+        (target, time, value) for target, rows in references.items() for time, value in rows
+    ]
     packets: dict[tuple[Any, Any], list[dict[str, Any]]] = defaultdict(list)
     for event in landed:
         if _event_name(event, names) in {"Pitch Perfect", "Apex Arrow", "Radiant Encore"}:
@@ -97,8 +106,10 @@ def _brd_damage_estimates(
     pitch_uncertain_hits: list[BrdPitchHitEstimate] = []
     for packet, hits in packets.items():
         action = _event_name(hits[0], names)
-        cast = next((cast for cast in casts if
-                     (cast.get("packetID"), cast.get("abilityGameID")) == packet), None)
+        cast = next(
+            (cast for cast in casts if (cast.get("packetID"), cast.get("abilityGameID")) == packet),
+            None,
+        )
         immune = cast is not None and any(
             isinstance(event, dict)
             and event.get("type") == "damage"
@@ -112,12 +123,17 @@ def _brd_damage_estimates(
             for event in raw_damage
         )
         cast_timestamp = cast.get("timestamp") if cast is not None else None
-        blast_after = action == "Apex Arrow" and cast is not None and isinstance(cast_timestamp, (int, float)) and any(
-            _event_name(other, names) == "Blast Arrow"
-            and other.get("sourceID") == cast.get("sourceID")
-            and isinstance(other.get("timestamp"), (int, float))
-            and 0 < other["timestamp"] - cast_timestamp <= 10000
-            for other in casts
+        blast_after = (
+            action == "Apex Arrow"
+            and cast is not None
+            and isinstance(cast_timestamp, (int, float))
+            and any(
+                _event_name(other, names) == "Blast Arrow"
+                and other.get("sourceID") == cast.get("sourceID")
+                and isinstance(other.get("timestamp"), (int, float))
+                and 0 < other["timestamp"] - cast_timestamp <= 10000
+                for other in casts
+            )
         )
         measured = []
         baselines: dict[int, float] = {}
@@ -132,18 +148,21 @@ def _brd_damage_estimates(
                 baseline = median(value for _, value in same[:30])
                 weak = False
             else:
-                nearby = sorted(all_references, key=lambda row: (
-                    row[0] != target,
-                    abs(row[1] - hit_timestamp),
-                ))[:20]
+                nearby = sorted(
+                    all_references,
+                    key=lambda row: (
+                        row[0] != target,
+                        abs(row[1] - hit_timestamp),
+                    ),
+                )[:20]
                 baseline = median(value for _, _, value in nearby)
                 weak = True
             measured.append((hit, normalized(hit) / baseline, weak))
             baselines[id(hit)] = baseline
         apex_candidates = (
-            [float(140 + 7 * (gauge - 20))
-             for gauge in range(80 if blast_after else 20, 101, 5)]
-            if action == "Apex Arrow" else []
+            [float(140 + 7 * (gauge - 20)) for gauge in range(80 if blast_after else 20, 101, 5)]
+            if action == "Apex Arrow"
+            else []
         )
         apex_choice = (
             min(
@@ -153,7 +172,8 @@ def _brd_damage_estimates(
                     for _, effective, weak in measured
                 ),
             )
-            if apex_candidates else None
+            if apex_candidates
+            else None
         )
         apex_plausible: tuple[int, ...] = ()
         if apex_choice is not None:
@@ -170,20 +190,20 @@ def _brd_damage_estimates(
             hit_time = hits[0].get("timestamp")
             timestamp = cast_time if isinstance(cast_time, (int, float)) else hit_time
             if isinstance(timestamp, (int, float)):
-                apex_uses.append(BrdApexUseEstimate(
-                    (timestamp - fight_start) / 1000,
-                    len(measured),
-                    int(20 + (apex_choice - 140) / 7),
-                    apex_plausible,
-                    packet=packet,
-                ))
+                apex_uses.append(
+                    BrdApexUseEstimate(
+                        (timestamp - fight_start) / 1000,
+                        len(measured),
+                        int(20 + (apex_choice - 140) / 7),
+                        apex_plausible,
+                        packet=packet,
+                    )
+                )
         for hit, effective, weak in measured:
             factors = (1.0,)
             if action in {"Pitch Perfect", "Radiant Encore"}:
                 if len(measured) > 1:
-                    other_hit, other_value, _ = next(
-                        row for row in measured if row[0] is not hit
-                    )
+                    other_hit, other_value, _ = next(row for row in measured if row[0] is not hit)
                     ratio = (
                         normalized(hit) / normalized(other_hit)
                         if hit.get("buffs") == other_hit.get("buffs")
@@ -197,8 +217,9 @@ def _brd_damage_estimates(
                 stack_potencies = (100, 220, 360) if action == "Pitch Perfect" else (700, 800, 1100)
                 if action == "Radiant Encore" and packet in encore_coda:
                     stack_potencies = (stack_potencies[encore_coda[packet] - 1],)
-                candidates = sorted({float(potency * factor)
-                                     for potency in stack_potencies for factor in factors})
+                candidates = sorted(
+                    {float(potency * factor) for potency in stack_potencies for factor in factors}
+                )
             else:
                 candidates = apex_candidates
             nearest = sorted(candidates, key=lambda value: abs(effective / value - 1))
@@ -217,13 +238,15 @@ def _brd_damage_estimates(
                     or (not known_coda and abs(effective / chosen - 1) > tolerance)
                     or any(
                         abs(effective / alternative - 1) <= tolerance
-                        for alternative in nearest if alternative != chosen
+                        for alternative in nearest
+                        if alternative != chosen
                     )
                 )
             alternative = next((value for value in nearest if value != chosen), None)
             difference = abs(chosen - alternative) if uncertain and alternative is not None else 0.0
             outside_expected = abs(effective / chosen - 1) > tolerance
             if action == "Pitch Perfect" and uncertain:
+
                 def pitch_label(potency: float) -> str:
                     for stacks, base in enumerate((100, 220, 360), 1):
                         if potency == base:
@@ -233,7 +256,8 @@ def _brd_damage_estimates(
                     raise ValueError(f"unknown Pitch Perfect potency {potency}")
 
                 plausible = tuple(
-                    pitch_label(candidate) for candidate in candidates
+                    pitch_label(candidate)
+                    for candidate in candidates
                     if abs(effective / candidate - 1) <= tolerance
                 )
                 timestamp = hit.get("timestamp")
@@ -243,13 +267,24 @@ def _brd_damage_estimates(
                     closest_bound = min(
                         (lower_bound, upper_bound), key=lambda bound: abs(effective - bound)
                     )
-                    pitch_uncertain_hits.append(BrdPitchHitEstimate(
-                        (timestamp - fight_start) / 1000,
-                        pitch_label(chosen),
-                        plausible,
-                        outside_expected,
-                        100 * abs(effective - closest_bound) / closest_bound,
-                    ))
+                    pitch_uncertain_hits.append(
+                        BrdPitchHitEstimate(
+                            (timestamp - fight_start) / 1000,
+                            pitch_label(chosen),
+                            plausible,
+                            outside_expected,
+                            100 * abs(effective - closest_bound) / closest_bound,
+                            float(hit["amount"]),
+                            baselines[id(hit)]
+                            * lower_bound
+                            * float(hit["amount"])
+                            / normalized(hit),
+                            baselines[id(hit)]
+                            * upper_bound
+                            * float(hit["amount"])
+                            / normalized(hit),
+                        )
+                    )
             estimates[id(hit)] = chosen, uncertain, difference
             counts[action][0] += 1
             counts[action][1] += int(uncertain)
@@ -268,11 +303,16 @@ def _brd_damage_estimates(
                 )
     return estimates, tuple(
         BrdPotencyEstimateSummary(
-            name, int(row[0]), int(row[1]), row[2], int(row[3]),
+            name,
+            int(row[0]),
+            int(row[1]),
+            row[2],
+            int(row[3]),
             tuple(outside_details[name]),
             tuple(sorted(apex_uses, key=lambda use: use.seconds)) if name == "Apex Arrow" else (),
             tuple(sorted(pitch_uncertain_hits, key=lambda hit: hit.seconds))
-            if name == "Pitch Perfect" else (),
+            if name == "Pitch Perfect"
+            else (),
             weak_reference_hits=int(row[4]),
         )
         for name, row in sorted(counts.items())

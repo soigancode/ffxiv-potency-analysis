@@ -136,7 +136,7 @@ A link with `fight` and `source` already selected runs without the prompts:
 ffxiv-potency analyse "https://www.fflogs.com/reports/REPORT1?fight=9&source=18"
 ```
 
-The report shows the player, fight, duration, date, patch, assumed gear, potency, PPS, and FF Logs damage metrics. It marks wipes and lists deaths and damage penalties. Below the summary are action totals, hit outcomes, potions, auto-attacks, and job-specific details.
+The report shows the player, fight, duration, date, patch, assumed gear, potency, PPS, and FF Logs damage metrics. It marks wipes and lists deaths and damage penalties. Job details come first, followed by potions, hit outcomes, penalties, action totals, and auto-attacks.
 
 To save a fight without analysing it, run `ffxiv-potency fflogs "<report URL>"`.
 
@@ -164,7 +164,7 @@ ffxiv-potency compare \
   "https://www.fflogs.com/reports/REPORT2?fight=4&source=7"
 ```
 
-The comparison shows full duration, targetable time, rDPS, nDPS, landed potency, PPS, aHB, Luck, adjusted Luck, partition, patch, and the fight date in UTC (`dd/mm/yy`). Saved fights are reused.
+The comparison shows duration, targetable time, damage metrics, potency, PPS, and the PPS difference from the first selected log. Leaderboards use rank 1 as the reference when included, otherwise the highest selected rank. Raid comparisons show adjusted Hit Bonus and adjusted Luck. Dungeon DPS comparisons show Hit Bonus and Luck. Notes mark deaths (`KO`), Damage Down (`DD`), and confirmed attacks lost to target death or untargetability (`G`). Saved fights are reused.
 
 WAR and MCH combine equal rDPS and nDPS values in one **rDPS/nDPS** column.
 
@@ -174,7 +174,7 @@ WAR and MCH combine equal rDPS and nDPS values in one **rDPS/nDPS** column.
 
 **Luck** shows how favorable the observed Crit and Direct Hit outcomes were, weighted by each hit's potency. A critical hit contributes more than a Direct Hit because its configured damage multiplier is larger. **Luck baseline** shows the expected score from the configured unbuffed gear rates. Comparing the two indicates whether hit outcomes were favorable for that gear profile. It does not measure rotation quality.
 
-**Adjusted Luck** (`aLuck` in comparisons) subtracts the *expected* benefit of tracked party and target Crit/DH rate buffs. The original Luck score remains visible because those actual outcomes still affect FF Logs damage rankings. Adjusted Luck does not change potency or PPS. [The formulas](#luck-and-adjusted-luck) explain both scores.
+**Adjusted Luck** (`aLuck` in comparisons) subtracts the *expected* benefit of tracked party and target Crit/DH rate buffs. The original Luck score remains visible in analyse. Adjusted Luck does not change potency or PPS. [The formulas](#luck-and-adjusted-luck) explain both scores.
 
 FF Logs **rDPS and nDPS** remain the original reported damage metrics. Potency and PPS measure a different thing: landed action value without Crit, Direct Hit, or base damage roll variance. Compare the same fight and job, with comparable gear and stats.
 
@@ -184,7 +184,7 @@ FF Logs **rDPS and nDPS** remain the original reported damage metrics. Potency a
 
 #### Targetable time
 
-PPS uses time when an enemy is available for damage. Simultaneous enemies count once, while encounter transitions and travel between enemy groups are excluded. Full duration and the excluded time remain visible in analyse.
+PPS uses time when an enemy is available for damage. Simultaneous enemies count once, while encounter transitions and travel between enemy groups are excluded. Full duration and targetable time remain visible in analyse.
 
 Supported raid and trial kills use the duration established by FF Logs damage and DPS when consistent with the enemy timeline. Dungeon and Criterion runs use encounter-wide enemy appearances, targetability updates, deaths, and lethal hits. Unknown spawn times begin at the first party hit, so these windows are marked estimated. A missing timeline falls back to full duration and is labelled unavailable. Ordinary gaps between a player's attacks never count as downtime.
 
@@ -231,7 +231,7 @@ WAR uses an action-damage trait multiplier of `1.0`. BRD, MCH, and DNC divide by
 
 #### Hit Bonus and Adjusted Hit Bonus
 
-**HB** is the potency-weighted damage bonus from recorded Crits and Direct Hits, including guaranteed outcomes. **aHB** subtracts the expected contribution from external Crit/DH rate buffs. A value of +48% means those outcomes add 48% damage over the same observed attacks without their Crit/DH bonuses. Only aHB appears between PPS and Luck in leaderboards and comparisons. Analyse uses the full names **Hit Bonus** and **Adjusted Hit Bonus**.
+**HB** is the potency-weighted damage bonus from recorded Crits and Direct Hits, including guaranteed outcomes. **aHB** subtracts the expected contribution from external Crit/DH rate buffs. A value of +48% means those outcomes add 48% damage over the same observed attacks without their Crit/DH bonuses. Raid leaderboards and comparisons show aHB and aLuck after PPS. Dungeon DPS tables show HB and Luck. Analyse uses the full names **Hit Bonus** and **Adjusted Hit Bonus**.
 
 Guaranteed hits include both the Direct Hit attribute conversion and the deterministic damage benefit from external Crit/DH rate buffs. Explicitly non-random damage such as Wildfire contributes potency with no hit bonus. Periodic damage without a recorded outcome is excluded. The metric uses configured gear and observed outcomes, rather than converting potency into FF Logs nDPS. Unlike Luck, it also depends on the mix of attacks used.
 
@@ -294,7 +294,7 @@ Inner Chaos, Chaotic Cyclone, Primal Rend, and Primal Ruination guarantee critic
 
 #### Execution summary
 
-Analyse shows Surging Tempest uptime, attacks without it, and their lost potency. Inner Release lists uses and unused charges at confirmed expiry. Primal Rend, Primal Ruination, Primal Wrath, and Nascent Chaos list ready grants, uses, expirations, and overwrites. Pre-pull effects count as grants. Consuming a ready effect counts as use even if the damage ghosts. Effects still active at the fight's end are not counted as wasted.
+Analyse shows actual Surging Tempest uptime and hit coverage. Missing-buff warnings and lost potency exclude all attacks before the first application and setup after a confirmed natural expiry during downtime. Other unbuffed attacks remain listed. Inner Release lists uses and unused charges at confirmed expiry. Primal Rend, Primal Ruination, Primal Wrath, and Nascent Chaos list ready grants, uses, expirations, and overwrites. Pre-pull effects count as grants. Consuming a ready effect counts as use even if the damage ghosts. Effects still active at the fight's end are not counted as wasted.
 
 Melee downtime groups consecutive Tomahawks into one line, timestamped at the first Tomahawk. It shows the preceding and following melee GCDs and every gap between casts. Abilities woven between GCDs do not break the chain. No exact replacement loss is assigned because the available melee action is uncertain.
 
@@ -302,7 +302,7 @@ Melee downtime groups consecutive Tomahawks into one line, timestamped at the fi
 
 #### Songs and personal buffs
 
-Songs grant distinct Codas. Radiant Finale consumes them for a 2%, 4%, or 6% personal damage bonus. Radiant Encore then deals 700, 800, or 1,100 potency, with 50% potency on additional targets. Raging Strikes adds 15% damage. The report shows consumed Codas, Encore potency, and song durations.
+Songs grant distinct Codas. Radiant Finale consumes them for a 2%, 4%, or 6% personal damage bonus. Radiant Encore then deals 700, 800, or 1,100 potency, with 50% potency on additional targets. Raging Strikes adds 15% damage. The report shows consumed Codas, Encore potency, and song durations. Radiant Finale’s possible-use count follows a 120-second buff cycle, while its action data retains the actual 110-second cooldown.
 
 Barrage makes Refulgent Arrow strike three times or raises Shadowbite to 300 potency. Caustic Bite and Stormbite retain their personal buff snapshot on each target. Iron Jaws refreshes both effects with a new snapshot. Application damage and tick potency are reported separately.
 
@@ -326,7 +326,7 @@ Candidate potencies allow a 94%–106% damage roll plus 0.5% rounding tolerance.
 
 Hypercharge grants five stacks that add 20 potency to single-target weaponskills, including Blazing Shot. Auto Crossbow receives no bonus. Reassemble guarantees a critical direct hit on the next eligible weaponskill. Full Metal Field guarantees that outcome independently.
 
-Wildfire adds 240 potency per weaponskill that lands during its ten-second window, up to six hits and 1,440 potency. Pet attacks and auto-attacks do not contribute. Detonator can end the window early. Wildfire does not roll Crit or DH. Each detonation lists its contributing weaponskills and potency.
+Wildfire adds 240 potency per weaponskill that lands during its ten-second window, up to six hits and 1,440 potency. Pet attacks and auto-attacks do not contribute. Detonator can end the window early. Wildfire does not roll Crit or DH. The report lists hit counts and potency. Windows with fewer than six hits also list their contributing weaponskills. Double Check and Checkmate use a charge simulation with the recorded Blazing Shots, which reduce both recharge timers by 15 seconds. It respects the three-charge cap and targetable windows. The result is an upper bound that does not model weaving or buff alignment.
 
 #### Automaton Queen and Battery
 

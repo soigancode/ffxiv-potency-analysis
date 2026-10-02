@@ -49,6 +49,7 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
         auto_attacks=(AutoAttackSummary("Shot", 3, 2.672, 2.64, 88, 264),),
         pet_deployments=(PetDeploymentSummary("Queen", 222.2, "Battery", 50),),
         hit_outcomes=HitOutcomeSummary(1, 2, 3, 4),
+        random_hit_outcomes=HitOutcomeSummary(1, 2, 3, 4),
         potion=PotionSummary(
             3, 100, 100, 7, 7,
             windows=(PotionWindow(-2, 28, inferred=True),),
@@ -79,10 +80,10 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
             BrdPotencyEstimateSummary(
                 "Pitch Perfect", 20, 1, 140, 1,
                 (BrdOutsideExpectedHit(31_482, 360, 32_445, 36_948),),
-                pitch_uncertain_hits=(BrdPitchHitEstimate(222.2, "3-stack full hit", (), True),),
+                pitch_uncertain_hits=(BrdPitchHitEstimate(222.2, "3-stack full hit", (), True, 2.97, 31482, 32445, 36948),),
             ),
         ),
-        mch_wildfires=(MchWildfireSummary(14.091, 24.673, 5, 1_288.78),),
+        mch_wildfires=(MchWildfireSummary(14.091, 24.673, 5, 1_288.78, contributing_actions=("Blazing Shot",) * 5),),
     )
 
     def fake_analyze(saved_directory: Path, actions_path: Path) -> AnalysisResult:
@@ -95,88 +96,62 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     assert cli.main(["analyse", str(directory), "--actions", str(actions)]) == 0
     output = capsys.readouterr().out
     assert output.startswith("\nPlayer:") and output.endswith("\n\n")
-    assert ("Fight: Test Boss (1)\nDuration: 00m10s\n"
-            "Targetable time: unavailable (PPS uses full fight duration)\n"
-            "Date: 01/05/2026 (UTC)\nPartition: n/a\nPatch: 7.5\n"
-            "Food: Caramel Popcorn [HQ]\n"
-            "Party main-stat bonus: 5% (assumed; older saved fight)\n"
-            "nDPS: 12,345.6\nrDPS: 12,330.4") in output
-    cli._print_analysis(
-        replace(expected, played_patch="7.51", patch_source="fight date",
-                gear_name="7.4 Savage BiS", gear_source="assumed", actions_since="7.4"),
-        directory=directory,
-    )
-    dated_output = capsys.readouterr().out
-    assert "Patch: 7.51 (fight date)\nRanking patch bracket: 7.5\n" in dated_output
-    assert "Gear: 7.4 Savage BiS (assumed)" in dated_output
-    assert "Played patch:" not in dated_output
-    cli._print_analysis(replace(expected, kill=False))
-    assert "Fight: Test Boss (1)\nDuration: 00m10s (wipe)\n" in capsys.readouterr().out
-    war = WarSummary(
-        1.0, 100.0, 2, 2, (), 0, 1, 3, 0, (), 1,
-        (WarTomahawk(422, "Inner Chaos", 2.54, "Heavy Swing", 3.48, (9.87,)),),
-    )
-    cli._print_analysis(replace(expected, war=war))
-    war_output = capsys.readouterr().out
-    assert war_output.index("\nSurging Tempest:") < war_output.index(
-        "\nInner Release and follow-ups:"
-    ) < war_output.index("\nMelee downtime:")
-    assert "Tomahawk: 2 uses" in war_output
-    assert "07m02s: Inner Chaos -> 2.54s -> Tomahawk -> 9.87s -> Tomahawk -> 3.48s -> Heavy Swing" in war_output
-    assert "Player: Test Player" in output
-    assert "Landed potency: 350-400" in output
-    assert "Potency per second: 35.00-40.00" in output
-    assert "00m12s: 1 hit, 85 gauge" in output
-    assert "03m42s: 1 hit, best estimate 95 gauge (plausible 95 - 100 gauge)" in output
-    assert "Pitch Perfect: 20 hits, 1 hit with ambiguous potency\n" in output
-    assert "03m42s: closest fit: 3-stack full hit; outside expected damage" in output
+    lines = output.strip().splitlines()
+    assert lines[:4] == [
+        "Player: Test Player",
+        "Fight: Test Boss | Duration: 00m10s | Targetable: n/a",
+        "Date: 01/05/2026 (UTC) | Patch: 7.5",
+        "Gear: custom profile | Food: Caramel Popcorn [HQ]",
+    ]
+    assert "Landed potency: 350-400 | PPS: 35.00-40.00 | rDPS: 12,330.4 | nDPS: 12,345.6" in output
+    assert "Potions:\n  Uses: 3 | Item: Grade 4 Gemdraught of Dexterity [HQ]" in output
+    assert "Window 1: -00m02s - 00m28s" in output
+    assert "Potted base potency: 100 | Potency gained: 7 (+7.00%)" in output
     assert "03m42s Chain Saw on Test Boss (target at 0 HP)" in output
     assert "00m12s Chain Saw on Test Add (target defeated before hit landed)" in output
-    assert "03m42s Iron Jaws on Test Boss: 1/26,098 damage (0.0038% potency counted)" in output
-    assert output.index("Reduced damage hits:") < output.index("Ghosted damaging casts:")
-    assert "estimated 2.672s -> 2.64s weapon delay" in output
-    assert "Potency gained: 7" in output
-    assert "Window 1: -00m02s - 00m28s" in output
-    assert "Potions:\n  Uses: 3\n  Item: Grade 4 Gemdraught of Dexterity [HQ]" in output
-    assert "inferred" not in output
-    assert "03m42s Queen" in output
-    assert "00m14s - 00m25s: 5/6 landed weaponskills, 1,289 potency" in output
-    assert output.index("Wildfire:") < output.index("Pet deployments:")
-    assert "Shot: 1" in output
-    assert "  00m12s Chain Saw on Test Add (target defeated before hit landed)" in output
-    assert output.index("Ghosted damaging casts:") < output.index("Potions:")
-    expected_outcomes = """Observed hit outcomes:
-  Normal Hit: 1
-  Direct Hit: 3
-  Direct Hit gear baseline: 28.80%
-  Direct Hit rate: 70.00% (+41.20%)
-  Critical Hit: 2
-  Critical Hit gear baseline: 27.70%
-  Critical Hit rate: 60.00% (+32.30%)
-  Direct Critical Hit: 4
-  Direct Critical Hit gear baseline: 7.98%
-  Direct Critical Hit rate: 40.00% (+32.02%)
-  Hit Bonus: +48.00%
-  Adjusted Hit Bonus: +45.00%
-  Luck baseline: 24.98%
-  Luck score: 42.31% (+17.33%)
-  Adjusted luck score: 40.12% (+15.14%)"""
-    assert expected_outcomes in output
-    assert "Drill: 1 use, 1 hit, 600 total potency" in output
-    assert "per use" not in output and "per hit" not in output
-
+    assert "03m42s Iron Jaws on Test Boss: 1/26,098 damage (0.0038% potency retained, lethal overkill)" in output
+    assert output.index("Wildfire:") < output.index("Automaton Queen and Battery:") < output.index("Potions:")
+    assert output.index("Potions:") < output.index("Hit bonus and luck:") < output.index("Ghosted attacks and reduced hits:") < output.index("Action totals:") < output.index("Auto-attacks:") < output.index("Data and assumptions:")
+    assert "Base potency per hit: 88.00" in output
+    normalized = " ".join(output.split())
+    assert "00m12s 85 85 1 n/a" in normalized
+    assert "03m42s 95/100 95 1 n/a" in normalized
+    assert "03m42s: best fit 3-stack full hit | Damage: 31,482 | Expected: 32,445-36,948 (3.0% below range)" in output
+    assert "    GCDs: " + " -> ".join(["BS"] * 5) in output
+    assert "Action totals:\n  Action" in output
+    assert "Difference" in output
+    assert "Drill 1 1 600" in normalized
+    assert "Direct Hit 3 30.00% 20.82%" in normalized
+    assert output.index("Direct Hit") < output.index("Critical Hit")
+    assert "Luck: 42.31% (+17.33 percentage points vs baseline)" in output
+    assert "Adjusted Luck: 40.12% (+15.14 percentage points vs baseline)" in output
+    assert "Adjusted Hit Bonus: +45.00% (-3.00 percentage points vs raw)" in output
+    assert "Guaranteed Direct Hits and Critical Hits count toward Hit Bonus, but are excluded from Luck" in output
+    cli._print_analysis(replace(expected, played_patch="7.51", patch_source="fight date",
+                                gear_name="7.4 Savage BiS", gear_source="assumed", actions_since="7.4"), directory=directory)
+    dated = capsys.readouterr().out
+    assert "Patch: 7.51" in dated
+    assert "Gear: 7.4 Savage BiS (assumed) | Food:" in dated
+    assert "Partition: n/a | Ranking patch bracket: 7.5" in dated
+    cli._print_analysis(replace(expected, kill=False))
+    assert "Duration: 00m10s (wipe)" in capsys.readouterr().out
+    war = WarSummary(1.0, 100.0, 2, 2, (), 0, 1, 3, 0, (), 1,
+                     (WarTomahawk(422, "Inner Chaos", 2.54, "Heavy Swing", 3.48, (9.87,)),))
+    cli._print_analysis(replace(expected, war=war))
+    war_output = capsys.readouterr().out
+    assert war_output.index("Surging Tempest:") < war_output.index("Inner Release and follow-ups:") < war_output.index("Melee downtime:")
+    assert "Tomahawk: 2 uses in 1 chain" in war_output
+    assert "07m02s: Inner Chaos -> 2.54s -> Tomahawk -> 9.87s -> Tomahawk -> 3.48s -> Heavy Swing" in war_output
     cli._print_analysis(replace(expected, party_bonus_percent=3, echo_status="observed"))
     echo_output = capsys.readouterr().out
-    assert "Party main-stat bonus: 3%\n" in echo_output
-    assert "Echo: 12% (damage normalised by 1.12)\n" in echo_output
-
+    assert "Party main-stat bonus: 3% (recorded)" in echo_output
+    assert "12% damage normalised by 1.12" in echo_output
     cli._print_analysis(replace(expected, potion=PotionSummary(0, 0, 0, 0, 0)))
-    unpotted_output = capsys.readouterr().out
-    assert "Potions:" not in unpotted_output
-    assert "Potted base potency:" not in unpotted_output
-    assert "Observed hit outcomes:" in unpotted_output
+    unpotted = capsys.readouterr().out
+    assert "Potions:" not in unpotted and "Potted base potency:" not in unpotted
+    assert "Hit bonus and luck:" in unpotted
     cli._print_analysis(replace(expected, echo_status="absent"))
-    assert "Echo: 0%\n" in capsys.readouterr().out
+    assert "Echo: 0%" in capsys.readouterr().out
 
 
 
@@ -197,3 +172,54 @@ def test_fight_date_uses_report_time_plus_fight_offset_and_handles_missing_date(
     assert cli._fight_date(tmp_path) == "02/05/26"
     fight.write_text('{"startTime": 500}', encoding="utf-8")
     assert cli._fight_date(tmp_path) == "n/a"
+
+
+def test_comparison_delta_preserves_uncertainty_and_zero_baseline():
+    baseline = AnalysisResult(
+        fight_name="Boss", encounter_id=1, source_name="Player", ndps=None,
+        duration_seconds=10, raw_damage_events=0, landed_damage_events=0,
+        matched_damage_events=0, potency_min=1000, potency_max=1000,
+        actions=(), auto_attacks=(), pet_deployments=(),
+        hit_outcomes=HitOutcomeSummary(0, 0, 0, 0),
+        potion=PotionSummary(0, 0, 0, 0, 0), unmatched=(), ghosted=(),
+    )
+    assert cli._format_pps_delta(baseline, baseline, 0) == "-"
+    assert cli._format_pps_delta(replace(baseline, potency_min=1100, potency_max=1200), baseline, 1) == "+10.00% to +20.00%"
+    assert cli._format_pps_delta(baseline, replace(baseline, potency_min=0), 1) == "n/a"
+
+
+def test_issue_markers_only_count_confirmed_target_ghosts():
+    from ffxiv_potency.analysis.penalties import StatusWindow
+    from ffxiv_potency.reporting import issue_notes
+
+    result = AnalysisResult(
+        fight_name="Boss", encounter_id=1, source_name="Player", ndps=None,
+        duration_seconds=10, raw_damage_events=0, landed_damage_events=0,
+        matched_damage_events=0, potency_min=1000, potency_max=1000,
+        actions=(), auto_attacks=(), pet_deployments=(),
+        hit_outcomes=HitOutcomeSummary(0, 0, 0, 0),
+        potion=PotionSummary(0, 0, 0, 0, 0), unmatched=(), ghosted=(),
+    )
+    result = replace(result,
+        status_windows=(StatusWindow("Dead", 1, 2, "revived"), StatusWindow("Damage Down", 3, 4, "expired")),
+        ghosted_ending_times=(("Attack", ((1, "target defeated before hit landed"), (2, "target became untargetable"), (3, "player died"), (4, "target defeated before hit landed"))),),
+        ghosted_target_low_hp=(("Attack", ((4, 0),)),),
+    )
+    assert issue_notes(result) == "KOx1 DDx1 Gx2"
+
+
+def test_dot_gap_tolerance_is_per_gap_and_does_not_change_uptime():
+    from ffxiv_potency.analysis.execution import Coverage
+    from ffxiv_potency.reporting import reported_coverage_gaps
+
+    effect = Coverage(
+        "Caustic Bite", 95.4, 100,
+        ((0, 0.8), (10, 10.3), (20, 20.8), (30, 31), (40, 41.7)),
+        first_application_seconds=0.8,
+    )
+    assert reported_coverage_gaps(effect) == ((40, 41.7),)
+    assert effect.covered_seconds == 95.4
+    assert len(effect.gaps) == 5
+    assert reported_coverage_gaps(replace(effect, name="Stormbite")) == ((40, 41.7),)
+    # The tolerance does not hide gaps in songs or other personal buffs.
+    assert reported_coverage_gaps(replace(effect, name="Songs")) == effect.avoidable_gaps

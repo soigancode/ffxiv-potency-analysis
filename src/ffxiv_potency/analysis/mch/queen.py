@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import replace
 from typing import Any
 
@@ -17,7 +18,7 @@ def summarize_mch_queen_deployments(
     source_id: int | None,
     fight_start: float,
     totals: dict[PetDeploymentSummary, list[float]],
-    landed_actions: dict[PetDeploymentSummary, set[str]],
+    landed_actions: dict[PetDeploymentSummary, Counter[str]],
 ) -> tuple[PetDeploymentSummary, ...]:
     overdrives: dict[PetDeploymentSummary, float] = {}
     for cast in casts:
@@ -41,6 +42,7 @@ def summarize_mch_queen_deployments(
                 if finisher not in landed_actions[deployment]
             ) if deployment.actor == "Automaton Queen" else (),
             mch_overdrive_seconds=overdrives.get(deployment),
+            landed_actions=tuple(sorted(landed_actions[deployment].items())),
         )
         for deployment in deployments
     )

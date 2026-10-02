@@ -32,4 +32,4 @@ def test_brd_mistwake_apex_certainty_uses_the_whole_cast(
     cli._print_analysis(result)
     output = capsys.readouterr().out
     assert "9 uses with ambiguous potency (18 affected hits)" in output
-    assert "19 hits had fewer than 3 same-target reference hits" in output
+    assert "19 hits had fewer than 3 same-target references" in output

@@ -65,7 +65,7 @@ def test_ready_losses_charges_and_tomahawk_neighbors():
         TargetableTime(None, "unavailable"),
         {},
     )
-    assert result.tempest_lost_potency == 24
+    assert result.tempest_lost_potency == 0
     assert result.guaranteed_spenders == 1
     assert result.unused_expired_charges == 2
     rend, _, _, chaos = result.ready
@@ -108,3 +108,29 @@ def test_targetable_union_does_not_double_count_two_bosses_or_transitions():
     assert intervals == ((0, 10000), (20000, 30000))
     covered = sum(max(0, min(b, d) - max(a, c)) for a, b in intervals for c, d, _ in windows[1002677])
     assert covered == 10000
+
+
+def test_tempest_setup_excludes_only_required_combos_and_confirmed_downtime_expiry():
+    from ffxiv_potency.analysis.war.summary import _tempest_setup_windows
+
+    names = {1: "Heavy Swing", 2: "Maim", 3: "Storm's Eye", 4: "Fell Cleave", 5: "Infuriate"}
+    actions = {name: {"type": "Weaponskill"} for name in names.values()}
+    actions["Infuriate"]["type"] = "Ability"
+    casts = [{"timestamp": time, "abilityGameID": ability} for time, ability in
+             [(0, 1), (1000, 5), (2500, 2), (5000, 3),
+              (40000, 1), (42500, 2), (45000, 3), (47500, 4)]]
+    buffs = [{"timestamp": 5000, "abilityGameID": 1002677, "type": "applybuff", "duration": 30000}]
+    windows = {1002677: ((5000, 35000, 1.1), (45000, 60000, 1.1))}
+    targetable = TargetableTime(40, "timeline", ((0, 20000), (40000, 60000)))
+    assert _tempest_setup_windows(casts, buffs, names, actions, set(), 0, 60000, targetable, windows) == [
+        (0, 5000), (40000, 45000),
+    ]
+    # Continuous targetability cannot excuse the reopener. Unknown duration cannot either.
+    continuous = TargetableTime(60, "timeline", ((0, 60000),))
+    assert _tempest_setup_windows(casts, buffs, names, actions, set(), 0, 60000, continuous, windows) == [(0, 5000)]
+    buffs[0].pop("duration")
+    assert _tempest_setup_windows(casts, buffs, names, actions, set(), 0, 60000, targetable, windows) == [(0, 5000)]
+    # A spender before or during the opener does not turn setup into an issue.
+    casts[2]["abilityGameID"] = 4
+    assert _tempest_setup_windows(casts, buffs, names, actions, set(), 0, 60000, continuous, windows) == [(0, 5000)]
+    assert _tempest_setup_windows(casts, buffs, names, actions, {1002677}, 0, 60000, continuous, windows) == []

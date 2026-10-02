@@ -28,7 +28,7 @@ def test_merchant_tale_damage_down_and_fight_identity(
     assert fight["encounterID"] == 4550
     assert rankings["rankings"]["data"][0]["partition"] == 1
     result = analyze_saved_fight(tmp_path, ACTIONS)
-    assert _format_fight(result) == "Another Merchant's Tale (4550)"
+    assert _format_fight(result) == "Another Merchant's Tale (amt)"
     assert result.unmatched == ()
     assert result.party_bonus_percent == 4
     penalty, = result.damage_penalties

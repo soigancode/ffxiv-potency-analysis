@@ -22,7 +22,7 @@ def test_mistwake_real_log_has_three_party_roles(tmp_path: Path, extract_fight) 
     result = analyze_saved_fight(tmp_path, Path("data/jobs/mch/7.4/actions.json"))
     assert result.party_bonus_percent == 3  # Tank, healer, and physical ranged DPS.
     assert result.unmatched == ()
-    assert _format_fight(result) == "Mistwake (4549)"
+    assert _format_fight(result) == "Mistwake (mistwake)"
     assert _format_fight(replace(
         result, fight_name="Treno Catoblepas / Thundergust Griffin / Amdusias",
-    )) == "Mistwake (4549)"
+    )) == "Mistwake (mistwake)"

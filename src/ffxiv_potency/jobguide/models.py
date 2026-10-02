@@ -282,6 +282,7 @@ class Action:
     gauge_gains: tuple[GaugeGain, ...] = ()
     damage_buff: DamageBuff | None = None
     completed_steps: int | None = None
+    recast_seconds: float | None = None
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -311,4 +312,6 @@ class Action:
             result["damage_buff"] = self.damage_buff.to_dict()
         if self.completed_steps is not None:
             result["completed_steps"] = self.completed_steps
+        if self.recast_seconds is not None:
+            result["recast_seconds"] = self.recast_seconds
         return result

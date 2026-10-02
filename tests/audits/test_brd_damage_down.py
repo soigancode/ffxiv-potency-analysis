@@ -58,9 +58,11 @@ def test_damage_down_scales_only_affected_hits(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert output.index("Damage penalties:") < output.index("Variable potency:")
-    assert "Damage Down: 00m39s - 01m29s (refreshed at 01m29s; removed)" in output
-    assert "90% reduction; 80 landed hits affected" in output
+    assert output.index("Apex Arrow and Pitch Perfect:") < output.index("Deaths and damage penalties:")
+    assert "Damage Down 00m39s 01m29s" in " ".join(output.split())
+    assert "    Refreshed: 01m29s" in output
+    assert result.damage_penalties[0].affected_hits == 80
+    assert "Potency lost" in output
 
 
 def test_damage_down_refresh_and_ticks_after_death_use_snapshot(

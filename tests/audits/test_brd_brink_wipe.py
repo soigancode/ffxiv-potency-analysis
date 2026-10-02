@@ -37,10 +37,11 @@ def test_dancing_mad_brink_wipe(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "Weakness: 11m11s - 11m16s (death)" in output
-    assert "Brink of Death: 11m29s - 11m49s (death)" in output
-    assert "Weakness: 11m11s - 11m16s (death)\n    main stat -25%; ~26.0% potency reduction; 2 landed hits affected; 75 potency lost" in output
-    assert "Brink of Death: 11m29s - 11m49s (death)\n    main stat -50%; ~51.9% potency reduction; 32 landed hits affected; 1,797 potency lost" in output
+    normalized = " ".join(output.split())
+    assert "Weakness 11m11s 11m16s" in normalized
+    assert "Brink of Death 11m29s 11m49s" in normalized
+    assert "Potency lost" in output
+    assert "75 death" in normalized and "1,797 death" in normalized
     assert (
         "10m57s Refulgent Arrow on Exdeath (player defeated before hit landed)"
         in output

@@ -406,6 +406,9 @@ def _parse_action_container(container: Tag, row_id: str) -> Action:
 
     description = _lines(content_cell)
     triggers_action, deploys_actor = _parse_relationships(name, description)
+    recast_cell = container.find("td", class_="recast")
+    recast_text = recast_cell.get_text(" ", strip=True) if isinstance(recast_cell, Tag) else ""
+    recast_match = re.fullmatch(r"(\d+(?:\.\d+)?)s", recast_text)
 
     return Action(
         name=name,
@@ -419,6 +422,7 @@ def _parse_action_container(container: Tag, row_id: str) -> Action:
         gauge_gains=_parse_gauge_gains(description),
         damage_buff=_dnc_damage_buff(name, description),
         completed_steps=0 if name in {"Standard Finish", "Technical Finish"} else None,
+        recast_seconds=float(recast_match[1]) if recast_match else None,
     )
 
 

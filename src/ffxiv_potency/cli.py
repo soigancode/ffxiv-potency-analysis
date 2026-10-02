@@ -83,6 +83,19 @@ CURRENT_FIGHTS = {
     "mistwake": 4549,
     "clyteum": 4551,
 }
+ENCOUNTER_NAMES = {
+    101: "Vamp Fatale",
+    102: "Red Hot and Deep Blue",
+    103: "The Tyrant",
+    104: "Lindwurm",
+    105: "Lindwurm II",
+    1085: "Dancing Mad",
+    1083: "Doomtrain",
+    1084: "Enuo",
+    4550: "Another Merchant's Tale",
+    4549: "Mistwake",
+    4551: "The Clyteum",
+}
 _SAVED_FIGHT_FILES = ("fight.json", "master-data.json", "damage-events.json", "cast-events.json")
 _FIGHT_DIRECTORY = re.compile(r"fight-(\d+)")
 _SOURCE_DIRECTORY = re.compile(r"source-(\d+)")
@@ -212,16 +225,10 @@ def _format_rate_comparison(rate: float, baseline: float) -> str:
 
 
 def _format_fight(result: AnalysisResult) -> str:
-    suffix = f" ({result.encounter_id})" if result.encounter_id is not None else ""
-    name = result.fight_name
-    if result.encounter_id == 4549:
-        name = "Mistwake"
-    elif result.encounter_id == 4550:
-        name = "Another Merchant's Tale"
-    elif result.encounter_id == 4551:
-        name = "The Clyteum"
-    elif result.encounter_id == 1083:
-        name = "Doomtrain"
+    shorthand = next((alias for alias, encounter in CURRENT_FIGHTS.items()
+                      if encounter == result.encounter_id), None)
+    suffix = f" ({shorthand})" if shorthand else ""
+    name = ENCOUNTER_NAMES.get(result.encounter_id or 0, result.fight_name)
     return f"{name}{suffix}"
 
 
@@ -257,460 +264,19 @@ def _print_analysis(
     result: AnalysisResult, *, directory: Path | None = None,
     anonymous: bool = False, rank: int | None = None,
 ) -> None:
-    print()
-    print(f"Player: {_display_player_name(result.source_name, anonymous=anonymous)}")
-    if rank is not None:
-        print(f"Rank: {rank}")
-    wipe = " (wipe)" if result.kill is False else ""
-    print(f"Fight: {_format_fight(result)}")
-    print(f"Duration: {_format_duration(result.duration_seconds)}{wipe}")
-    if result.targetable_seconds is not None:
-        print(f"Targetable time: {_format_duration(result.targetable_seconds)} ({result.targetable_time_source})")
-        print(f"Excluded time: {_format_duration(max(0, result.duration_seconds - result.targetable_seconds))}")
-    else:
-        print(f"Targetable time: {result.targetable_time_source}")
-    if directory is not None:
-        partition, patch = _fight_provenance(directory)
-        print(f"Date: {_fight_date(directory, full_year=True)} (UTC)")
-        print(f"Partition: {partition}")
-        patch_detail = f" ({result.patch_source})" if result.played_patch and result.patch_source else ""
-        print(f"Patch: {result.played_patch or patch}{patch_detail}")
-        if result.played_patch and result.played_patch != patch and patch != "n/a":
-            print(f"Ranking patch bracket: {patch}")
-    bonus = (f"{result.party_bonus_percent}%"
-             if result.party_bonus_percent is not None else "5% (assumed; older saved fight)")
-    if result.gear_name:
-        print(f"Actions: valid since {result.actions_since}" if result.actions_since
-              else "Actions: custom snapshot")
-        print(f"Gear: {result.gear_name} ({result.gear_source})")
-    if result.food is None:
-        print("Food: None")
-    else:
-        note = "" if result.food.recorded else " (configured; not identified in fight events)"
-        print(f"Food: {result.food.name}{note}")
-        for begin, finish in result.food_missing_windows:
-            print(f"  Without food: {_format_timestamp(begin)} - {_format_timestamp(finish)}")
-    print(f"Party main-stat bonus: {bonus}")
-    if result.echo_status == "observed":
-        print("Echo: 12% (damage normalised by 1.12)")
-    elif result.echo_status == "absent":
-        print("Echo: 0%")
-    elif result.echo_status == "unknown":
-        print("Echo: unknown (initial combatant auras unavailable)")
-    print(f"nDPS: {result.ndps:,.1f}" if result.ndps is not None else "nDPS: n/a")
-    print(f"rDPS: {result.rdps:,.1f}" if result.rdps is not None else "rDPS: n/a")
-    print(f"Landed damage events: {result.landed_damage_events}")
-    print(f"  Matched action events: {result.matched_damage_events}")
-    auto_hits = sum(attack.hits for attack in result.auto_attacks)
-    print(f"  Matched auto-attacks: {auto_hits}")
-    unmatched = result.landed_damage_events - result.matched_damage_events - auto_hits
-    if unmatched > 0:
-        print(f"  Unmatched damage events: {unmatched}")
-    print(f"Landed potency: {_format_potency(result.potency_min, result.potency_max)}")
-    print(f"Potency per second: {_format_pps(result.pps_min, result.pps_max)}")
-    if result.status_windows or result.damage_penalties:
-        print("\nDamage penalties:")
-        printed_counts: set[str] = set()
-        window_counts = {
-            name: sum(window.name == name for window in result.status_windows)
-            for name in {window.name for window in result.status_windows}
-        }
-        for penalty in result.damage_penalties:
-            if penalty.main_stat_reduction is not None and penalty.multiplier is not None:
-                strength = (
-                    f" (main stat -{penalty.main_stat_reduction}%; "
-                    f"~{(1 - penalty.multiplier) * 100:.1f}% potency reduction)"
-                )
-            else:
-                strength = (
-                    f" ({(1 - penalty.multiplier) * 100:.0f}% reduction)"
-                    if penalty.multiplier is not None else ""
-                )
-            windows = tuple(w for w in result.status_windows if w.name == penalty.name)
-            if not windows:
-                print(
-                    f"  {penalty.name}{strength}: first landed hit "
-                    f"{_format_timestamp(penalty.first_observed_seconds)}, last landed hit "
-                    f"{_format_timestamp(penalty.last_observed_seconds)} "
-                    f"({_penalty_impact(penalty)}; exact application/removal not recorded)"
-                )
-        for window in result.status_windows:
-            note = window.end_reason
-            if window.refresh_seconds:
-                times = ", ".join(_format_timestamp(at) for at in window.refresh_seconds)
-                note = f"refreshed at {times}; {note}"
-            print(
-                f"  {window.name}: {_format_timestamp(window.start_seconds)} - "
-                f"{_format_timestamp(window.end_seconds)} ({note})"
-            )
-            if window.name not in printed_counts and window_counts[window.name] == 1:
-                for penalty in result.damage_penalties:
-                    if penalty.name == window.name:
-                        print(f"    {_penalty_detail(penalty)}; {_penalty_impact(penalty)}")
-                        printed_counts.add(window.name)
-                        break
-        for penalty in result.damage_penalties:
-            count = window_counts.get(penalty.name, 0)
-            if count <= 1:
-                continue
-            print(
-                f"  {penalty.name} total ({count} windows): "
-                f"{_penalty_detail(penalty)}; {_penalty_impact(penalty)}"
-            )
-    visible_estimates = tuple(
-        estimate for estimate in result.brd_potency_estimates
-        if estimate.action != "Radiant Encore"
-    )
-    if visible_estimates:
-        print("\nVariable potency:")
-        for estimate in visible_estimates:
-            if estimate.apex_uses:
-                uncertain = sum(len(use.plausible_gauges) != 1 for use in estimate.apex_uses)
-                print(f"  Apex Arrow: {len(estimate.apex_uses)} uses, {estimate.estimated_hits} hits, "
-                      f"{uncertain} uses with ambiguous potency "
-                      f"({estimate.uncertain_hits} affected hits)")
-                for use in estimate.apex_uses:
-                    if len(use.plausible_gauges) == 1:
-                        note = f"{use.gauge} gauge"
-                    elif use.plausible_gauges:
-                        low, high = use.plausible_gauges[0], use.plausible_gauges[-1]
-                        note = f"best estimate {use.gauge} gauge (plausible {low} - {high} gauge)"
-                    else:
-                        note = f"best estimate {use.gauge} gauge (outside expected damage range)"
-                    hits_label = "hit" if use.hits == 1 else "hits"
-                    potency_label = (
-                        f", {use.potency:,.0f} total potency"
-                        if use.potency is not None else ""
-                    )
-                    print(f"    {_format_timestamp(use.seconds)}: {use.hits} {hits_label}, "
-                          f"{note}{potency_label}")
-                if estimate.weak_reference_hits:
-                    print(f"    {estimate.weak_reference_hits} hits had fewer than 3 "
-                          "same-target reference hits")
-                continue
-            ambiguous_label = "hit" if estimate.uncertain_hits == 1 else "hits"
-            line = (
-                f"  {estimate.action}: {estimate.estimated_hits} hits, "
-                f"{estimate.uncertain_hits} {ambiguous_label} with ambiguous potency"
-            )
-            if estimate.uncertain_hits and estimate.action != "Pitch Perfect":
-                line += (
-                    f" (closest alternatives differ by up to "
-                    f"{estimate.uncertainty_potency:,.0f} potency in total)"
-                )
-            print(line)
-            for hit in estimate.pitch_uncertain_hits:
-                if hit.outside_expected:
-                    note = f"closest fit: {hit.best_fit}; outside expected damage"
-                elif len(hit.plausible_fits) > 1:
-                    note = "plausible: " + " or ".join(hit.plausible_fits)
-                else:
-                    note = f"likely {hit.best_fit}; reference damage is uncertain"
-                if hit.distance_from_bound_percent is not None:
-                    position = "outside" if hit.outside_expected else "inside"
-                    note += (f"; {hit.distance_from_bound_percent:.2f}% "
-                             f"{position} closest bound")
-                print(f"    {_format_timestamp(hit.seconds)}: {note}")
-    if result.reduced_damage_hits:
-        print("\nReduced damage hits:")
-        for hit in sorted(result.reduced_damage_hits, key=lambda hit: hit.seconds):
-            percentage = 100 * hit.damage / (hit.damage + hit.overkill)
-            precision = 4 if percentage < 0.01 else 2
-            print(
-                f"  {_format_timestamp(hit.seconds)} {hit.action}"
-                f"{' on ' + hit.target if hit.target else ''}: "
-                f"{hit.damage:,.0f}/{hit.damage + hit.overkill:,.0f} damage "
-                f"({percentage:.{precision}f}% potency counted)"
-            )
-    if result.ghosted:
-        print("\nGhosted damaging casts:")
-        events = sorted((time, name) for name, times in result.ghosted_times for time in times)
-        targets = {
-            (time, name): target
-            for name, times in result.ghosted_targets for time, target in times
-        }
-        target_low_hp = {
-            (time, name): hp
-            for name, times in result.ghosted_target_low_hp
-            for time, hp in times
-        }
-        endings = {
-            (time, name): reason
-            for name, times in result.ghosted_ending_times
-            for time, reason in times
-        }
-        for time, name in events:
-            hp = target_low_hp.get((time, name))
-            note = (
-                f" (target at {hp} HP)"
-                if hp is not None
-                else f" ({endings[(time, name)]})" if (time, name) in endings else ""
-            )
-            target = targets.get((time, name))
-            print(f"  {_format_timestamp(time)} {name}"
-                  f"{' on ' + target if target else ''}{note}")
-    if result.potion.uses:
-        print("\nPotions:")
-        print(f"  Uses: {result.potion.uses}")
-        if result.potion.item is not None:
-            note = "" if result.potion.item.recorded else " (configured; not identified in fight events)"
-            print(f"  Item: {result.potion.item.name}{note}")
-        for index, window in enumerate(result.potion.windows, 1):
-            if window.start_seconds is not None and window.end_seconds is not None:
-                print(
-                    f"  Window {index}: {_format_timestamp(window.start_seconds)} - {_format_timestamp(window.end_seconds)}"
-                )
-            elif window.observed_start_seconds is not None and window.observed_end_seconds is not None:
-                print(
-                    f"  Window {index}: start unknown; Medicated observed "
-                    f"{_format_timestamp(window.observed_start_seconds)} - {_format_timestamp(window.observed_end_seconds)}"
-                )
-        print(
-            "  Potted base potency: "
-            f"{_format_potency(result.potion.potted_potency_min, result.potion.potted_potency_max)}"
-        )
-        print(
-            "  Potency gained: "
-            f"{_format_potency(result.potion.gained_potency_min, result.potion.gained_potency_max)}"
-        )
-    outcomes = result.hit_outcomes
-    print("\nObserved hit outcomes:")
-    print(f"  Normal Hit: {outcomes.normal}")
-    for label, count, baseline, rate in (
-        ("Direct Hit", outcomes.direct, result.direct_gear_baseline, outcomes.direct_rate),
-        ("Critical Hit", outcomes.critical, result.critical_gear_baseline, outcomes.critical_rate),
-        (
-            "Direct Critical Hit",
-            outcomes.critical_direct,
-            result.direct_critical_gear_baseline,
-            outcomes.critical_direct_rate,
-        ),
-    ):
-        print(f"  {label}: {count}")
-        print(f"  {label} gear baseline: {baseline:.2%}")
-        print(f"  {label} rate: {_format_rate_comparison(rate, baseline)}")
-    if outcomes.unknown:
-        print(f"  Unknown outcome: {outcomes.unknown}")
-    print(f"  Hit Bonus: {result.hit_bonus:+.2%}")
-    print(f"  Adjusted Hit Bonus: {result.adjusted_hit_bonus:+.2%}")
-    print(f"  Luck baseline: {result.luck_baseline:.2%}")
-    print(f"  Luck score: {_format_rate_comparison(result.luck_score, result.luck_baseline)}")
-    print(
-        "  Adjusted luck score: "
-        f"{_format_rate_comparison(result.adjusted_luck_score, result.luck_baseline)}"
-    )
-    print("\nActions:")
-    dot_actions = {dot.name for dot in result.brd_dots}
-    for action in result.actions:
-        potency = _format_potency(action.potency_min, action.potency_max)
-        uses = (
-            f"{action.uses} {'use' if action.uses == 1 else 'uses'}, "
-            if action.uses is not None
-            else ""
-        )
-        hits = (
-            f"{action.hits} hits/ticks" if action.name in dot_actions
-            else f"{action.hits} {'hit' if action.hits == 1 else 'hits'}"
-        )
-        print(f"  {action.name}: {uses}{hits}, {potency} total potency")
-    if result.war is not None:
-        war = result.war
-        print("\nSurging Tempest:")
-        if war.tempest_uptime is not None:
-            print(f"  Surging Tempest uptime: {war.tempest_uptime:.2%} of {war.tempest_targetable_seconds:.1f}s observed targetable time")
-        coverage = f"{war.tempest_hits / war.total_hits:.2%}" if war.total_hits else "n/a"
-        print(f"  Surging Tempest: {coverage} of landed hits ({war.tempest_hits}/{war.total_hits})")
-        print(f"  Potency lost without Surging Tempest: {war.tempest_lost_potency:,.1f}")
-        for seconds, name in war.tempest_missing:
-            print(f"    {_format_duration(seconds)} {name} without Surging Tempest")
-        print("\nInner Release and follow-ups:")
-        print(f"  Inner Release: {war.inner_release_uses} uses (including pre-pull), {war.guaranteed_spenders} guaranteed spender casts")
-        print(f"    Unused charges at expiry: {war.unused_expired_charges}")
-        print(f"  Infuriate: {war.infuriate_uses} uses")
-        for ready in war.ready:
-            print(f"  {ready.name}: {ready.grants} ready grants (including pre-pull), {ready.uses} uses")
-            print(f"    Lost: {ready.expired} expired, {ready.overwritten} overwritten. Remaining: {ready.remaining}")
-        print("\nMelee downtime:")
-        print(f"  Tomahawk: {sum(1 + len(use.gaps) for use in war.tomahawks)} uses")
-        for use in war.tomahawks:
-            previous = f"{use.previous} -> {use.previous_gap:.2f}s -> " if use.previous is not None else ""
-            following = f" -> {use.following_gap:.2f}s -> {use.following}" if use.following is not None else ""
-            chain = "Tomahawk" + "".join(f" -> {gap:.2f}s -> Tomahawk" for gap in use.gaps)
-            print(f"  {_format_duration(use.seconds)}: {previous}{chain}{following}")
-    if result.brd_songs:
-        print("\nSongs:")
-        averages = dict(result.brd_song_durations)
-        for song, count in result.brd_songs:
-            average = averages.get(song)
-            duration = f", {average:.1f}s average duration" if average is not None else ""
-            print(f"  {song}: {count} uses{duration}")
-    if result.brd_finales:
-        print("\nRadiant Finale (Coda consumed):")
-        for finale in result.brd_finales:
-            hits = f"{finale.encore_hits} {'hit' if finale.encore_hits == 1 else 'hits'}"
-            potency = _format_potency(finale.encore_potency_min, finale.encore_potency_max)
-            print(
-                f"  {_format_timestamp(finale.timestamp_seconds)} {finale.coda} Coda, "
-                f"Radiant Encore: {hits} ({potency} potency)"
-            )
-    if result.brd_dots:
-        print("\nDamage over time:")
-        for dot in result.brd_dots:
-            if dot.ticks:
-                print(
-                    f"  {dot.name}: {dot.landed_uses} application hits, "
-                    f"{dot.ticks} landed ticks, "
-                    f"{dot.direct_potency:,.0f} application potency + "
-                    f"{dot.tick_potency:,.0f} tick potency"
-                )
-    if result.auto_attacks:
-        print("\nAuto-attacks:")
-        for auto_attack in result.auto_attacks:
-            print(
-                f"  {auto_attack.name}: {auto_attack.hits} hits, "
-                f"estimated {auto_attack.estimated_delay_seconds:.3f}s -> "
-                f"{auto_attack.weapon_delay_seconds:.2f}s weapon delay, "
-                f"{auto_attack.potency_per_hit:.2f} potency/hit, "
-                f"{auto_attack.total_potency:,.0f} total potency"
-            )
-    if result.dnc_procs is not None:
-        proc = result.dnc_procs
-        print("\nDancer proc luck:")
-        start = (str(proc.starting_feathers[0]) if len(proc.starting_feathers) == 1
-                 else f"{min(proc.starting_feathers)}-{max(proc.starting_feathers)}")
-        print(f"  Starting feathers: {start} ({proc.starting_feathers_source})")
-        print("  Proc luck indices: 50 = expected luck (approximate rarity)")
-        if proc.initial_proc_luck is not None:
-            print(f"  Initial GCD proc luck: {proc.initial_proc_luck:.1f}/100")
-        if proc.feather_luck_min is not None:
-            print(f"  Feather-chain luck index: {proc.feather_luck_min:.1f}/100 "
-                  "(minimum supported by the log)")
-            print("    Unlogged Feather overcap can make the true score higher.")
-        else:
-            print("  Feather-chain luck index: unavailable (insufficient proc or resource evidence)")
+    from .reporting import print_analysis
 
-        if proc.threefold_luck is not None:
-            print(f"  Threefold proc luck: {proc.threefold_luck:.1f}/100")
-        if proc.gcd_to_feather_chance is not None:
-            print(f"  Ordinary GCD-to-Feather chain: {100 * proc.gcd_to_feather_chance:.1f}% expected")
-            print("    Flourish skips the unlock roll. Threefold is a separate roll after spending a feather.")
-        for ready in proc.ready_procs:
-            if ready.name == "Threefold":
-                continue
-            opportunities = sum(count for _, count in ready.trials)
-            sources = ", ".join(f"{count} {name}" for name, count in ready.trials) or "none"
-            print(f"  {ready.name} opportunities: {opportunities} ({sources}), "
-                  f"expected random grants: {ready.expected:.1f}")
-            if ready.random_grants is not None:
-                extra = ready.random_grants - ready.expected
-                rate = (f", {100 * ready.random_grants / opportunities:.1f}% proc rate"
-                        if opportunities else "")
-                print(f"  {ready.name} random grants: {ready.random_grants} "
-                      f"({extra:+.1f} vs expected){rate}")
-                print(f"  {ready.name} from Flourish: {ready.guaranteed_grants}")
-            else:
-                print(f"  {ready.name} grants: unavailable (missing or unattributed buff events)")
-            print(f"  {ready.name} proc GCD uses: {ready.uses}")
-            if ready.random_grants is not None:
-                print(f"    Consumed: {ready.random_consumed} random, "
-                      f"{ready.guaranteed_consumed} Flourish")
-                print(f"    Both effects consumed together: {ready.overlaps}")
-                print(f"    Lost: {ready.overwritten} overwritten, {ready.expired} expired, "
-                      f"{ready.death_lost} on death. Remaining: {ready.remaining}")
-        if (proc.full_use_expected_feathers is not None
-                and proc.full_use_expected_random_threefold is not None):
-            print(f"  Full-use chain expectation: {proc.full_use_expected_feathers:.1f} feathers, "
-                  f"{proc.full_use_expected_random_threefold:.1f} random Threefold procs "
-                  "(assuming all ready effects and feathers are used, with no losses)")
-        print(f"  Feather opportunities: {proc.feather_trials}, "
-              f"expected successful rolls: {proc.expected_feathers:.1f}")
-        print(f"  Feathers used: {proc.feathers_used}")
-        if proc.feathers_gained_min is not None:
-            unknown = "ending gauge and cap losses" if len(proc.starting_feathers) == 1 else "starting/ending gauge and cap losses"
-            print(f"  Feathers gained: {proc.feathers_gained_min}-{proc.feathers_gained_max} "
-                  f"possible ({unknown} are unlogged)")
-            if proc.feather_successes_min is not None:
-                print(f"  Successful Feather rolls: at least {proc.feather_successes_min} "
-                      f"of {proc.feather_trials}. Exact count is unlogged.")
-        else:
-            print("  Feather gains: unavailable (incomplete resource evidence)")
-        print(f"  Threefold random opportunities: {proc.fan_trials}, "
-              f"expected procs: {proc.expected_threefold:.1f}")
-        if proc.random_threefold is not None:
-            extra = proc.random_threefold - proc.expected_threefold
-            print(f"  Threefold random procs: {proc.random_threefold} ({extra:+.1f} vs expected)")
-            if proc.fan_trials:
-                print(f"  Threefold proc rate: {100 * proc.random_threefold / proc.fan_trials:.1f}%")
-        else:
-            print("  Threefold random procs: unavailable (missing or unattributed buff events)")
-        print(f"  Threefold from Flourish: {proc.guaranteed_threefold}")
-        print(f"  Fan Dance III uses: {proc.fan_three_uses}")
-        threefold = next((r for r in proc.ready_procs if r.name == "Threefold"), None)
-        if threefold is not None and threefold.random_grants is not None:
-            print(f"    Consumed: {threefold.random_consumed} random, "
-                  f"{threefold.guaranteed_consumed} Flourish")
-            print(f"    Lost: {threefold.overwritten} overwritten, {threefold.expired} expired, "
-                  f"{threefold.death_lost} on death. Remaining: {threefold.remaining}")
+    print_analysis(result, directory=directory, anonymous=anonymous, rank=rank)
 
-        print("  Feather luck score: "
-              f"{proc.combined_feather_luck_min:.1f}/100 (minimum supported by the log)"
-              if proc.combined_feather_luck_min is not None
-              else "  Feather luck score: unavailable (insufficient proc or resource evidence)")
-        print("    50 = expected rates, 100 = every roll succeeds across all three stages.")
-        if proc.combined_feather_luck_min is not None:
-            print("    Unlogged Feather overcap can make the true score higher.")
 
-    if result.dnc_finishes:
-        print("\nDancer finishes:")
-        for name, strength in result.dnc_initial_buffs:
-            print(f"  Pre-pull {name}: +{(strength - 1) * 100:.0f}% damage "
-                  "(inferred from recorded multipliers)")
-        for finish in result.dnc_finishes:
-            steps = f" ({finish.steps} steps)" if finish.steps is not None else ""
-            print(f"  {_format_timestamp(finish.seconds)} {finish.action}{steps}: "
-                  f"{finish.hits} landed hits, {finish.potency:,.0f} potency")
-
-    if result.mch_wildfires:
-        print("\nWildfire:")
-        for wildfire in result.mch_wildfires:
-            started = _format_timestamp(wildfire.applied_seconds)
-            ended = (
-                _format_timestamp(wildfire.detonated_seconds)
-                if wildfire.detonated_seconds is not None
-                else "no detonation"
-            )
-            print(
-                f"  {started} - {ended}: {wildfire.landed_weaponskills}/6 landed weaponskills, "
-                f"{wildfire.potency:,.0f} potency"
-                f"{' (detonated early)' if wildfire.detonated_early else ''}"
-            )
-    if result.pet_deployments:
-        print("\nPet deployments:")
-        for deployment in result.pet_deployments:
-            missing = (
-                f" (missing {' and '.join(deployment.mch_missing_finishers)})"
-                if deployment.mch_missing_finishers
-                else ""
-            )
-            overdrive = (
-                f" (Queen Overdrive at {_format_timestamp(deployment.mch_overdrive_seconds)})"
-                if deployment.mch_overdrive_seconds is not None
-                else ""
-            )
-            print(
-                f"  {'Pre-pull' if deployment.mch_prepull else _format_timestamp(deployment.timestamp_seconds)} "
-                f"{deployment.actor}: "
-                f"{deployment.gauge_spent} {deployment.gauge}"
-                f"{' (estimated from Queen damage)' if deployment.mch_gauge_inferred else ''}"
-                f"{' (assumed carry-over; unconfirmed by this report)' if deployment.gauge_assumed else ''}, "
-                f"{_format_potency(deployment.potency_min, deployment.potency_max)} total potency"
-                f"{missing}{overdrive}"
-            )
-    if result.unmatched:
-        print("\nUnmatched landed damage:")
-        for name, count in result.unmatched:
-            print(f"  {name}: {count}")
-    print()
+def _format_pps_delta(result: AnalysisResult, baseline: AnalysisResult, index: int) -> str:
+    if index == 0:
+        return "-"
+    if baseline.pps_min <= 0 or baseline.pps_max <= 0:
+        return "n/a"
+    low = 100 * (result.pps_min / baseline.pps_max - 1)
+    high = 100 * (result.pps_max / baseline.pps_min - 1)
+    return f"{low:+.2f}%" if abs(high-low) < 0.005 else f"{low:+.2f}% to {high:+.2f}%"
 
 
 def _print_comparison(results: Sequence[AnalysisResult]) -> None:
@@ -826,8 +392,13 @@ def _compare_directories(
         and f"{result.rdps:.1f}" == f"{result.ndps:.1f}" for result in results
     )
     dps_labels = ("DPS",) if use_dps else (("rDPS/nDPS",) if combine_dps else ("rDPS", "nDPS"))
+    from .reporting import issue_notes
+
+    baseline_index = min(range(len(compared_ranks)), key=lambda i: compared_ranks[i]) if rank_positions is not None else 0
+    delta_labels = ("dPPS",)
+    hit_labels = ("HB", "Luck") if use_dps else ("aHB", "aLuck")
     labels = ("Duration", "Targetable", *dps_labels,
-              "Potency", "PPS", "aHB", "Luck", "aLuck",
+              "Potency", "PPS", *delta_labels, *hit_labels, "Notes",
               *provenance_labels, "Date")
     rows: list[tuple[str, ...]] = []
     for index, result in enumerate(results):
@@ -847,9 +418,10 @@ def _compare_directories(
               )),
             marker + _format_potency(result.potency_min, result.potency_max),
             marker + _format_pps(result.pps_min, result.pps_max),
-            marker + f"{result.adjusted_hit_bonus:+.2%}",
-            marker + f"{result.luck_score:.2%}",
-            marker + f"{result.adjusted_luck_score:.2%}",
+            _format_pps_delta(result, results[baseline_index], 0 if index == baseline_index else 1),
+            marker + f"{(result.hit_bonus if use_dps else result.adjusted_hit_bonus):+.2%}",
+            marker + f"{(result.luck_score if use_dps else result.adjusted_luck_score):.2%}",
+            issue_notes(result),
             *provenance_values,
             _fight_date(compared_directories[index]),
         ))
@@ -871,12 +443,14 @@ def _compare_directories(
         print("n/a Targetable time unavailable. PPS uses full duration for those logs.")
     if any("estimated" in result.targetable_time_source for result in results):
         print("~ Targetable time estimated from recorded enemy windows.")
+    if any(issue_notes(result) != "-" for result in results):
+        print("Notes: KO deaths | DD Damage Down | G confirmed target death/untargetability ghosts")
     if any(deployment.gauge_assumed for result in results
            for deployment in result.pet_deployments):
-        print("~ Potency, PPS, aHB, Luck, and aLuck include an unconfirmed 100 Battery Gauge carry-over.")
+        print("~ Potency, PPS, hit bonus, and luck include an unconfirmed 100 Battery Gauge carry-over.")
     if any(deployment.mch_gauge_inferred for result in results
            for deployment in result.pet_deployments):
-        print("~ Potency, PPS, aHB, Luck, and aLuck include Battery estimated from Queen damage.")
+        print("~ Potency, PPS, hit bonus, and luck include Battery estimated from Queen damage.")
     print()
     return tuple(skipped)
 
@@ -1007,7 +581,8 @@ def _report_fight_label(fight: ReportFight) -> str:
     duration = (f", {_format_duration(fight.duration_seconds)}"
                 if fight.duration_seconds is not None else "")
     wipe = " (wipe)" if fight.kill is False else ""
-    return f"{fight.name} (fight {fight.id}{duration}){wipe}"
+    name = ENCOUNTER_NAMES.get(fight.encounter_id, fight.name)
+    return f"{name} (fight {fight.id}{duration}){wipe}"
 
 
 def _select_report_reference(url: str) -> ReportReference:

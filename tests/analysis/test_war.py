@@ -103,3 +103,37 @@ def test_tempest_grant_and_expiry_use_snapshots_and_inner_release_is_conditional
     forced_bonus = 1.628 * 1.25 * direct_factor - 1
     assert result.hit_bonus == pytest.approx(natural * (bonus + forced_bonus) / (normal + 2 * natural))
     assert result.adjusted_hit_bonus == result.hit_bonus
+
+
+def test_tempest_warning_counts_aoe_use_once_but_keeps_loss_from_all_hits():
+    from ffxiv_potency.analysis.targetability import TargetableTime
+    from ffxiv_potency.analysis.war.summary import summarize_war
+
+    result = summarize_war(
+        [], [], [{"sourceID": 1, "auras": [{"ability": 1002677}]}], {}, {},
+        1, 0, 10000,
+        [(3000.0, "Mythril Tempest", value, 1.0) for value in (140.0, 140.0, 140.0, 140.0)]
+        + [(4500.0, "Mythril Tempest", 140.0, 1.0)],
+        TargetableTime(10, "test", ((0, 10000),)), {},
+    )
+    assert result.tempest_missing == ((3.0, "Mythril Tempest"), (4.5, "Mythril Tempest"))
+    assert result.tempest_lost_potency == pytest.approx(70)
+    assert result.total_hits == 5
+
+
+def test_tempest_application_tolerance_does_not_hide_long_lapse_or_change_uptime():
+    from ffxiv_potency.analysis.targetability import TargetableTime
+    from ffxiv_potency.analysis.war.summary import summarize_war
+
+    result = summarize_war(
+        [], [], [{"sourceID": 1, "auras": [{"ability": 1002677}]}], {}, {},
+        1, 0, 12000,
+        [(1500, "Attack", 100, 1.0), (8500, "Storm's Eye", 500, 1.0)],
+        TargetableTime(12, "test", ((0, 12000),)),
+        {1002677: ((0, 1000, 1.1), (2000, 4000, 1.1), (9000, 11000, 1.1))},
+    )
+    assert result.tempest_missing == ((8.5, "Storm's Eye"),)
+    assert result.tempest_lost_potency == pytest.approx(50)
+    assert result.tempest_uptime == pytest.approx(5 / 12)
+    assert result.tempest_hits == 0
+    assert result.total_hits == 2

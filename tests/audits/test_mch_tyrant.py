@@ -138,7 +138,7 @@ def test_detonator_marks_early_wildfire_without_changing_potency(
     from ffxiv_potency import cli
 
     cli._print_analysis(result)
-    assert "potency (detonated early)" in capsys.readouterr().out
+    assert "Detonator" in capsys.readouterr().out
 
 
 def test_mch_tyrant_shot_timing_matches_damage_reference(

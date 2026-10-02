@@ -21,6 +21,7 @@ def summarize_ready_procs(
     abilities: dict[int, str],
     rules: dict[str, tuple[str, float]],
     source_id: int | None,
+    fight_start: float = 0,
 ) -> tuple[DncReadyProcSummary, ...]:
     """Loss counts require explicit status evidence, never grant-minus-use guesses."""
     own = [
@@ -71,6 +72,7 @@ def summarize_ready_procs(
         active: dict[str, dict[str, Any]] = {}
         consumed = {"random": set(), "guaranteed": set()}
         losses = Counter()
+        loss_events = []
         seen = set()
         for e in sorted(events, key=lambda e: e["timestamp"]):
             status = _event_name(e, abilities)
@@ -87,6 +89,7 @@ def summarize_ready_procs(
             if kind in {"applybuff", "refreshbuff"}:
                 if status in active:
                     losses["overwritten"] += 1
+                    loss_events.append((e["timestamp"], status, "overwritten"))
                 packet = e.get("packetID")
                 origin = (
                     "random"
@@ -120,11 +123,13 @@ def summarize_ready_procs(
                     for d in life
                 ):
                     losses["death"] += 1
+                    loss_events.append((e["timestamp"], status, "death"))
                 elif (
                     prior
                     and e["timestamp"] >= prior["timestamp"] + prior.get("duration", 30000) - 1000
                 ):
                     losses["expired"] += 1
+                    loss_events.append((e["timestamp"], status, "expired"))
                 else:
                     losses["unknown"] += 1
         random_used, guaranteed_used = consumed["random"], consumed["guaranteed"]
@@ -146,6 +151,7 @@ def summarize_ready_procs(
                 len(active),
                 losses["unknown_consumed"],
                 losses["unknown"],
+                tuple(((time-fight_start)/1000, name, reason) for time, name, reason in loss_events),
             )
         )
     return tuple(summaries)

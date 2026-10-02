@@ -164,21 +164,21 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     output = capsys.readouterr().out
     assert output.startswith("\nFight:") and output.endswith("\n\n")
     assert "Saved fight data:" not in output
-    assert "Fight: Boss (10)" in output
+    assert "Fight: Boss" in output
     assert "01m40s" in output
     assert "nDPS" in output and "15,000.0" in output
     assert "rDPS" in output and "15,100.0" in output
-    assert "Player" in output and "Luck" in output and "51.54%" in output
+    assert "Player" in output and "aLuck" in output and "45.12%" in output
     assert next(line for line in output.splitlines() if line.startswith("Player")).endswith("Date")
     assert all(line.endswith("01/05/26") for line in output.splitlines()
                if line.startswith(("Alice", "Bob")))
     assert "Rank" not in output
     assert "aLuck" in output and "45.12%" in output
     header = next(line for line in output.splitlines() if line.startswith("Player"))
-    assert header.index("PPS") < header.index("aHB") < header.index("Luck")
+    assert header.index("PPS") < header.index("aHB") < header.index("aLuck")
     assert "HB" not in header.split()
     assert "nDPS  Potency" in output
-    assert "aLuck  Partition  Patch  Date" in output
+    assert header.split()[-4:] == ["Notes", "Partition", "Patch", "Date"]
     assert "Party" not in output and "Echo" not in output
     assert "Crit" not in output and "DH" not in output and "CDH" not in output
     assert "Alice" in output and "1,000" in output and "10" in output
@@ -191,7 +191,7 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     )
     ranked_output = capsys.readouterr().out
     assert "Rank  Player" in ranked_output
-    assert "Fight: Boss (10)\nPartition: n/a\nPatch: 7.5\n" in ranked_output
+    assert "Fight: Boss\nPartition: n/a\nPatch: 7.5\n" in ranked_output
     header = next(line for line in ranked_output.splitlines() if line.startswith("Rank"))
     assert "Partition" not in header and "Patch" not in header
     assert any(line.startswith("   1  Alice") for line in ranked_output.splitlines())
@@ -210,7 +210,7 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
         actions, rank_positions=(1, 9),
     )
     dated_output = capsys.readouterr().out
-    assert "Fight: Boss (10)\nPartition: n/a\nPatch: 7.5\n" in dated_output
+    assert "Fight: Boss\nPartition: n/a\nPatch: 7.5\n" in dated_output
     dated_header = next(line for line in dated_output.splitlines() if line.startswith("Rank"))
     assert "Partition" not in dated_header and "Patch" not in dated_header
     assert "Gear" not in dated_output and "BiS" not in dated_output
@@ -227,7 +227,7 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     cli._compare_directories([tmp_path / "abc123/fight-9/source-18"], actions)
     compact_output = capsys.readouterr().out
     assert "15,000.0  248,364" in compact_output
-    assert "45.12%        n/a    7.5  01/05/26" in compact_output
+    assert "45.12% - n/a 7.5 01/05/26" in " ".join(compact_output.split())
 
     for encounter in (4549, 4550, 4551):
         def dungeon_result(
@@ -244,7 +244,9 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
             if encounter in (4549, 4551):
                 assert "DPS" in dungeon_output and "16,789.2" in dungeon_output
                 assert "rDPS" not in dungeon_output and "nDPS" not in dungeon_output
+            assert "dPPS" in dungeon_output
             if ranks is not None:
+                assert "dPPS:" not in dungeon_output
                 assert "Partition" not in dungeon_output
                 assert "Patch: 7.5" in dungeon_output
     monkeypatch.setattr(cli, "analyze_saved_fight", fake_analyze)

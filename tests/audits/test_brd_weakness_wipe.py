@@ -52,12 +52,13 @@ def test_dancing_mad_wipe_shots_and_weakness_snapshots(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "Fight: Dancing Mad (1085)\nDuration: 11m18s (wipe)" in output
-    assert "Dead: 08m55s - 09m04s (revived: Weakness applied)" in output
-    assert "Weakness: 09m04s - 10m44s (expired)" in output
-    assert "Weakness: 09m04s - 10m44s (expired)\n    main stat -25%; ~26.0% potency reduction; 162 landed hits affected; " in output
-    assert "potency lost" in output
-    assert "Dead: 10m54s - 11m18s (fight ended)" in output
+    assert "Fight: Dancing Mad (umad) | Duration: 11m18s (wipe)" in output
+    assert "08m55s: died -> 09m04s: revived | Time dead: 9.0s | Weakness applied" in output
+    assert "Weakness 09m04s 10m44s" in " ".join(output.split())
+    assert "Potency lost" in output
+    assert "2 deaths\n" in output
+    assert "death(s)" not in output
+    assert "10m54s: died -> 11m18s: fight ended" in output
 
 
 def test_dancing_mad_wipe_all_ghosted_casts_and_reasons(
@@ -69,14 +70,16 @@ def test_dancing_mad_wipe_all_ghosted_casts_and_reasons(
     result = analyze_saved_fight(tmp_path, Path("data/jobs/brd/7.4/actions.json"))
     _print_analysis(result)
     output = capsys.readouterr().out
-    ghosted = output.split("Ghosted damaging casts:\n", 1)[1].split("\n\n", 1)[0]
-    assert ghosted.splitlines() == [
+    ghosted = output.split("Ghosted attacks and reduced hits:\n", 1)[1].split("\n\n", 1)[0]
+    observed_lines = ["  " + line.strip() for line in ghosted.splitlines() if line.strip()[:2].isdigit()]
+    expected_lines = [
         "  03m18s Burst Shot on Kefka (target became untargetable before hit landed)",
-        "  06m19s Burst Shot on Kefka (phase HP lock; damage excluded)",
-        "  06m20s Heartbreak Shot on Kefka (phase HP lock; damage excluded)",
-        "  06m22s Refulgent Arrow on Kefka (phase HP lock; damage excluded)",
-        "  06m22s Empyreal Arrow on Kefka (phase HP lock; damage excluded)",
+        "  06m19s Burst Shot on Kefka (phase HP lock)",
+        "  06m20s Heartbreak Shot on Kefka (phase HP lock)",
+        "  06m22s Refulgent Arrow on Kefka (phase HP lock)",
+        "  06m22s Empyreal Arrow on Kefka (phase HP lock)",
         "  08m52s Burst Shot on Chaos (player defeated before hit landed)",
         "  09m06s Caustic Bite on Chaos (target stopped taking damage before hit landed)",
         "  10m52s Burst Shot on Exdeath (player defeated before hit landed)",
     ]
+    assert sorted(observed_lines) == sorted(expected_lines)

@@ -32,12 +32,12 @@ def test_mch_lindwurm_ii_infers_first_queen_and_reports_patch(
     assert second.gauge_spent == 60 and second.gauge_assumed is False
     cli._print_analysis(result, directory=directory)
     output = capsys.readouterr().out
-    assert "Partition: 1\nPatch: 7.4" in output
+    assert "Partition: 1 | Ranking patch bracket: 7.4" in output
     assert "Echo: 0%" in output
-    assert "100 Battery Gauge (estimated from Queen damage)" in output
+    assert "Opening Battery: 100 (estimated from Queen damage)" in output
     cli._compare_directories([directory], actions)
     compared = capsys.readouterr().out
-    assert "~ Potency, PPS, aHB, Luck, and aLuck include Battery estimated from Queen damage." in compared
+    assert "~ Potency, PPS, hit bonus, and luck include Battery estimated from Queen damage." in compared
 
 
 _OPENING_CASES = json.loads(
@@ -67,4 +67,4 @@ def test_mch_lindwurm_opening_queen_matches_independent_damage_audit(
         cli._print_analysis(result, directory=tmp_path)
         output = capsys.readouterr().out
         assert "estimated from Queen damage" in output
-        assert ("Pre-pull Automaton Queen" in output) is prepull
+        assert ("Pre-pull" in output) is prepull

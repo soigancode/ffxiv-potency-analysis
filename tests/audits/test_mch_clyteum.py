@@ -20,6 +20,6 @@ def test_clyteum_real_log_has_three_party_roles(tmp_path: Path, extract_fight) -
     require_current_patch(fight, rankings)
     result = analyze_saved_fight(tmp_path, Path("data/jobs/mch/7.4/actions.json"))
     assert result.fight_name == "the Clyteum"
-    assert _format_fight(result) == "The Clyteum (4551)"
+    assert _format_fight(result) == "The Clyteum (clyteum)"
     assert result.party_bonus_percent == 3  # Tank, healer, and physical ranged DPS.
     assert result.unmatched == ()

@@ -37,10 +37,10 @@ def test_brd_adds_and_clipped_hit(
     output = capsys.readouterr().out
     assert "Burst Shot on Charnel Cell: 19,726/36,521 damage" in output
     assert "Burst Shot on Coffinmaker" in output
-    assert "01m03s: 1 hit, best estimate 80 gauge (plausible 80 - 85 gauge), 566 total potency" in output
-    assert "Army's Paeon: 4 uses, 37.0s average duration" in output
+    assert "01m03s 80/85 80 1 566" in " ".join(output.split())
+    assert "Army's Paeon 4 147.9s" in " ".join(output.split())
     assert "Heartbreak Shot on Charnel Cell (target defeated before hit landed)" in output
-    assert "Burst Shot on Coffinmaker (" not in output  # Its target HP was not recorded.
+    assert "Burst Shot on Coffinmaker (reason unconfirmed)" in output
     assert "phase transition" not in output
 
 

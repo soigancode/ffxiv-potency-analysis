@@ -38,7 +38,7 @@ def test_cli_analyses_and_compares_supplied_dancer_logs(tmp_path, monkeypatch, c
     assert cli.main(["analyse", str(first)]) == 0
     output = capsys.readouterr().out
     assert "Felix Austed" in output
-    assert "Dancer finishes:" in output
+    assert "Technical Step:" in output
     assert "Gear: 7.55 Relic BiS (assumed)" in output
     assert (
         cli.main(
