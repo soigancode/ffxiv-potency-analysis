@@ -11,12 +11,16 @@ from ..events import _has_buff
 FIGHT_OR_FLIGHT = 1000076
 
 
-def pld_self_buff_windows(buffs, actions, damage, casts, combatants, source, start, end):
+def fight_or_flight_strength(actions) -> float:
     text = " ".join(actions.get("Fight or Flight", {}).get("description", ()))
     match = re.search(r"Increases damage dealt by (\d+)%", text)
     if match is None:
         raise AnalysisError("cannot determine Fight or Flight strength from Paladin actions")
-    strength = 1 + int(match[1]) / 100
+    return 1 + int(match[1]) / 100
+
+
+def pld_self_buff_windows(buffs, actions, damage, casts, combatants, source, start, end):
+    strength = fight_or_flight_strength(actions)
     own = sorted((e for e in buffs if e.get("abilityGameID") == FIGHT_OR_FLIGHT
                   and e.get("sourceID") == source and e.get("targetID") == source),
                  key=lambda e: e["timestamp"])

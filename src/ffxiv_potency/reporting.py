@@ -282,6 +282,14 @@ def print_analysis(
     print("\nExecution summary:")
     for line in findings or ["No confirmed issues in this log."]:
         print("  " + line)
+    opportunities = [c for c in cooldowns.values()
+                     if c.possible is not None and c.uses < c.possible]
+    if opportunities:
+        print("  Cooldown opportunities:")
+        for c in opportunities:
+            basis = ("full-duration upper bound" if c.basis == "full duration"
+                     else f"upper bound from {c.basis}")
+            print(f"    {c.name}: {c.uses}/{c.possible} uses ({basis})")
 
     def uses(name):
         c = cooldowns.get(name)
@@ -333,19 +341,51 @@ def print_analysis(
             if name != "Requiescat" or counts.get(name):
                 value = counts.get(name, 0)
                 print(f"  {name}: {uses(name)} " + ("use" if value == 1 else "uses"))
+        if p.cooldown_timing:
+            print("\n  Cooldown timing:")
+            table(("Action", "Ready while targetable", "Longest delay"),
+                  [(c.name,
+                    f"{c.ready_seconds:.1f}s" if c.ready_seconds is not None else "n/a",
+                    f"{c.longest_delay_seconds:.1f}s"
+                    if c.longest_delay_seconds is not None else "n/a")
+                   for c in p.cooldown_timing])
+            print("  Timing starts after the first recorded use. Forced downtime and deaths excluded.")
+            print("  Intervene shows minimum confirmed time at full charges.")
+            print("  Delays may reflect intentional buff alignment.")
+        if p.alignment is not None:
+            print()
+            alignment = p.alignment
+            total = alignment.inside_potency + alignment.outside_potency
+            coverage = f"{alignment.inside_potency / total:.1%}" if total else "n/a"
+            print(f"  Landed potency inside Fight or Flight: {alignment.inside_potency:,.1f}"
+                  + f" / {total:,.1f} ({coverage})")
+            print("  Scope: Goring Blade, Imperator, Confiteor, Blades, Circle of Scorn and Expiacion.")
+            table(("Burst", "Buff start", "Buff end", "Inside", "Outside", "Coverage"),
+                  [(str(i), stamp(w.start_seconds), stamp(w.end_seconds),
+                    f"{w.inside_potency:,.1f}", f"{w.outside_potency:,.1f}",
+                    f"{w.inside_potency / (w.inside_potency + w.outside_potency):.1%}"
+                    if w.inside_potency + w.outside_potency else "n/a")
+                   for i, w in enumerate(alignment.windows, 1)])
+            if alignment.outside:
+                outside_actions: dict[str, tuple[int, float, float]] = {}
+                for finding in alignment.outside:
+                    outside_uses, outside_potency, outside_gain = outside_actions.get(finding.action, (0, 0.0, 0.0))
+                    outside_actions[finding.action] = (
+                        outside_uses + 1, outside_potency + finding.potency, outside_gain + finding.potential_gain,
+                    )
+                print("\n  Actions outside Fight or Flight:")
+                table(("Action", "Uses", "Potency", "Potential buff gain"),
+                      [(name, str(outside_uses), f"{outside_potency:,.1f}", f"{outside_gain:,.1f}")
+                       for name, (outside_uses, outside_potency, outside_gain) in sorted(
+                           outside_actions.items(), key=lambda row: (-row[1][2], row[0]),
+                       )])
+            print("  Potency excludes Fight or Flight. Includes regular uses between buff windows.")
+            print("  Potential gains are not confirmed losses.")
         print("\nReady effects and spell charges:")
         for r in p.ready:
             print("  " + ready_line(r))
             for time, reason in r.losses:
                 print(f"    {stamp(time)}: {reason}")
-        print("\nSpell casts:")
-        enhancement_order = {"Divine Might": 0, "Requiescat": 1, "None": 2}
-        spell_counts = sorted(p.spell_counts, key=lambda row: (
-            row[0], enhancement_order.get(row[1], 3), row[2],
-        ))
-        table(("Spell", "Enhancement", "Cast evidence", "Casts"),
-              [(name, effect, kind, str(n)) for name, effect, kind, n in spell_counts])
-        print("  Unconfirmed cast time includes openers whose begin-cast is outside the saved interval.")
         print("\nImperator/Requiescat follow-ups:")
         table(("Burst", "Trigger", "Confiteor", "Faith", "Truth", "Valor", "Honor", "Landed potency"),
               [(stamp(b.seconds), b.trigger, *(str(f.casts) for f in b.follow_ups),
@@ -354,6 +394,14 @@ def print_analysis(
         for b in p.bursts:
             for note in b.notes:
                 print(f"    {stamp(b.seconds)}: {note}")
+        print("\nSpell casts:")
+        enhancement_order = {"Divine Might": 0, "Requiescat": 1, "None": 2}
+        spell_counts = sorted(p.spell_counts, key=lambda row: (
+            row[0], enhancement_order.get(row[1], 3), row[2],
+        ))
+        table(("Spell", "Enhancement", "Cast evidence", "Casts"),
+              [(name, effect, kind, str(n)) for name, effect, kind, n in spell_counts])
+        print("  Unconfirmed cast time includes openers whose begin-cast is outside the saved interval.")
         print("\nCircle of Scorn:")
         table(("Applications", "Periodic ticks", "Application potency", "Periodic potency"),
               [(str(p.circle.applications), str(p.circle.ticks),

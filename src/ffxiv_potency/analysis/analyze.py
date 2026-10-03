@@ -328,6 +328,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     hit_bonus_weight = hit_bonus_total = hit_bonus_adjustment = 0.0
     war_hit_rows: list[tuple[float, str, float, float]] = []
     pld_hit_rows: list[tuple[tuple[int | None, int | None], str, float]] = []
+    pld_alignment_rows: list[tuple[float, str, float, bool]] = []
     pld_circle_direct = pld_circle_periodic = 0.0
     pld_circle_ticks = 0
     pld_circle_applications: set[tuple[int | None, int | None]] = set()
@@ -810,6 +811,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             war_hit_rows.append((war_time, name, sum(values) / 2, war_factor))
         if job.casefold() == "paladin":
             pld_hit_rows.append((key, name, sum(values) / 2))
+            pld_alignment_rows.append((snapshot, name, sum(values) / 2 / factor, factor > 1))
             if name == "Circle of Scorn":
                 if event.get("tick"):
                     pld_circle_ticks += 1
@@ -1261,7 +1263,8 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         pld=summarize_pld(sorted_casts, buffs, life, combatants or [], ability_names, actions,
                           source_id, start, end, pld_state, pld_hit_rows,
                           PldDotSummary(len(pld_circle_applications),
-                                        pld_circle_ticks, pld_circle_direct, pld_circle_periodic))
+                                        pld_circle_ticks, pld_circle_direct, pld_circle_periodic),
+                          pld_alignment_rows, self_buff_windows, targetable_time)
         if pld_state is not None else None,
         luck_score=luck_weighted_bonus / luck_weighted_maximum if luck_weighted_maximum else 0.0,
         adjusted_luck_score=(

@@ -39,6 +39,10 @@ def test_typed_cache_refresh_reuse_and_semantic_invalidation(tmp_path, monkeypat
     assert isinstance(first.pld, PldSummary)
     assert isinstance(first.pld.bursts, tuple)
     assert isinstance(first.pld.holy_spirit_casts, tuple)
+    assert isinstance(first.pld.cooldown_timing, tuple)
+    assert len(first.pld.cooldown_timing) == 5
+    assert first.pld.cooldown_timing[0].ready_seconds is not None
+    assert first.pld.cooldown_timing[-1].minimum
     assert any(kind == "hard cast" for _, kind in first.pld.holy_spirit_casts)
     assert any(kind == "instant" for _, kind in first.pld.holy_spirit_casts)
     assert cache_path(directory).exists()

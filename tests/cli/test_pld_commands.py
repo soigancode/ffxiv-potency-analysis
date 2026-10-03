@@ -8,6 +8,7 @@ from zipfile import ZipFile
 import pytest
 
 from ffxiv_potency import cli
+from ffxiv_potency.analysis.cooldown_timing import CooldownTiming
 from ffxiv_potency.analysis.models import (
     AnalysisResult,
     HitOutcomeSummary,
@@ -114,3 +115,56 @@ def test_report_selection_accepts_paladin_without_prompt(monkeypatch):
 
     monkeypatch.setattr("builtins.input", fail_prompt)
     assert cli._select_report_reference("https://www.fflogs.com/reports/abc123") == ReportReference("abc123", 13, 98)
+
+
+def test_alignment_findings_sort_by_gain_and_report_sections_by_importance(capsys):
+    from ffxiv_potency.analysis.pld.alignment import summarize_alignment
+    from ffxiv_potency.analysis.pld.buffs import FIGHT_OR_FLIGHT
+
+    alignment = summarize_alignment(
+        [(21000, 'Expiacion', 450, False), (51000, 'Expiacion', 450, False),
+         (22000, 'Blade of Honor', 1000, False),
+         (5000, 'Imperator', 580, False), (1000, 'Confiteor', 1000, True)],
+        {FIGHT_OR_FLIGHT: ((0, 20000, 1.25),)}, 0, 60000, 1.25,
+    )
+    result = AnalysisResult(
+        fight_name='Test', encounter_id=1, source_name='Player', ndps=None,
+        duration_seconds=60, raw_damage_events=0, landed_damage_events=0,
+        matched_damage_events=0, potency_min=0, potency_max=0, actions=(),
+        auto_attacks=(), pet_deployments=(), hit_outcomes=HitOutcomeSummary(0, 0, 0, 0),
+        potion=PotionSummary(0, 0, 0, 0, 0), unmatched=(), ghosted=(),
+        pld=PldSummary((), (), (), (), PldDotSummary(0, 0, 0, 0), alignment=alignment,
+                       cooldown_timing=(CooldownTiming('Fight or Flight', 18.4, 6.2),
+                                        CooldownTiming('Imperator', None, None),
+                                        CooldownTiming('Intervene', 8.2, 2.7, True))),
+    )
+    cli._print_analysis(result)
+    output = capsys.readouterr().out
+    summary = output.split('Actions outside Fight or Flight:\n', 1)[1].split(
+        '  Potency excludes Fight or Flight.', 1,
+    )[0]
+    rows = [re.split(r'\s{2,}', row.strip()) for row in summary.splitlines()]
+    assert rows == [
+        ['Action', 'Uses', 'Potency', 'Potential buff gain'],
+        ['Blade of Honor', '1', '1,000.0', '250.0'],
+        ['Expiacion', '2', '900.0', '225.0'],
+        ['Imperator', '1', '580.0', '145.0'],
+    ]
+    assert 'Snapshot ' not in summary
+    assert '\n  Intervene: 0 uses\n\n  Cooldown timing:' in output
+    assert output.index('Cooldown timing:') < output.index('Landed potency inside')
+    timing = output.split('  Cooldown timing:\n', 1)[1].split(
+        '  Timing starts after', 1,
+    )[0]
+    assert [re.split(r'\s{2,}', row.strip()) for row in timing.splitlines()] == [
+        ['Action', 'Ready while targetable', 'Longest delay'],
+        ['Fight or Flight', '18.4s', '6.2s'],
+        ['Imperator', 'n/a', 'n/a'],
+        ['Intervene', '8.2s', '2.7s'],
+    ]
+    headings = ['Fight or Flight and offensive abilities:', 'Ready effects and spell charges:',
+                'Imperator/Requiescat follow-ups:', 'Spell casts:', 'Circle of Scorn:',
+                'Melee downtime:']
+    positions = [output.index('\n' + heading) for heading in headings]
+    assert positions == sorted(positions)
+    assert output.isascii()

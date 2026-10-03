@@ -124,11 +124,12 @@ def test_unwritable_cache_does_not_block_analysis(saved_log, monkeypatch) -> Non
 @pytest.mark.parametrize("fixture,job", [
     ("brd_dancing_mad.zip", "bard"),
     ("mch_lindwurm_ii_opening_queens.zip", "machinist"),
+    ("pld_dancing_mad.zip", "paladin"),
 ])
 def test_nested_job_results_round_trip(tmp_path, fixture, job) -> None:
     with zipfile.ZipFile(Path(__file__).parents[1] / "fixtures/logs" / fixture) as archive:
         archive.extractall(tmp_path)
-    actions = Path(__file__).parents[2] / "data" / "jobs" / {"bard": "brd", "machinist": "mch"}[job] / "7.4/actions.json"
+    actions = Path(__file__).parents[2] / "data" / "jobs" / {"bard": "brd", "machinist": "mch", "paladin": "pld"}[job] / "7.4/actions.json"
     for path in tmp_path.rglob("fight.json"):
         result = analyzer.analyze_saved_fight(path.parent, actions, use_cache=False)
         restored = cache._decode(json.loads(json.dumps(cache._encode(result))), type(result))

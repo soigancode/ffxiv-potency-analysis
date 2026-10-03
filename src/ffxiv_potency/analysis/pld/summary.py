@@ -3,9 +3,13 @@
 from collections import Counter
 from dataclasses import dataclass
 
+from ..cooldown_timing import CooldownTiming
 from ..events import _event_name
 from ..execution import ReadyUse, ready_summary
 from ..ranged import RangedChain, ranged_chains
+from .alignment import PldAlignment, summarize_alignment
+from .buffs import fight_or_flight_strength
+from .cooldowns import summarize_cooldowns
 from .state import BLADES, PldSpellState
 
 
@@ -41,6 +45,8 @@ class PldSummary:
     ranged: tuple[RangedChain, ...]
     circle: PldDotSummary
     holy_spirit_casts: tuple[tuple[float, str], ...] = ()
+    alignment: PldAlignment | None = None
+    cooldown_timing: tuple[CooldownTiming, ...] = ()
 
 
 READY = (
@@ -54,7 +60,8 @@ READY = (
 
 
 def summarize_pld(casts, buffs, life, combatants, names, actions, source, start, end,
-                  state: PldSpellState, landed, circle: PldDotSummary) -> PldSummary:
+                  state: PldSpellState, landed, circle: PldDotSummary,
+                  alignment_rows=(), buff_windows=None, targetable=None) -> PldSummary:
     own = sorted((e for e in casts if e.get("sourceID") == source
                   and e.get("type") == "cast" and not e.get("fake")),
                  key=lambda e: e["timestamp"])
@@ -113,4 +120,9 @@ def summarize_pld(casts, buffs, life, combatants, names, actions, source, start,
     return PldSummary(ready, tuple((*key, n) for key, n in sorted(counts.items())),
                       tuple(bursts), ranged_chains(gcds, names, start, ranged), circle,
                       tuple((s.seconds, s.cast_kind) for s in state.spells
-                            if s.name == "Holy Spirit"))
+                            if s.name == "Holy Spirit"),
+                      summarize_alignment(alignment_rows, buff_windows or {}, start, end,
+                                          fight_or_flight_strength(actions))
+                      if buff_windows is not None else None,
+                      summarize_cooldowns(own, actions, names, life, source, start, end, targetable)
+                      if targetable is not None else ())

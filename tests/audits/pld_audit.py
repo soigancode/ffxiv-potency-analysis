@@ -13,6 +13,7 @@ from zipfile import ZipFile
 import pytest
 
 from ffxiv_potency.analysis import analyze_saved_fight
+from ffxiv_potency.analysis.targetability import targetable_intervals
 
 BASE = {"Fast Blade": 220, "Riot Blade": 170, "Royal Authority": 200,
         "Total Eclipse": 120, "Prominence": 100, "Shield Lob": 100,
@@ -62,6 +63,51 @@ def audit_pld(tmp_path, archive, prefix):
     assert result.auto_attacks[0].weapon_delay_seconds == 2.24
     assert "Guardian" not in dict(result.ghosted)
 
+    # Independent fixed-recast wait arithmetic on the established encounter
+    # windows. Neither the cooldown replay nor living-window helper is used.
+    actors = {a["id"]: a for a in master["actors"]}
+    encounter_damage_path = tmp_path / "encounter-damage-events.json"
+    windows = targetable_intervals(
+        read("targetability-events"),
+        read("encounter-damage-events") if encounter_damage_path.exists() else damage,
+        read("encounter-overkill-events"), actors, start, end,
+    )
+    dead = []
+    died = None
+    for event in sorted(life, key=lambda e: e["timestamp"]):
+        if event.get("targetID") != source:
+            continue
+        if event.get("type") == "death" and died is None:
+            died = event["timestamp"]
+        elif event.get("type") == "resurrect" and died is not None:
+            dead.append((died, event["timestamp"]))
+            died = None
+    if died is not None:
+        dead.append((died, end))
+    for timing in result.pld.cooldown_timing:
+        if timing.name == "Intervene":
+            assert timing.minimum
+            continue
+        recast = 60000 if timing.name in {"Fight or Flight", "Imperator"} else 30000
+        times_for_action = sorted(e["timestamp"] for e in casts
+                                  if e.get("sourceID") == source
+                                  and names[e["abilityGameID"]] == timing.name)
+        if not times_for_action:
+            assert timing.ready_seconds is None
+            continue
+        waits = []
+        for prior, following in zip(times_for_action, [*times_for_action[1:], end]):
+            wait = 0.0
+            for a, b in windows:
+                a, b = max(a, start, prior + recast), min(b, end, following)
+                if b <= a:
+                    continue
+                wait += b - a
+                wait -= sum(max(0, min(b, r) - max(a, d)) for d, r in dead)
+            waits.append(wait / 1000)
+        assert timing.ready_seconds == pytest.approx(sum(waits)), timing.name
+        assert timing.longest_delay_seconds == pytest.approx(max(waits)), timing.name
+
     def status_active(status, time):
         # Consumption/removal is recorded at the cast's snapshot millisecond.
         # Inspect its preceding state, including grants at that millisecond.
@@ -102,6 +148,10 @@ def audit_pld(tmp_path, archive, prefix):
     normalized = defaultdict(list)
     spell_evidence = {}
     circle_direct = circle_ticks = 0.0
+    alignment_inside = alignment_outside = 0.0
+    alignment_scope = {"Goring Blade", "Imperator", "Confiteor", "Blade of Faith",
+                       "Blade of Truth", "Blade of Valor", "Blade of Honor",
+                       "Circle of Scorn", "Expiacion"}
     for hits in grouped.values():
         def full_damage(hit):
             return (hit["amount"] + max(0, hit.get("overkill", 0))) / (
@@ -150,6 +200,11 @@ def audit_pld(tmp_path, archive, prefix):
                 potted += unpotted_value
                 gain += value * potion - unpotted_value
                 value *= potion
+            if name in alignment_scope:
+                if 1000076 in statuses and status_active(1000076, time):
+                    alignment_inside += value / 1.25
+                else:
+                    alignment_outside += value
             if name == "Attack":
                 auto += value
             else:
@@ -188,6 +243,12 @@ def audit_pld(tmp_path, archive, prefix):
     assert result.luck_score == pytest.approx(luck / maximum)
     assert result.pld.circle.application_potency == pytest.approx(circle_direct)
     assert result.pld.circle.tick_potency == pytest.approx(circle_ticks)
+    assert result.pld.alignment is not None
+    assert result.pld.alignment.inside_potency == pytest.approx(alignment_inside)
+    assert result.pld.alignment.outside_potency == pytest.approx(alignment_outside)
+    assert sum(f.potential_gain for f in result.pld.alignment.outside) == pytest.approx(
+        alignment_outside * .25,
+    )
     for spell in result.pld.spell_counts:
         assert spell[3] > 0
     # Compare every landed spell against an independently recovered status.

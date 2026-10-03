@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ffxiv_potency import cli
-from ffxiv_potency.analysis.execution import ExecutionSummary, ReadyUse
+from ffxiv_potency.analysis.execution import CooldownUse, ExecutionSummary, ReadyUse
 from ffxiv_potency.analysis.models import (
     AnalysisResult,
     DncProcSummary,
@@ -94,3 +94,46 @@ def test_bard_repertoire_findings_keep_recorded_uncertainty(capsys):
     assert execution_summary(capsys.readouterr().out) == (
         "  00m10s: at least 1 unused Repertoire stack (Empyreal Arrow confirmed)"
     )
+
+
+@pytest.mark.parametrize('job', ['pld', 'war', 'bard', 'machinist', 'dancer'])
+def test_cooldown_opportunities_are_separate_from_confirmed_issues(job, capsys):
+    result = result_with_losses(job)
+    result = replace(result, execution=ExecutionSummary(job, (
+        CooldownUse('Intervene', 21, 22),
+        CooldownUse('Unused action', 0, 3),
+        CooldownUse('Fully used', 11, 11),
+        CooldownUse('Extra uses', 12, 11),
+        CooldownUse('Unknown maximum', 0, None),
+    ), (), (), ()))
+    cli._print_analysis(result)
+    summary = execution_summary(capsys.readouterr().out)
+    assert summary.splitlines() == [
+        '  No confirmed issues in this log.',
+        '  Cooldown opportunities:',
+        '    Intervene: 21/22 uses (full-duration upper bound)',
+        '    Unused action: 0/3 uses (full-duration upper bound)',
+    ]
+
+
+def test_cooldown_opportunities_preserve_confirmed_findings_and_charge_basis(capsys):
+    result = result_with_losses('machinist', expired=1)
+    assert result.execution is not None
+    result = replace(result, execution=replace(result.execution, cooldowns=(
+        CooldownUse('Double Check', 10, 12, 'recorded Blazing Shots'),
+    )))
+    cli._print_analysis(result)
+    assert execution_summary(capsys.readouterr().out).splitlines() == [
+        '  Test effect: Expired: 1',
+        '  Cooldown opportunities:',
+        '    Double Check: 10/12 uses (upper bound from recorded Blazing Shots)',
+    ]
+
+
+def test_no_opportunities_heading_when_no_shortfalls(capsys):
+    result = result_with_losses('pld')
+    result = replace(result, execution=ExecutionSummary('paladin', (
+        CooldownUse('Intervene', 22, 22), CooldownUse('Unknown maximum', 0, None),
+    ), (), (), ()))
+    cli._print_analysis(result)
+    assert execution_summary(capsys.readouterr().out) == '  No confirmed issues in this log.'

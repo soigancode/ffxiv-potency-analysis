@@ -171,6 +171,8 @@ PLD, WAR and MCH combine equal rDPS and nDPS values in one **rDPS/nDPS** column.
 
 ## Understanding the results
 
+The execution summary lists **Cooldown opportunities** when recorded uses fall below an estimated maximum. These appear separately from confirmed issues, with the estimate's basis shown. A shortfall alone does not establish an avoidable missed use or potency loss.
+
 **Potency** adds the potency of hits that landed, including configured personal buffs and potion gains. It also accounts for pet actions and estimates auto-attack potency. Multi-target hits use their action's falloff rules. Recorded overkill reduces the credited potency in proportion to damage dealt. Other players' damage buffs do **not** increase personal potency. **PPS** divides total potency by targetable time in seconds.
 
 **Luck** shows how favorable the observed Crit and Direct Hit outcomes were, weighted by each hit's potency. A critical hit contributes more than a Direct Hit because its configured damage multiplier is larger. **Luck baseline** shows the expected score from the configured unbuffed gear rates. Comparing the two indicates whether hit outcomes were favorable for that gear profile. It does not measure rotation quality.
@@ -279,11 +281,33 @@ Tracked effects are Battle Litany, Battle Voice, Army's Paeon, the Wanderer's Mi
 
 ### Paladin
 
-PLD uses Strength for both weaponskills and damaging spells. Listed guide potencies already include level-100 trait upgrades. Fight or Flight adds 25% personal damage. Circle of Scorn contributes a 140-potency application and 30-potency periodic ticks, retaining the application's personal buff, potion and damage-penalty snapshot.
+PLD uses Strength for both weaponskills and damaging spells. Listed guide potencies already include level-100 trait upgrades.
 
-Holy Spirit has 400 base potency, 500 with Divine Might, or 700 with Requiescat. Holy Circle has 100, 250, or 350 respectively. Divine Might takes priority and leaves Requiescat charges intact. Confiteor and Blades of Faith, Truth and Valor have 500, 260, 380 and 500 base potency, increasing to 1,000, 760, 880 and 1,000 with Requiescat. Expiacion, Imperator and the Confiteor/Blade actions deal 40% potency to additional targets.
+#### Fight or Flight and offensive abilities
 
-Spell enhancements replay recorded grants, stacks, consumption, expiry and death before each cast resolves. Blade follow-ups remain grouped under the preceding burst. Casts without an active Requiescat charge use unenhanced potency. Analyse shows cooldown use counts, ready-effect outcomes, spell enhancements, cast-time evidence and each burst's completed casts and landed follow-up potency.
+Fight or Flight adds 25% personal damage. Analyse shows offensive cooldown use counts, timing and buff alignment. Expiacion, Imperator, Confiteor, Blade of Faith, Blade of Truth, Blade of Valor and Blade of Honor deal 40% potency to additional targets.
+
+Cooldown timing measures ready time and the longest wait after the first recorded use, excluding forced downtime and recorded death periods. Recharge continues through downtime. Intervene reports a conservative minimum of time at full charges because opening charges are unknown. Delays can reflect intentional buff alignment; timing does not change the full-duration possible-use counts.
+
+Fight or Flight alignment covers Goring Blade, Imperator, Confiteor, Blade of Faith, Blade of Truth, Blade of Valor, Blade of Honor, Circle of Scorn and Expiacion. Coverage weights landed potency before Fight or Flight, retaining other calculated modifiers. Hits use their attack snapshot, and Circle of Scorn ticks use the application's snapshot. Attacks outside the buff are grouped with the nearest window and summarised by action, sorted by total potential buff gain; these are not confirmed avoidable losses.
+
+#### Ready effects and spell charges
+
+Spell enhancements replay recorded grants, stacks, consumption, expiry and death before each cast resolves. Analyse shows ready-effect outcomes and remaining spell charges.
+
+#### Imperator/Requiescat follow-ups
+
+Confiteor, Blade of Faith, Blade of Truth and Blade of Valor have 500, 260, 380 and 500 base potency respectively, increasing to 1,000, 760, 880 and 1,000 with Requiescat. Follow-ups remain grouped under the preceding burst. Casts without an active Requiescat charge use unenhanced potency. Analyse shows each burst's completed casts and landed follow-up potency.
+
+#### Spell casts
+
+Holy Spirit has 400 base potency, 500 with Divine Might, or 700 with Requiescat. Holy Circle has 100, 250, or 350 respectively. Divine Might takes priority and leaves Requiescat charges intact. Analyse groups casts by spell, enhancement and cast-time evidence, with Divine Might before Requiescat and None within each spell.
+
+#### Circle of Scorn
+
+Circle of Scorn contributes a 140-potency application and 30-potency periodic ticks, retaining the application's personal buff, potion and damage-penalty snapshot. Analyse reports applications and periodic ticks separately.
+
+#### Melee downtime
 
 Melee downtime groups consecutive Shield Lobs and confirmed hard-cast Holy Spirits, with neighboring GCDs and every cast gap. Instant Holy Spirit and the opening Holy Spirit are excluded. Missing begin-cast evidence remains unconfirmed.
 
