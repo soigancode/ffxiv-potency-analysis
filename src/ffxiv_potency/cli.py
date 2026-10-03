@@ -34,6 +34,7 @@ from .fflogs import (
 )
 from .fflogs.download import (
     refresh_checkpoint_context,
+    refresh_combat_time,
     refresh_encounter_damage_events,
     refresh_encounter_overkill_events,
     refresh_player_status_events,
@@ -669,6 +670,11 @@ def _resolve_analysis_directory(
 
     if all((directory / filename).is_file() for filename in _SAVED_FIGHT_FILES):
         fight = json.loads((directory / "fight.json").read_text(encoding="utf-8"))
+        if (fight.get("encounterID") == 4550 and "combatTime" not in fight
+                and not (directory / "timeline-context.json").is_file()
+                and reference is not None and os.environ.get("FFLOGS_CLIENT_ID")
+                and os.environ.get("FFLOGS_CLIENT_SECRET")):
+            refresh_combat_time(reference, directory)
         if (fight.get("encounterID") == 105 and reference is not None
                 and os.environ.get("FFLOGS_CLIENT_ID")
                 and os.environ.get("FFLOGS_CLIENT_SECRET")

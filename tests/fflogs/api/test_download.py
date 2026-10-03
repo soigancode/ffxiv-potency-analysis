@@ -121,6 +121,7 @@ def test_downloads_metadata_and_paginated_events(
                                         "name": "Test Boss",
                                         "startTime": 100,
                                         "endTime": 8000,
+                                        "combatTime": 7800,
                                         "encounterID": 1,
                                         "kill": True,
                                         "friendlyPlayers": [18, 21],
@@ -283,6 +284,7 @@ def test_downloads_metadata_and_paginated_events(
     assert json.loads(result.fight.read_text())["name"] == "Test Boss"
     assert json.loads(result.fight.read_text())["reportStartTime"] == 1000
     assert json.loads(result.fight.read_text())["friendlyPlayers"] == [18, 21]
+    assert json.loads(result.fight.read_text())["combatTime"] == 7800
     assert result.combatant_info_events is not None
     assert json.loads(result.combatant_info_events.read_text())[0]["auras"][0]["ability"] == 1000042
     assert json.loads(result.master_data.read_text())["lang"] == "en"

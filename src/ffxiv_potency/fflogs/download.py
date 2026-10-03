@@ -23,6 +23,7 @@ query ReportMetadata($code: String!, $fightIDs: [Int]) {
         name
         startTime
         endTime
+        combatTime
         encounterID
         kill
         friendlyPlayers
@@ -81,6 +82,16 @@ query FightContext($code: String!, $fightIDs: [Int]) {
       combatants: events(fightIDs: $fightIDs, dataType: CombatantInfo, limit: 300) {
         data nextPageTimestamp
       }
+    }
+  }
+}
+"""
+
+_COMBAT_TIME_QUERY = """
+query CombatTime($code: String!, $fightIDs: [Int]) {
+  reportData {
+    report(code: $code) {
+      fights(fightIDs: $fightIDs) { id startTime endTime combatTime }
     }
   }
 }
@@ -272,6 +283,27 @@ def refresh_fight_context(
     saved["friendlyPlayers"] = fight["friendlyPlayers"]
     _write_json(path, saved)
     _write_json(directory / "combatant-info-events.json", events)
+
+
+def refresh_combat_time(
+    reference: ReportReference, directory: Path, *,
+    client_id: str | None = None, client_secret: str | None = None,
+    transport: httpx.BaseTransport | None = None,
+) -> Path:
+    """Add recorded combat duration to an older download, retaining its start."""
+    with FFLogsClient.from_environment(client_id, client_secret, transport=transport) as client:
+        report = _report_from(client.graphql(
+            _COMBAT_TIME_QUERY, {"code": reference.report_code, "fightIDs": [reference.fight_id]},
+        ))
+    fights = report.get("fights")
+    current = next((f for f in fights if isinstance(f, dict) and f.get("id") == reference.fight_id),
+                   None) if isinstance(fights, list) else None
+    path = directory / "fight.json"
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    if (current is None or "combatTime" not in current
+            or any(current.get(k) != saved.get(k) for k in ("startTime", "endTime"))):
+        raise FFLogsError("combat-time metadata does not match the saved fight")
+    return _write_json(path, {**saved, "combatTime": current["combatTime"]})
 
 
 def refresh_targetability_events(

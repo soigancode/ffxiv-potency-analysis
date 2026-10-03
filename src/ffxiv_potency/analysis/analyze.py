@@ -71,12 +71,14 @@ from .penalties import (
 from .pets import _deployment_for_event, _reconstruct_pet_deployments
 from .phase_locks import phase_lock_windows as find_phase_locks
 from .pld.buffs import circle_snapshots, pld_self_buff_windows
+from .pld.combos import combo_potencies, infer_combos
 from .pld.state import replay_spells
 from .pld.summary import PldDotSummary, summarize_pld
 from .potency import _direct_potency, _is_channeled_action, _is_counterattack_action
 from .potion import _potion_windows
 from .profiles import _load_combat_profile, _load_pet_profiles
 from .targetability import resolve_targetable_time
+from .timeline import combat_timeline
 from .war.buffs import INNER_RELEASE, war_self_buff_windows
 from .war.summary import summarize_war
 
@@ -137,6 +139,10 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     """
 
     fight = _load_json(directory / "fight.json", dict)
+    timeline_path = directory / "timeline-context.json"
+    timeline_context = (_load_json(timeline_path, dict)
+                        if timeline_path.is_file() and fight.get("encounterID") == 4550 else None)
+    fight, combat_start_offset = combat_timeline(fight, timeline_context)
     master_data = _load_json(directory / "master-data.json", dict)
     raw_damage = _load_json(directory / "damage-events.json", list)
     casts = _load_json(directory / "cast-events.json", list)
@@ -497,6 +503,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     pld_state = None
     pld_spell_potencies = {}
     pld_tick_snapshots = {}
+    pld_combo_inferences = {}
     dnc_initial_buffs = ()
     if job.casefold() == "dancer" and source_id is not None:
         self_buff_windows, dnc_initial_buffs = dnc_self_buff_windows(
@@ -631,6 +638,10 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         if job.casefold() == "bard"
         else ({}, ())
     )
+    if job.casefold() == "paladin" and source_id is not None:
+        pld_combo_inferences = infer_combos(
+            landed, actions, ability_names, source_id, start, combat_profile, missing_food,
+        )
     brd_barrage_shadowbites = (
         _barrage_shadowbite_packets(sorted_casts, buffs, ability_names, source_id)
         if job.casefold() == "bard" and source_id is not None else set()
@@ -691,12 +702,22 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                     if key in brd_barrage_shadowbites
                     and isinstance(potency, dict)
                     and isinstance(potency.get("conditional_potencies"), dict)
+                    else pld_combo_inferences[id(event)].potency if id(event) in pld_combo_inferences
                     else pld_spell_potencies.get(key)
                 ),
                 )
         if values is None:
             unmatched[name] += 1
             continue
+
+        candidates = combo_potencies(name, actions) if job.casefold() == "paladin" else None
+        combo_bonus = event.get("bonusPercent")
+        if (candidates is not None and id(event) not in pld_combo_inferences
+                and not (isinstance(combo_bonus, (int, float)) and combo_bonus >= 0)):
+            enhanced = _direct_potency(action, event, is_primary_target=True,
+                                      base_potency_override=candidates[1])
+            if enhanced is not None:
+                values = values[0], enhanced[1]
 
         fraction = landed_fraction(event)
         values = values[0] * fraction, values[1] * fraction
@@ -1171,6 +1192,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         targetable_seconds=targetable_time.seconds,
         targetable_time_source=targetable_time.source,
         duration_seconds=duration,
+        combat_start_offset_seconds=combat_start_offset,
         raw_damage_events=len(raw_damage),
         landed_damage_events=len(landed),
         matched_damage_events=matched_events,
@@ -1264,7 +1286,15 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                           source_id, start, end, pld_state, pld_hit_rows,
                           PldDotSummary(len(pld_circle_applications),
                                         pld_circle_ticks, pld_circle_direct, pld_circle_periodic),
-                          pld_alignment_rows, self_buff_windows, targetable_time)
+                          pld_alignment_rows, self_buff_windows, targetable_time, raw_damage,
+                          pld_combo_inferences, hit_failures={
+                              **{(name, seconds): reason
+                                 for name, losses in ghosted_ending_times.items()
+                                 for seconds, reason in losses},
+                              **{(name, seconds): f"target at {hp} HP"
+                                 for name, losses in ghosted_target_low_hp.items()
+                                 for seconds, hp in losses},
+                          })
         if pld_state is not None else None,
         luck_score=luck_weighted_bonus / luck_weighted_maximum if luck_weighted_maximum else 0.0,
         adjusted_luck_score=(

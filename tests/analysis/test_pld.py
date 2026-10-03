@@ -12,7 +12,8 @@ from ffxiv_potency.analysis import analyze_saved_fight
 def saved_pld(tmp_path, casts, damage, buffs=(), end=40000, life=()):
     names = {1: "Holy Spirit", 2: "Confiteor", 3: "Blade of Faith", 4: "Blade of Truth",
              5: "Blade of Valor", 6: "Imperator", 9: "Circle of Scorn", 10: "Fast Blade",
-             11: "Fight or Flight", 1000248: "Circle of Scorn"}
+             11: "Fight or Flight", 12: "Riot Blade", 13: "Royal Authority",
+             14: "Prominence", 1000248: "Circle of Scorn"}
     data = {"fight": {"id": 1, "encounterID": 101, "name": "Vamp Fatale", "startTime": 0,
                       "endTime": end, "playedPatch": "7.56", "friendlyPlayers": [1]},
             "master-data": {"abilities": [{"gameID": k, "name": n} for k, n in names.items()],
@@ -114,3 +115,74 @@ def test_completed_casts_fake_records_and_hits_are_distinct(tmp_path):
     assert dict(r.execution.cast_counts)["Holy Spirit"] == 2
     assert r.actions[0].hits == 1 and r.actions[0].uses == 1
     assert dict(r.ghosted) == {"Holy Spirit": 1}
+
+
+def test_combo_summary_counts_confirmed_hits_and_preserves_missing_evidence(tmp_path):
+    cs = [cast(1000, 12, 1), cast(3000, 13, 2), cast(5000, 14, 3), cast(7000, 13, 4)]
+    r = saved_pld(tmp_path, cs, [hit(cs[0], bonusPercent=0),
+                               hit(cs[1], bonusPercent=0, buffs="1000076."),
+                               hit(cs[2]), hit(cs[2], targetID=3)])
+    assert r.pld is not None and r.pld.combos is not None
+    assert {c.name: (c.hits, c.potency_lost) for c in r.pld.combos.losses} == {
+        "Riot Blade": (1, 160), "Royal Authority": (1, 260),
+    }
+    assert r.pld.combos.unconfirmed_hits == 2
+    assert dict(r.ghosted)["Royal Authority"] == 1
+
+
+def test_inferred_combo_updates_action_total_and_pps(tmp_path):
+    cs = [cast(t, 10, i) for i, t in enumerate((0, 1000, 2000), 1)]
+    cs.append(cast(3000, 13, 4))
+    r = saved_pld(tmp_path, cs, [*(hit(c, delay=0, amount=2200, multiplier=1) for c in cs[:3]),
+                               hit(cs[3], delay=0, amount=4600, multiplier=1)])
+    assert r.pld is not None and r.pld.combos is not None
+    assert r.pld.combos.inferred[0].comboed
+    assert r.potency_min == r.potency_max == 3 * 220 + 460
+    assert next(a for a in r.actions if a.name == "Royal Authority").potency_min == 460
+    assert r.pps_min == r.pps_max
+    assert r.pld.combos.unconfirmed_hits == 0
+
+
+def test_unresolved_combo_retains_potency_range_with_overkill(tmp_path):
+    c = cast(1000, 13, 1)
+    r = saved_pld(tmp_path, [c], [hit(c, overkill=1000)])
+    assert r.potency_min == 100
+    assert r.potency_max == 230
+    assert r.pld is not None and r.pld.combos is not None
+    assert r.pld.combos.unconfirmed_hits == 1
+
+
+def test_inferred_combo_uses_correct_potion_and_penalty_potency(tmp_path):
+    from ffxiv_potency.analysis.profiles import _load_combat_profile
+
+    profile = _load_combat_profile('paladin', party_bonus_percent=1)
+    q = profile.player_potion_multiplier
+    cs = [cast(t, 10, i) for i, t in enumerate((0, 1000, 2000), 1)]
+    cs.append(cast(3000, 13, 4))
+    r = saved_pld(tmp_path, cs, [*(hit(c, delay=0, amount=2200, multiplier=1) for c in cs[:3]),
+                               hit(cs[3], delay=0, amount=4600 * q * .75 * 1.25,
+                                   multiplier=1.05 * .75 * 1.25,
+                                   buffs='1000049.1002911.1000076.')], [buff(0, 1000076)])
+    assert r.pld is not None and r.pld.combos is not None
+    assert r.pld.combos.inferred[0].comboed
+    assert next(a for a in r.actions if a.name == 'Royal Authority').potency_min == pytest.approx(
+        460 * q * .75 * 1.25,
+    )
+    assert r.potion.potted_potency_min == pytest.approx(460 * .75 * 1.25)
+    assert r.potion.gained_potency_min == pytest.approx(460 * .75 * 1.25 * (q - 1))
+
+
+@pytest.mark.parametrize('hp', [0, 1])
+def test_missing_follow_up_hit_keeps_low_hp_evidence_without_claiming_target_death(tmp_path, hp):
+    c = cast(1000, 2, 1)
+    c['targetResources'] = {'hitPoints': hp}
+    saved_pld(tmp_path, [c], [], [buff(0, 1001368)])
+    path = tmp_path / 'master-data.json'
+    master = json.loads(path.read_text())
+    master['actors'].append({'id': 2, 'type': 'NPC', 'subType': 'Boss', 'name': 'Boss'})
+    path.write_text(json.dumps(master))
+    r = analyze_saved_fight(tmp_path, Path('data/jobs/pld/7.4/actions.json'), use_cache=False)
+    assert r.pld is not None
+    issue = next(i for i in r.pld.bursts[0].issues if i.kind == 'no_hit')
+    assert issue.actions == ('Confiteor',)
+    assert issue.reason == f'target at {hp} HP'

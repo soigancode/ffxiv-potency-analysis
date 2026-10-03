@@ -40,8 +40,9 @@ def test_melee_downtime_labels_holy_spirit_cast_evidence(capsys):
     )
     cli._print_analysis(result)
     output = capsys.readouterr().out
-    assert ("    00m10s: HS (instant) -> 2.50s -> HS (hard-cast) -> 2.50s -> Shield Lob"
+    assert ("    00m10s: HS (instant) -> 2.50s -> HS (hard-cast) -> 2.50s -> SL"
             " -> 2.50s -> HS (hard-cast) -> 2.50s -> HS (unconfirmed)") in output
+    assert "  HS = Holy Spirit; SL = Shield Lob." in output
 
 
 @pytest.mark.parametrize("alias", ["pld", "PLD", "paladin", "PALADIN"])
@@ -162,7 +163,7 @@ def test_alignment_findings_sort_by_gain_and_report_sections_by_importance(capsy
         ['Imperator', 'n/a', 'n/a'],
         ['Intervene', '8.2s', '2.7s'],
     ]
-    headings = ['Fight or Flight and offensive abilities:', 'Ready effects and spell charges:',
+    headings = ['Fight or Flight and offensive abilities:', 'Combos, ready effects and spell charges:',
                 'Imperator/Requiescat follow-ups:', 'Spell casts:', 'Circle of Scorn:',
                 'Melee downtime:']
     positions = [output.index('\n' + heading) for heading in headings]

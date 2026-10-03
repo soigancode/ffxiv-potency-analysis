@@ -267,6 +267,7 @@ class AnalysisResult:
     gear_id: str | None = None
     gear_name: str | None = None
     gear_source: str | None = None
+    combat_start_offset_seconds: float | None = None
 
     @property
     def pps_duration_seconds(self) -> float:

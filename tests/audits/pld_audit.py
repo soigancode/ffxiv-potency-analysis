@@ -149,6 +149,9 @@ def audit_pld(tmp_path, archive, prefix):
     spell_evidence = {}
     circle_direct = circle_ticks = 0.0
     alignment_inside = alignment_outside = 0.0
+    combo_hits = defaultdict(int)
+    combo_losses = defaultdict(float)
+    combo_unconfirmed = 0
     alignment_scope = {"Goring Blade", "Imperator", "Confiteor", "Blade of Faith",
                        "Blade of Truth", "Blade of Valor", "Blade of Honor",
                        "Circle of Scorn", "Expiacion"}
@@ -169,6 +172,15 @@ def audit_pld(tmp_path, archive, prefix):
                 evidence = applications[hit["packetID"], hit["targetID"], hit.get("targetInstance", 0)]
                 time = times[evidence["packetID"], evidence["abilityGameID"]]
             statuses = {int(s) for s in str(evidence.get("buffs", "")).split(".") if s.isdigit()}
+            if name in COMBO and hit.get("sourceID") == source and not hit.get("fake"):
+                bonus = hit.get("bonusPercent")
+                if not isinstance(bonus, (int, float)) or bonus < 0:
+                    combo_unconfirmed += 1
+                elif bonus == 0:
+                    combo_hits[name] += 1
+                    combo_losses[name] += (COMBO[name] - BASE[name]) * hit["amount"] / (
+                        hit["amount"] + max(0, hit.get("overkill", 0))
+                    )
             base = 90 * 150 / 202 if name == "Attack" else BASE[name]
             if hit.get("tick"):
                 base = 30
@@ -243,6 +255,12 @@ def audit_pld(tmp_path, archive, prefix):
     assert result.luck_score == pytest.approx(luck / maximum)
     assert result.pld.circle.application_potency == pytest.approx(circle_direct)
     assert result.pld.circle.tick_potency == pytest.approx(circle_ticks)
+    assert result.pld.combos is not None
+    assert {c.name: c.hits for c in result.pld.combos.losses} == dict(combo_hits)
+    assert {c.name: c.potency_lost for c in result.pld.combos.losses} == pytest.approx(
+        dict(combo_losses),
+    )
+    assert result.pld.combos.unconfirmed_hits + len(result.pld.combos.inferred) == combo_unconfirmed
     assert result.pld.alignment is not None
     assert result.pld.alignment.inside_potency == pytest.approx(alignment_inside)
     assert result.pld.alignment.outside_potency == pytest.approx(alignment_outside)

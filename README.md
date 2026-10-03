@@ -291,13 +291,15 @@ Cooldown timing measures ready time and the longest wait after the first recorde
 
 Fight or Flight alignment covers Goring Blade, Imperator, Confiteor, Blade of Faith, Blade of Truth, Blade of Valor, Blade of Honor, Circle of Scorn and Expiacion. Coverage weights landed potency before Fight or Flight, retaining other calculated modifiers. Hits use their attack snapshot, and Circle of Scorn ticks use the application's snapshot. Attacks outside the buff are grouped with the nearest window and summarised by action, sorted by total potential buff gain; these are not confirmed avoidable losses.
 
-#### Ready effects and spell charges
+#### Combos, ready effects and spell charges
 
-Spell enhancements replay recorded grants, stacks, consumption, expiry and death before each cast resolves. Analyse shows ready-effect outcomes and remaining spell charges.
+Combo losses count landed Riot Blade, Royal Authority and Prominence hits with an explicitly recorded zero combo bonus. Base potency losses use the difference from combo potency, accounting for overkill before buffs and penalties. Missing combo bonuses are inferred from normalized damage when base or combo potency has a unique fit against at least three consistent physical reference hits on the same enemy instance, using up to 30 references within 60 seconds. Normalization removes Crit/DH and recorded damage modifiers, correcting potion, revival and food effects. Fits allow the same 94%-106% damage band and 0.5% tolerance used for BRD. Inferred hits use the fitted potency and are reported separately from recorded combo losses. Insufficient, clipped or ambiguous evidence retains an unconfirmed base-to-combo potency range.
+
+Atonement, Supplication and Sepulchre are grouped as a sequence, retaining their recorded grants, uses, expiry, overwrites, death losses and remaining effects. Spell enhancements replay recorded grants, stacks, consumption, expiry and death before each cast resolves. Other ready effects and spell charges follow separately.
 
 #### Imperator/Requiescat follow-ups
 
-Confiteor, Blade of Faith, Blade of Truth and Blade of Valor have 500, 260, 380 and 500 base potency respectively, increasing to 1,000, 760, 880 and 1,000 with Requiescat. Follow-ups remain grouped under the preceding burst. Casts without an active Requiescat charge use unenhanced potency. Analyse shows each burst's completed casts and landed follow-up potency.
+Confiteor, Blade of Faith, Blade of Truth and Blade of Valor have 500, 260, 380 and 500 base potency respectively, increasing to 1,000, 760, 880 and 1,000 with Requiescat. Follow-ups remain grouped under the preceding burst. Casts without an active Requiescat charge use unenhanced potency. Analyse shows each burst's completed casts and landed follow-up potency. Missing follow-ups list recorded death, sustained boss downtime, fight ending or ready-effect expiry context; absent hits reuse the shared ghost and HP-lock evidence. Actions sharing a context are grouped, and unexplained omissions remain unconfirmed. Context alone does not establish an avoidable loss.
 
 #### Spell casts
 

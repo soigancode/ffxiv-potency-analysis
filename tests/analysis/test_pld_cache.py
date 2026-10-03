@@ -40,6 +40,8 @@ def test_typed_cache_refresh_reuse_and_semantic_invalidation(tmp_path, monkeypat
     assert isinstance(first.pld.bursts, tuple)
     assert isinstance(first.pld.holy_spirit_casts, tuple)
     assert isinstance(first.pld.cooldown_timing, tuple)
+    assert first.pld.combos is not None
+    assert isinstance(first.pld.combos.losses, tuple)
     assert len(first.pld.cooldown_timing) == 5
     assert first.pld.cooldown_timing[0].ready_seconds is not None
     assert first.pld.cooldown_timing[-1].minimum

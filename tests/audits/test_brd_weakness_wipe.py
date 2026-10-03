@@ -56,7 +56,7 @@ def test_dancing_mad_wipe_shots_and_weakness_snapshots(
     assert "08m55s: died -> 09m04s: revived | Time dead: 9.0s | Weakness applied" in output
     assert "Weakness 09m04s 10m44s" in " ".join(output.split())
     assert "Potency lost" in output
-    assert "2 deaths\n" in output
+    assert "Deaths: 2\n" in output
     assert "death(s)" not in output
     assert "10m54s: died -> 11m18s: fight ended" in output
 

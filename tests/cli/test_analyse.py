@@ -228,7 +228,7 @@ def test_criterion_backfills_encounter_appearances_once(monkeypatch, tmp_path):
     _write_selected_log(directory, 18)
     fight_path = directory / "fight.json"
     fight = json.loads(fight_path.read_text())
-    fight.update(encounterID=4550, friendlyPlayers=[18])
+    fight.update(encounterID=4550, friendlyPlayers=[18], combatTime=None)
     fight_path.write_text(json.dumps(fight))
     (directory / "rankings.json").write_text('{"metric":"ndps","rankings":{},"rdps":{},"dps":{}}')
     for name in ("combatant-info-events.json", "targetability-events.json", "encounter-overkill-events.json",

@@ -1,7 +1,7 @@
 """Evidence-based Paladin ready effects, spell uses and burst follow-ups."""
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from ..cooldown_timing import CooldownTiming
 from ..events import _event_name
@@ -9,7 +9,9 @@ from ..execution import ReadyUse, ready_summary
 from ..ranged import RangedChain, ranged_chains
 from .alignment import PldAlignment, summarize_alignment
 from .buffs import fight_or_flight_strength
+from .combos import PldComboSummary, summarize_combos
 from .cooldowns import summarize_cooldowns
+from .follow_ups import PldFollowUpIssue, follow_up_issues
 from .state import BLADES, PldSpellState
 
 
@@ -27,6 +29,7 @@ class PldBurst:
     trigger: str
     follow_ups: tuple[PldFollowUp, ...]
     notes: tuple[str, ...]
+    issues: tuple[PldFollowUpIssue, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +50,7 @@ class PldSummary:
     holy_spirit_casts: tuple[tuple[float, str], ...] = ()
     alignment: PldAlignment | None = None
     cooldown_timing: tuple[CooldownTiming, ...] = ()
+    combos: PldComboSummary | None = None
 
 
 READY = (
@@ -61,7 +65,8 @@ READY = (
 
 def summarize_pld(casts, buffs, life, combatants, names, actions, source, start, end,
                   state: PldSpellState, landed, circle: PldDotSummary,
-                  alignment_rows=(), buff_windows=None, targetable=None) -> PldSummary:
+                  alignment_rows=(), buff_windows=None, targetable=None, damage=None,
+                  combo_inferences=None, hit_failures=None) -> PldSummary:
     own = sorted((e for e in casts if e.get("sourceID") == source
                   and e.get("type") == "cast" and not e.get("fake")),
                  key=lambda e: e["timestamp"])
@@ -93,10 +98,6 @@ def summarize_pld(casts, buffs, life, combatants, names, actions, source, start,
             packets = {(e.get("packetID"), e.get("abilityGameID")) for e in cs}
             hits = [value for packet, _, value in landed if packet in packets]
             rows.append(PldFollowUp(name, len(cs), len(hits), sum(hits)))
-            if not cs:
-                notes.append(f"{name}: no recorded cast")
-            elif not hits:
-                notes.append(f"{name}: no landed hit")
             for cast in cs:
                 delay = (cast["timestamp"] - begin) / 1000
                 if delay > 30:
@@ -107,9 +108,21 @@ def summarize_pld(casts, buffs, life, combatants, names, actions, source, start,
                 notes.append(f"{spell.name}: unenhanced")
         bursts.append(PldBurst((begin - start) / 1000,
                                names.get(trigger["abilityGameID"], "Pre-pull state"),
-                               tuple(rows), tuple(notes)))
+                               tuple(rows), tuple(notes),
+                               follow_up_issues(trigger, follows, rows, names, ready, own_buffs,
+                                                life, source, start, end, finish,
+                                                targetable, hit_failures)))
     gcds = [e for e in own if actions.get(_event_name(e, names), {}).get("type", "").casefold()
             in {"weaponskill", "spell"}]
+    previous_gcds = {
+        (e["packetID"], e.get("abilityGameID")): _event_name(gcds[i - 1], names)
+        for i, e in enumerate(gcds) if i and e.get("packetID") is not None
+    }
+    combo_inferences = {
+        id(e): replace(combo_inferences[id(e)], previous_gcd=previous_gcds.get(
+            (e.get("packetID"), e.get("abilityGameID"))))
+        for e in damage or () if id(e) in (combo_inferences or {})
+    }
     ranged = {(e.get("packetID"), e.get("abilityGameID")) for e in gcds
               if _event_name(e, names) == "Shield Lob"}
     first_damage = next((e for e in own if actions.get(_event_name(e, names), {}).get("potency")), None)
@@ -125,4 +138,6 @@ def summarize_pld(casts, buffs, life, combatants, names, actions, source, start,
                                           fight_or_flight_strength(actions))
                       if buff_windows is not None else None,
                       summarize_cooldowns(own, actions, names, life, source, start, end, targetable)
-                      if targetable is not None else ())
+                      if targetable is not None else (),
+                      summarize_combos(damage, actions, names, source, combo_inferences)
+                      if damage is not None else None)

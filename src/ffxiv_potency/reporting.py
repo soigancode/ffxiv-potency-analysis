@@ -101,7 +101,13 @@ def ready_line(effect):
 def ready_loss_findings(effects):
     """Use the same loss wording for every job's tracked ready effects."""
     return [
-        f"{effect.name}: " + " | ".join(loss_details(effect, include_remaining=False))
+        f"{effect.name}: " + " | ".join(
+            f"{value} {label}" for label, value in (
+                ("expired", effect.expired),
+                ("overwritten", effect.overwritten),
+                ("lost on death", getattr(effect, "death_lost", 0)),
+            ) if value
+        )
         for effect in effects
         if effect.expired or effect.overwritten or getattr(effect, "death_lost", 0)
     ]
@@ -209,7 +215,7 @@ def print_analysis(
     findings = []
     deaths = [w for w in result.status_windows if w.name == "Dead"]
     if deaths:
-        findings.append(f"{len(deaths)} " + ("death" if len(deaths) == 1 else "deaths"))
+        findings.append(f"Deaths: {len(deaths)}")
     for p in result.damage_penalties:
         windows = [w for w in result.status_windows if w.name == p.name]
         total = sum(w.end_seconds - w.start_seconds for w in windows)
@@ -226,12 +232,17 @@ def print_analysis(
             )
         if w.unused_expired_charges:
             findings.append(
-                f"Inner Release: Expired: {w.unused_expired_charges}"
+                f"Inner Release: {w.unused_expired_charges} expired"
             )
         findings.extend(ready_loss_findings(w.ready))
         if w.tomahawks:
             findings.append(tomahawk_summary(w))
     if result.pld:
+        combos = result.pld.combos
+        if combos is not None and combos.losses:
+            hits = sum(c.hits for c in combos.losses)
+            findings.append(f"Combos: {hits} uncomboed " + ("hit" if hits == 1 else "hits")
+                            + f", {sum(c.potency_lost for c in combos.losses):,.1f} base potency lost")
         findings.extend(ready_loss_findings(result.pld.ready))
         if result.pld.ranged:
             count = len(result.pld.ranged)
@@ -244,7 +255,7 @@ def print_analysis(
         findings.extend(ready_loss_findings(execution.ready))
         for time in execution.repertoire_losses:
             findings.append(
-                f"{stamp(time)}: at least 1 unused Repertoire stack (Empyreal Arrow confirmed)"
+                f"Repertoire: at least 1 unused stack at {stamp(time)} (Empyreal Arrow confirmed)"
             )
     incomplete_wildfires = sum(w.landed_weaponskills < 6 for w in result.mch_wildfires)
     if incomplete_wildfires:
@@ -256,7 +267,7 @@ def print_analysis(
     for d in result.pet_deployments:
         if d.mch_missing_finishers:
             findings.append(
-                f"{stamp(d.timestamp_seconds)} Queen: missing {' and '.join(d.mch_missing_finishers)}"
+                f"Queen: missing {' and '.join(d.mch_missing_finishers)} at {stamp(d.timestamp_seconds)}"
             )
     proc = result.dnc_procs
     if proc:
@@ -264,12 +275,11 @@ def print_analysis(
     ghosts = confirmed_ghosts(result)
     if ghosts:
         findings.append(
-            f"{len(ghosts)} confirmed ghosted " + ("hit" if len(ghosts) == 1 else "hits")
+            f"Confirmed ghosted hits: {len(ghosts)}"
         )
     if result.reduced_damage_hits:
         findings.append(
-            f"{len(result.reduced_damage_hits)} reduced-damage "
-            + ("hit" if len(result.reduced_damage_hits) == 1 else "hits")
+            f"Reduced-damage hits: {len(result.reduced_damage_hits)}"
         )
     if proc:
         findings.append(
@@ -282,14 +292,25 @@ def print_analysis(
     print("\nExecution summary:")
     for line in findings or ["No confirmed issues in this log."]:
         print("  " + line)
+    if result.pld and result.pld.combos:
+        inferred_losses = [c for c in result.pld.combos.inferred if not c.comboed]
+        if inferred_losses:
+            hits = len(inferred_losses)
+            print(f"  Inferred combo losses: {hits} uncomboed "
+                  + ("hit" if hits == 1 else "hits"))
     opportunities = [c for c in cooldowns.values()
                      if c.possible is not None and c.uses < c.possible]
     if opportunities:
-        print("  Cooldown opportunities:")
+        bases = {c.basis for c in opportunities}
+        shared_basis = next(iter(bases)) if len(bases) == 1 else None
+        qualifier = ("full-duration upper bound" if shared_basis == "full duration"
+                     else f"upper bound from {shared_basis}" if shared_basis else "upper bounds")
+        print(f"  Cooldown opportunities ({qualifier}):")
         for c in opportunities:
             basis = ("full-duration upper bound" if c.basis == "full duration"
                      else f"upper bound from {c.basis}")
-            print(f"    {c.name}: {c.uses}/{c.possible} uses ({basis})")
+            detail = f" ({basis})" if shared_basis is None else ""
+            print(f"    {c.name}: {c.uses}/{c.possible} uses{detail}")
 
     def uses(name):
         c = cooldowns.get(name)
@@ -381,17 +402,59 @@ def print_analysis(
                        )])
             print("  Potency excludes Fight or Flight. Includes regular uses between buff windows.")
             print("  Potential gains are not confirmed losses.")
-        print("\nReady effects and spell charges:")
-        for r in p.ready:
-            print("  " + ready_line(r))
-            for time, reason in r.losses:
-                print(f"    {stamp(time)}: {reason}")
+        print("\nCombos, ready effects and spell charges:")
+        if p.combos is not None:
+            if p.combos.losses:
+                print("  Combo losses:")
+                table(("Action", "Uncomboed hits", "Base potency lost"),
+                      [(c.name, str(c.hits), f"{c.potency_lost:,.1f}")
+                       for c in sorted(p.combos.losses, key=lambda c: (-c.potency_lost, c.name))])
+                print("  Base losses account for overkill, before buffs and penalties.")
+            else:
+                print("  No confirmed combo losses.")
+            if p.combos.unconfirmed_hits:
+                hits = p.combos.unconfirmed_hits
+                print(f"  Unconfirmed combo evidence: {hits} landed "
+                      + ("hit" if hits == 1 else "hits"))
+                print("  Unresolved combo hits retain a base-to-combo potency range.")
+            if p.combos.inferred:
+                for inferred in sorted(p.combos.inferred, key=lambda c: c.seconds):
+                    outcome = "comboed" if inferred.comboed else "uncomboed"
+                    previous = inferred.previous_gcd or "previous GCD unavailable"
+                    print(f"  {stamp(inferred.seconds)} {previous} -> {inferred.name}: "
+                          + f"{inferred.potency_lost:,.1f} estimated base potency lost "
+                          + f"({outcome} inferred from normalized damage; combo field unavailable)")
+        sequence_names = {"Atonement", "Supplication", "Sepulchre"}
+        for label, effects in (
+            ("Atonement sequences", [r for r in p.ready if r.name in sequence_names]),
+            ("Other ready effects and spell charges", [r for r in p.ready
+                                                      if r.name not in sequence_names]),
+        ):
+            if effects:
+                print(f"\n  {label}:")
+                for r in effects:
+                    print("    " + ready_line(r))
+                    for time, reason in r.losses:
+                        print(f"      {stamp(time)}: {reason}")
         print("\nImperator/Requiescat follow-ups:")
         table(("Burst", "Trigger", "Confiteor", "Faith", "Truth", "Valor", "Honor", "Landed potency"),
               [(stamp(b.seconds), b.trigger, *(str(f.casts) for f in b.follow_ups),
                 f"{sum(f.potency for f in b.follow_ups):,.1f}") for b in p.bursts])
         print("  Follow-up columns count completed casts. Potency includes only landed hits.")
         for b in p.bursts:
+            for issue in b.issues:
+                outcome = (("cast, no hit" if len(issue.actions) == 1 else "casts, no hits")
+                           if issue.kind == "no_hit" else "missing")
+                reason = {
+                    "death": "player died during sequence",
+                    "downtime": "boss downtime during sequence" if issue.kind == "missing_cast" else "boss downtime",
+                    "fight_end": "fight ended during sequence",
+                    "fight ending": "fight ended before hit landed",
+                    "expiry": f"{issue.effect} expired",
+                    "prepull": "sequence began before saved interval",
+                    "unconfirmed": "reason unconfirmed",
+                }.get(issue.reason, issue.reason)
+                print(f"    {stamp(b.seconds)}: {', '.join(issue.actions)} {outcome} - {reason}")
             for note in b.notes:
                 print(f"    {stamp(b.seconds)}: {note}")
         print("\nSpell casts:")
@@ -417,6 +480,8 @@ def print_analysis(
         holy_spirit_casts = {round(time, 6): kind for time, kind in p.holy_spirit_casts}
 
         def ranged_name(name, time):
+            if name == "Shield Lob":
+                return "SL"
             if name != "Holy Spirit":
                 return name
             kind = holy_spirit_casts.get(round(time, 6), "unconfirmed")
@@ -435,6 +500,7 @@ def print_analysis(
                      + ranged_name(c.following, time + c.following_gap)
                      if c.following and c.following_gap is not None else "")
             print(f"    {stamp(c.seconds)}: {before}{chain}{after}")
+        print("  HS = Holy Spirit; SL = Shield Lob.")
         print("  Instant Holy Spirit and the opening Holy Spirit are excluded.")
     if result.war:
         w = result.war
@@ -1096,6 +1162,11 @@ def print_analysis(
         )
     )
     print(f"  Targetable time: {result.targetable_time_source}")
+    if result.combat_start_offset_seconds is not None:
+        print("  Timeline: FF Logs combat time "
+              + f"({result.combat_start_offset_seconds:.3f}s pre-pull excluded).")
+    elif result.encounter_id == 4550:
+        print("  Timeline: original dungeon start (combat-time metadata unavailable).")
     if result.echo_status:
         print(
             f"  Echo: {'0%' if result.echo_status == 'absent' else result.echo_status}"
