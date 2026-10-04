@@ -48,6 +48,20 @@ def execution_summary(output):
     return output.split("Execution summary:\n", 1)[1].split("\n\n", 1)[0]
 
 
+def test_bard_pre_pull_raging_strikes_is_counted_and_labelled(capsys):
+    from ffxiv_potency.analysis.cache import _decode, _encode
+
+    result = result_with_losses("bard")
+    result = replace(result, execution=ExecutionSummary(
+        "bard", (CooldownUse("Raging Strikes", 10, 10, pre_pull_uses=1),), (), (), (),
+    ))
+    assert _decode(_encode(result), AnalysisResult) == result
+    cli._print_analysis(result)
+    output = capsys.readouterr().out
+    assert "  Raging Strikes: 10/10 uses (including pre-pull)" in output.splitlines()
+    assert "Cooldown opportunities" not in execution_summary(output)
+
+
 @pytest.mark.parametrize("job", ["pld", "war", "machinist", "dancer", "dnc-proc"])
 @pytest.mark.parametrize("expired", [1, 3])
 def test_execution_summary_uses_shared_expiry_wording(job, expired, capsys):
@@ -155,8 +169,8 @@ def test_combo_losses_and_atonement_group_preserve_ready_outcomes(capsys, hits, 
     assert f'Combos: {hits} uncomboed {noun}, {260 * hits:,.1f} base potency lost' in output
     assert 'Atonement: 1 overwritten' in execution_summary(output)
     assert 'Supplication: 1 expired' in execution_summary(output)
-    section = output.split('Combos, ready effects and spell charges:\n', 1)[1].split(
-        'Imperator/Requiescat follow-ups:', 1,
+    section = output.split('Combos, ready effects and charges:\n', 1)[1].split(
+        'Circle of Scorn:', 1,
     )[0]
     assert section.index('Combo losses:') < section.index('Atonement sequences:')
     assert section.index('Sepulchre:') < section.index('Other ready effects and spell charges:')
@@ -194,3 +208,15 @@ def test_inferred_combo_losses_are_labelled_separately(capsys):
             '(comboed inferred from normalized damage; combo field unavailable)') in output
     assert 'Estimated base loss' not in output
     assert 'Unconfirmed combo evidence:' not in output
+
+
+@pytest.mark.parametrize('job', ['warrior', 'machinist', 'dancer'])
+def test_shared_confirmed_combo_loss_is_in_summary_before_empty_findings_message(job, capsys):
+    from ffxiv_potency.analysis.combos import ComboLoss, ComboSummary
+
+    result = replace(result_with_losses(job), combos=ComboSummary((ComboLoss('Combo action', 1, 160),)))
+    cli._print_analysis(result)
+    summary = execution_summary(capsys.readouterr().out)
+    assert 'Combos: 1 uncomboed hit' in summary
+    assert 'No confirmed issues' not in summary
+    assert '160' not in summary

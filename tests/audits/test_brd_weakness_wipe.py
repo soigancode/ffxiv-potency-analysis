@@ -52,7 +52,7 @@ def test_dancing_mad_wipe_shots_and_weakness_snapshots(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "Fight: Dancing Mad (umad) | Duration: 11m18s (wipe)" in output
+    assert "Fight: Dancing Mad (dmu) | Duration: 11m18s (wipe)" in output
     assert "08m55s: died -> 09m04s: revived | Time dead: 9.0s | Weakness applied" in output
     assert "Weakness 09m04s 10m44s" in " ".join(output.split())
     assert "Potency lost" in output

@@ -82,6 +82,8 @@ def test_hard_cast_evidence_fake_casts_and_unconfirmed_instant_uses():
     state = replay([cast(1000, 1, type="begincast"), cast(2500, 1), cast(5000, 1),
                     cast(6000, 1, fake=True), cast(7000, 6)], [buff(6500, DIVINE_MIGHT)])
     assert [s.cast_kind for s in state.spells] == ["hard cast", "unconfirmed", "instant"]
+    assert [s.gcd_start_seconds for s in state.spells] == [1.0, None, None]
+    assert state.spells[0].seconds == 2.5
     assert state.ready[0].uses == 1
 
 
@@ -102,3 +104,4 @@ def test_abandoned_begin_cast_does_not_label_a_later_instant_use():
     state = replay([cast(0, 1, type="begincast", duration=1500), cast(1000, 2),
                     cast(1400, 1), cast(3000, 1)])
     assert [s.cast_kind for s in state.spells] == ["instant", "unconfirmed", "unconfirmed"]
+    assert all(s.gcd_start_seconds is None for s in state.spells)

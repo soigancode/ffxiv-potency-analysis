@@ -4,6 +4,9 @@ from dataclasses import dataclass
 
 from .brd.dots import BrdDotActionSummary
 from .brd.songs import BrdFinaleSummary
+from .combos import ComboSummary
+from .cooldown_timing import CooldownTiming
+from .diagnostic_types import BurstAlignment, FollowUpContext
 from .execution import ExecutionSummary
 from .mch.wildfire import MchWildfireSummary
 from .penalties import DamagePenaltySummary, StatusWindow
@@ -195,6 +198,14 @@ class PotionWindow:
 
 
 @dataclass(frozen=True, slots=True)
+class PotionWindowTotal:
+    base_potency_min: float
+    base_potency_max: float
+    gained_potency_min: float
+    gained_potency_max: float
+
+
+@dataclass(frozen=True, slots=True)
 class PotionSummary:
     uses: int
     potted_potency_min: float
@@ -203,6 +214,7 @@ class PotionSummary:
     gained_potency_max: float
     windows: tuple[PotionWindow, ...] = ()
     item: ConsumableIdentity | None = None
+    window_totals: tuple[PotionWindowTotal, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,6 +280,10 @@ class AnalysisResult:
     gear_name: str | None = None
     gear_source: str | None = None
     combat_start_offset_seconds: float | None = None
+    cooldown_timing: tuple[CooldownTiming, ...] = ()
+    burst_alignment: tuple[BurstAlignment, ...] = ()
+    combos: ComboSummary | None = None
+    follow_up_context: tuple[FollowUpContext, ...] = ()
 
     @property
     def pps_duration_seconds(self) -> float:

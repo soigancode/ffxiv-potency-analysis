@@ -2,6 +2,7 @@
 
 import re
 import shutil
+from dataclasses import replace
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -70,8 +71,8 @@ def test_cli_analyse_compare_and_gear_override(tmp_path, monkeypatch, capsys):
     assert "Fight or Flight:" in output and "Circle of Scorn:" in output
     assert "rDPS/nDPS:" in output
     assert "fight-13" not in output and "Fight ID" not in output
-    assert "\nSpell casts:\n  Spell" in output
-    spell_table = output.split("\nSpell casts:\n", 1)[1].split(
+    assert "\n  Spell casts:\n  Spell" in output
+    spell_table = output.split("\n  Spell casts:\n", 1)[1].split(
         "  Unconfirmed cast time", 1,
     )[0]
     effect_order = {"Divine Might": 0, "Requiescat": 1, "None": 2}
@@ -79,8 +80,10 @@ def test_cli_analyse_compare_and_gear_override(tmp_path, monkeypatch, capsys):
     assert {row[1] for row in spell_rows} == set(effect_order)
     spell_effects = [(row[0], effect_order[row[1]]) for row in spell_rows]
     assert spell_effects == sorted(spell_effects)
-    assert "\nCircle of Scorn:\n  Applications" in output
-    assert "\n    07m32s:" in output and " -> 3.48s -> HS (hard-cast) -> 1.52s -> " in output
+    assert "\n  DoTs:\n  DoT" in output
+    assert output.index("Action totals and auto-attacks:") < output.index("\n  DoTs:") < output.index("\n  Auto-attacks:")
+    assert "\nDoTs:" not in output
+    assert "\n    07m31s:" in output and " -> 2.50s -> HS (hard-cast) -> 2.50s -> " in output
     assert output.isascii()
     assert output.index("Direct Hit") < output.index("Critical Hit")
     assert cli.main(["analyse", str(first), "--gear", "relic_7_55"]) == 0
@@ -118,9 +121,11 @@ def test_report_selection_accepts_paladin_without_prompt(monkeypatch):
     assert cli._select_report_reference("https://www.fflogs.com/reports/abc123") == ReportReference("abc123", 13, 98)
 
 
-def test_alignment_findings_sort_by_gain_and_report_sections_by_importance(capsys):
+def test_burst_section_removes_outside_gain_table_and_retains_cooldown_timing(capsys):
+    from ffxiv_potency.analysis.burst_opportunities import BurstAction, BurstWindow
     from ffxiv_potency.analysis.pld.alignment import summarize_alignment
     from ffxiv_potency.analysis.pld.buffs import FIGHT_OR_FLIGHT
+    from ffxiv_potency.analysis.pld.burst_opportunities import BURST_ACTIONS
 
     alignment = summarize_alignment(
         [(21000, 'Expiacion', 450, False), (51000, 'Expiacion', 450, False),
@@ -139,21 +144,26 @@ def test_alignment_findings_sort_by_gain_and_report_sections_by_importance(capsy
                                         CooldownTiming('Imperator', None, None),
                                         CooldownTiming('Intervene', 8.2, 2.7, True))),
     )
+    assert result.pld is not None
+    result = replace(result, pld=replace(result.pld, burst_opportunities=(BurstWindow(
+        0, 20, tuple(BurstAction(name, 1, 0 if name == 'Blade of Honor' else 2,
+                                None if name == 'Intervene' else 1)
+                     for name in BURST_ACTIONS), 12345.6,
+    ),)))
     cli._print_analysis(result)
     output = capsys.readouterr().out
-    summary = output.split('Actions outside Fight or Flight:\n', 1)[1].split(
-        '  Potency excludes Fight or Flight.', 1,
-    )[0]
-    rows = [re.split(r'\s{2,}', row.strip()) for row in summary.splitlines()]
-    assert rows == [
-        ['Action', 'Uses', 'Potency', 'Potential buff gain'],
-        ['Blade of Honor', '1', '1,000.0', '250.0'],
-        ['Expiacion', '2', '900.0', '225.0'],
-        ['Imperator', '1', '580.0', '145.0'],
-    ]
-    assert 'Snapshot ' not in summary
+    assert 'Actions outside Fight or Flight:' not in output
+    assert 'Potential buff gain' not in output
+    assert 'Inside  Outside' not in output
+    assert 'Burst completion: unavailable' not in output
+    completion = output.split('  Burst completion:\n', 1)[1].split('  Cells show', 1)[0]
+    assert '1/?' in completion
+    hits = output.split('  Landed hits and potency:\n', 1)[1].split('  Goring =', 1)[0]
+    assert '12,345.6' in hits
+    assert re.split(r'\s{2,}', hits.splitlines()[1].strip())[7] == '0'
+    assert 'Imperator/Requiescat follow-ups:' not in output
     assert '\n  Intervene: 0 uses\n\n  Cooldown timing:' in output
-    assert output.index('Cooldown timing:') < output.index('Landed potency inside')
+    assert output.index('Cooldown timing:') < output.index('Burst completion:')
     timing = output.split('  Cooldown timing:\n', 1)[1].split(
         '  Timing starts after', 1,
     )[0]
@@ -163,9 +173,9 @@ def test_alignment_findings_sort_by_gain_and_report_sections_by_importance(capsy
         ['Imperator', 'n/a', 'n/a'],
         ['Intervene', '8.2s', '2.7s'],
     ]
-    headings = ['Fight or Flight and offensive abilities:', 'Combos, ready effects and spell charges:',
-                'Imperator/Requiescat follow-ups:', 'Spell casts:', 'Circle of Scorn:',
-                'Melee downtime:']
+    headings = ['Cooldowns and burst windows:', '  Spell casts:',
+                'Combos, ready effects and charges:', 'Melee downtime:',
+                'Action totals and auto-attacks:', '  DoTs:']
     positions = [output.index('\n' + heading) for heading in headings]
     assert positions == sorted(positions)
     assert output.isascii()

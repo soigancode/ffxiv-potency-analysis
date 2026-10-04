@@ -14,6 +14,7 @@ from ffxiv_potency.analysis.profiles import _PetProfile
       {"type": "calculateddamage", "targetID": 4},
       {"type": "damage", "targetID": 4}], False, 70),
     ([{"type": "calculateddamage", "bonusPercent": 200, "unpaired": True}], True, 70),
+    ([{"type": "calculateddamage", "bonusPercent": 0}], True, 50),
     ([{"type": "calculateddamage", "unpaired": True}], True, 50),
     ([{"type": "calculateddamage", "hitType": 10}], False, 50),
     ([{"type": "calculateddamage", "amount": 0}], False, 50),

@@ -64,14 +64,14 @@ The tool reads `.env` automatically. Keep it private. Required job data is inclu
 Compare the current top ten accessible logs for a job and fight, ordered by FF Logs rDPS. Mistwake and The Clyteum use DPS rankings:
 
 ```bash
-ffxiv-potency fflogs brd umad
+ffxiv-potency fflogs brd dmu
 ffxiv-potency fflogs mch m10s
 ```
 
 Analyse **any leaderboard position** instead:
 
 ```bash
-ffxiv-potency fflogs brd umad 3
+ffxiv-potency fflogs brd dmu 3
 ```
 
 Compare an inclusive range or select individual ranks:
@@ -137,7 +137,9 @@ A link with `fight` and `source` already selected runs without the prompts:
 ffxiv-potency analyse "https://www.fflogs.com/reports/REPORT1?fight=9&source=18"
 ```
 
-The report shows the player, fight, duration, date, patch, assumed gear, potency, PPS, and FF Logs damage metrics. It marks wipes and lists deaths and damage penalties. Job details come first, followed by potions, hit outcomes, penalties, action totals, and auto-attacks.
+The report shows the player, fight, duration, date, patch, assumed gear, potency, PPS, and FF Logs damage metrics. It marks wipes and lists deaths and damage penalties. All jobs use the same section order where applicable: execution summary, deaths and damage penalties, cooldowns and burst windows, combos and ready effects, melee downtime, potions, missing-hit diagnostics, Hit Bonus and Luck, action totals and auto-attacks, and data assumptions. DoT potency tables appear between the main action table and auto-attacks.
+
+Add `--html report.html` to `analyse` to also save a HTML report with the same results and section order as the terminal report, and shows the saved individual FF Logs rank when available. Open the file in a browser. Styles are included, so it works offline.
 
 To save a fight without analysing it, run `ffxiv-potency fflogs "<report URL>"`.
 
@@ -177,7 +179,7 @@ The execution summary lists **Cooldown opportunities** when recorded uses fall b
 
 **Luck** shows how favorable the observed Crit and Direct Hit outcomes were, weighted by each hit's potency. A critical hit contributes more than a Direct Hit because its configured damage multiplier is larger. **Luck baseline** shows the expected score from the configured unbuffed gear rates. Comparing the two indicates whether hit outcomes were favorable for that gear profile. It does not measure rotation quality.
 
-**Adjusted Luck** (`aLuck` in comparisons) subtracts the *expected* benefit of tracked party and target Crit/DH rate buffs. The original Luck score remains visible in analyse. Adjusted Luck does not change potency or PPS. [The formulas](#luck-and-adjusted-luck) explain both scores.
+**Adjusted Luck** (`aLuck` in comparisons) subtracts the *expected* benefit of tracked party and target DH/Crit rate buffs. The original Luck score remains visible in analyse. Adjusted Luck does not change potency or PPS. [The formulas](#luck-and-adjusted-luck) explain both scores.
 
 FF Logs **rDPS and nDPS** remain the original reported damage metrics. Potency and PPS measure a different thing: landed action value without Crit, Direct Hit, or base damage roll variance. Compare the same fight and job, with comparable gear and stats.
 
@@ -208,6 +210,18 @@ P_{\mathrm{potted}} = P_{\mathrm{base}}\times
 
 Party bonuses come from the fight roster. At level 100, the main-stat coefficient is 190 for tanks and 237 for the supported ranged jobs. Pet damage uses its own configured factor. DoTs and delayed effects such as Wildfire retain the potion state at application.
 
+All supported jobs show each potion window's start, end, landed base potency and potion gain, followed by overall totals. Window potency includes snapshotted damage and auto-attacks. Unknown boundaries remain marked as unavailable, and uncertain potency retains its range.
+
+#### Execution diagnostics
+
+Cooldown timing measures ready time while alive and targetable after the first recorded use. Charged actions show a conservative minimum at full charges. Recharge continues through downtime. Recorded Infuriate and Double Check/Checkmate reductions are included. Delays can reflect intentional buff alignment.
+
+Burst alignment groups landed potency by personal buff windows and summarizes actions outside them, ordered by potential gain. DoTs use their application snapshot. Damage-buff tables exclude the selected buff from potency. Reassemble and Devilment instead estimate hit-bonus gains using assumed gear and baseline DH/Crit rates, separately from potency and PPS. Regular uses between windows, finite charges and overlapping buffs mean these gains are not confirmed losses or additive totals.
+
+PLD, WAR, MCH and DNC report recorded combo losses and infer missing combo fields only from a unique normalized-damage fit against at least three consistent physical hits on the same enemy instance. Up to 30 references within 60 seconds use a 94%-106% damage band plus 0.5% tolerance. Normalization corrects DH/Crit, recorded modifiers, potion, revival and food effects. Clipped, sparse or ambiguous evidence retains a base-to-combo potency range. Inferred breaks show the timestamp, preceding GCD and estimated base loss. DNC proc trials and MCH combo-dependent Battery gains use consistent inferred packet evidence.
+
+Missing follow-ups show recorded death, sustained downtime, expiry, overwrite or fight-ending context. Casts without landed hits retain existing ghost and HP-lock classifications. Matching contexts are grouped. Unexplained omissions remain unconfirmed.
+
 #### Damage penalties
 
 Weakness reduces the player's main damage stat by 25%. Brink of Death reduces it by 50%. These effects apply across encounters. The tool calculates their damage factors from the configured gear, accounting for a potion when one overlaps the hit.
@@ -234,9 +248,9 @@ PLD and WAR use an action-damage trait multiplier of `1.0`. BRD, MCH, and DNC di
 
 #### Hit Bonus and Adjusted Hit Bonus
 
-**HB** is the potency-weighted damage bonus from recorded Crits and Direct Hits, including guaranteed outcomes. **aHB** subtracts the expected contribution from external Crit/DH rate buffs. A value of +48% means those outcomes add 48% damage over the same observed attacks without their Crit/DH bonuses. Raid leaderboards and comparisons show aHB and aLuck after PPS. Dungeon DPS tables show HB and Luck. Analyse uses the full names **Hit Bonus** and **Adjusted Hit Bonus**.
+**HB** is the potency-weighted damage bonus from recorded Direct Hits and Crits, including guaranteed outcomes. **aHB** subtracts the expected contribution from external DH/Crit rate buffs. A value of +48% means those outcomes add 48% damage over the same observed attacks without their DH/Crit bonuses. Raid leaderboards and comparisons show aHB and aLuck after PPS. Dungeon DPS tables show HB and Luck. Analyse uses the full names **Hit Bonus** and **Adjusted Hit Bonus**.
 
-Guaranteed hits include both the Direct Hit attribute conversion and the deterministic damage benefit from external Crit/DH rate buffs. Explicitly non-random damage such as Wildfire contributes potency with no hit bonus. Periodic damage without a recorded outcome is excluded. The metric uses configured gear and observed outcomes, rather than converting potency into FF Logs nDPS. Unlike Luck, it also depends on the mix of attacks used.
+Guaranteed hits include both the Direct Hit attribute conversion and the deterministic damage benefit from external DH/Crit rate buffs. Explicitly non-random damage such as Wildfire contributes potency with no hit bonus. Simulated DoT ticks are excluded from Hit Bonus and Luck because their actual DH and Crit outcomes are unavailable. The metric uses configured gear and observed outcomes, rather than converting potency into FF Logs nDPS. Unlike Luck, it also depends on the mix of attacks used.
 
 #### Luck and adjusted Luck
 
@@ -254,16 +268,16 @@ For each eligible landed hit $i$, let $P_i$ be its potency (including potion gai
 \frac{\sum_i P_i(M_i-1)}{\sum_i P_i(1.25C-1)}.
 ```
 
-Zero means no eligible hit rolled Crit or DH. A score of 100% means every eligible hit rolled both. Guaranteed Crit/DH and configured non-random damage, such as Wildfire, are excluded from **both sums**. Eligible pet hits and auto-attacks count too. This is an observed score, not a probability or an FF Logs ranking metric.
+Zero means no eligible hit rolled DH or Crit. A score of 100% means every eligible hit rolled both. Guaranteed DH/Crit and configured non-random damage, such as Wildfire, are excluded from **both sums**. Eligible pet hits and auto-attacks count too. This is an observed score, not a probability or an FF Logs ranking metric.
 
-With gear Crit chance $p_C$ and DH chance $p_D$, the unbuffed Luck baseline is:
+With gear DH chance $p_D$ and Crit chance $p_C$, the unbuffed Luck baseline is:
 
 ```math
 \mathrm{Baseline}=100\%\times
 \frac{(1+p_C(C-1))(1+0.25p_D)-1}{1.25C-1}.
 ```
 
-The analysis also prints each hit outcome's observed rate beside its gear baseline. For adjusted Luck, the tool calculates the expected extra hit bonus from Crit/DH rate buffs active on each hit. With buffed chances $p'_C$ and $p'_D$:
+The analysis also prints each hit outcome's observed rate beside its gear baseline. For adjusted Luck, the tool calculates the expected extra hit bonus from DH/Crit rate buffs active on each hit. With buffed chances $p'_D$ and $p'_C$:
 
 ```math
 A_i=(1+p'_C(C-1))(1+0.25p'_D)
@@ -283,35 +297,39 @@ Tracked effects are Battle Litany, Battle Voice, Army's Paeon, the Wanderer's Mi
 
 PLD uses Strength for both weaponskills and damaging spells. Listed guide potencies already include level-100 trait upgrades.
 
-#### Fight or Flight and offensive abilities
+#### Cooldowns and burst windows
 
-Fight or Flight adds 25% personal damage. Analyse shows offensive cooldown use counts, timing and buff alignment. Expiacion, Imperator, Confiteor, Blade of Faith, Blade of Truth, Blade of Valor and Blade of Honor deal 40% potency to additional targets.
+Fight or Flight adds 25% personal damage. Analyse shows offensive cooldown use counts, timing and burst opportunities. Expiacion, Imperator, Confiteor, Blade of Faith, Blade of Truth, Blade of Valor and Blade of Honor deal 40% potency to additional targets.
 
-Cooldown timing measures ready time and the longest wait after the first recorded use, excluding forced downtime and recorded death periods. Recharge continues through downtime. Intervene reports a conservative minimum of time at full charges because opening charges are unknown. Delays can reflect intentional buff alignment; timing does not change the full-duration possible-use counts.
+Cooldown timing measures ready time and the longest wait after the first recorded use, excluding forced downtime and recorded death periods. Recharge continues through downtime. Intervene reports a conservative minimum of time at full charges because opening charges are unknown. Delays can reflect intentional buff alignment. Timing does not change the full-duration possible-use counts.
 
-Fight or Flight alignment covers Goring Blade, Imperator, Confiteor, Blade of Faith, Blade of Truth, Blade of Valor, Blade of Honor, Circle of Scorn and Expiacion. Coverage weights landed potency before Fight or Flight, retaining other calculated modifiers. Hits use their attack snapshot, and Circle of Scorn ticks use the application's snapshot. Attacks outside the buff are grouped with the nearest window and summarised by action, sorted by total potential buff gain; these are not confirmed avoidable losses.
+Burst completion shows completed casts against conservative opportunities in each recorded Fight or Flight window. The final completion percentage caps each action at its expected count. Incomplete expectations show `n/a`. Missing landed hits are highlighted separately in HTML. Recorded grants establish Goring Blade and the Confiteor sequence. Combo dependencies, GCD recasts and potency priorities come from the selected action snapshot. Opportunities exclude downtime and recorded deaths. Cooldown additions must preserve all recorded outside-window and later uses. Unknown opening charges or missing availability evidence show `?`. Outside multi-target follow-ups are retained without asserting that moving them would improve damage. These are local opportunity bounds, not an optimal rotation or confirmed potency losses.
 
-#### Combos, ready effects and spell charges
+Landed-hit counts are separate from completed casts and exclude periodic ticks. Window potency includes all landed damage and auto-attacks with a Fight or Flight snapshot, including periodic damage attributed to its application.
 
-Combo losses count landed Riot Blade, Royal Authority and Prominence hits with an explicitly recorded zero combo bonus. Base potency losses use the difference from combo potency, accounting for overkill before buffs and penalties. Missing combo bonuses are inferred from normalized damage when base or combo potency has a unique fit against at least three consistent physical reference hits on the same enemy instance, using up to 30 references within 60 seconds. Normalization removes Crit/DH and recorded damage modifiers, correcting potion, revival and food effects. Fits allow the same 94%-106% damage band and 0.5% tolerance used for BRD. Inferred hits use the fitted potency and are reported separately from recorded combo losses. Insufficient, clipped or ambiguous evidence retains an unconfirmed base-to-combo potency range.
+##### Follow-up context
 
-Atonement, Supplication and Sepulchre are grouped as a sequence, retaining their recorded grants, uses, expiry, overwrites, death losses and remaining effects. Spell enhancements replay recorded grants, stacks, consumption, expiry and death before each cast resolves. Other ready effects and spell charges follow separately.
+Confiteor, Blade of Faith, Blade of Truth and Blade of Valor have 500, 260, 380 and 500 base potency respectively, increasing to 1,000, 760, 880 and 1,000 with Requiescat. Follow-ups remain grouped under the preceding burst. Casts without an active Requiescat charge use unenhanced potency. Analyse retains follow-up context under cooldowns and burst windows. Missing follow-ups list recorded death, sustained boss downtime, fight ending or ready-effect expiry context. Absent hits reuse the shared ghost and HP-lock evidence. Actions sharing a context are grouped, and unexplained omissions remain unconfirmed. Context alone does not establish an avoidable loss.
 
-#### Imperator/Requiescat follow-ups
-
-Confiteor, Blade of Faith, Blade of Truth and Blade of Valor have 500, 260, 380 and 500 base potency respectively, increasing to 1,000, 760, 880 and 1,000 with Requiescat. Follow-ups remain grouped under the preceding burst. Casts without an active Requiescat charge use unenhanced potency. Analyse shows each burst's completed casts and landed follow-up potency. Missing follow-ups list recorded death, sustained boss downtime, fight ending or ready-effect expiry context; absent hits reuse the shared ghost and HP-lock evidence. Actions sharing a context are grouped, and unexplained omissions remain unconfirmed. Context alone does not establish an avoidable loss.
-
-#### Spell casts
+##### Spell casts
 
 Holy Spirit has 400 base potency, 500 with Divine Might, or 700 with Requiescat. Holy Circle has 100, 250, or 350 respectively. Divine Might takes priority and leaves Requiescat charges intact. Analyse groups casts by spell, enhancement and cast-time evidence, with Divine Might before Requiescat and None within each spell.
 
-#### Circle of Scorn
+#### Combos, ready effects and charges
 
-Circle of Scorn contributes a 140-potency application and 30-potency periodic ticks, retaining the application's personal buff, potion and damage-penalty snapshot. Analyse reports applications and periodic ticks separately.
+Combo losses cover landed Riot Blade, Royal Authority and Prominence hits. Base losses account for overkill before buffs and penalties. Missing fields follow the shared combo-evidence rules above.
+
+Atonement, Supplication and Sepulchre are grouped as a sequence, retaining their recorded grants, uses, expiry, overwrites, death losses and remaining effects. Spell enhancements replay recorded grants, stacks, consumption, expiry and death before each cast resolves. Other ready effects and spell charges follow separately.
 
 #### Melee downtime
 
-Melee downtime groups consecutive Shield Lobs and confirmed hard-cast Holy Spirits, with neighboring GCDs and every cast gap. Instant Holy Spirit and the opening Holy Spirit are excluded. Missing begin-cast evidence remains unconfirmed.
+Melee downtime groups consecutive Shield Lobs and confirmed hard-cast Holy Spirits, with neighboring GCDs and every cast gap. Gaps use the recorded cast start for hard-cast spells. Instant Holy Spirit and the opening Holy Spirit are excluded. Missing begin-cast evidence remains unconfirmed.
+
+#### Action totals and auto-attacks
+
+##### Circle of Scorn
+
+Circle of Scorn contributes a 140-potency application and 30-potency periodic ticks, retaining the application's personal buff, potion and damage-penalty snapshot. Analyse reports applications and periodic ticks separately.
 
 ### Warrior
 
@@ -323,15 +341,21 @@ Melee downtime groups consecutive Shield Lobs and confirmed hard-cast Holy Spiri
 | Primal Rend | 700 | 720 |
 | Primal Ruination | 780 | 800 |
 
-Comboed Maim has 340 potency, Storm's Path and Storm's Eye have 500, and Mythril Tempest has 140. Other hits use their base potency. Primal Rend, Primal Ruination, and Primal Wrath deal 50% potency to additional targets. WAR's other damaging AoEs have no falloff.
+Comboed Maim has 340 potency, Storm's Path and Storm's Eye have 500, and Mythril Tempest has 140. Missing combo fields follow the shared evidence rules above. Primal Rend, Primal Ruination, and Primal Wrath deal 50% potency to additional targets. WAR's other damaging AoEs have no falloff.
 
 Surging Tempest adds 10% personal damage. The attack that first grants it uses the preceding buff state. Damnation contributes 55 potency per landed counterattack. Its defensive cast is not a ghosted attack when no counterattack occurs.
 
 Inner Chaos, Chaotic Cyclone, Primal Rend, and Primal Ruination guarantee critical direct hits. Inner Release guarantees them for Fell Cleave and Decimate, but not other actions. Beast Gauge controls spender availability without changing potency.
 
-#### Execution summary
+#### Cooldowns and burst windows
+
+Cooldown timing covers Inner Release, Infuriate, Upheaval/Orogeny and Onslaught. Upheaval and Orogeny share one cooldown. Cooldowns and burst windows shows the three Inner Release spenders and Primal follow-ups, followed by potion-window casts of these actions, Infuriate, Nascent Chaos consumers, Upheaval/Orogeny and Onslaught. Counts are descriptive, not fixed requirements. Follow-up context explains recorded omissions and missing hits. The shared Potions section shows landed potion-snapshot potency and gain, including auto-attacks.
+
+#### Combos, ready effects and charges
 
 Analyse shows actual Surging Tempest uptime and hit coverage. Missing-buff warnings and lost potency exclude all attacks before the first application and setup after a confirmed natural expiry during downtime. Other unbuffed attacks remain listed. Inner Release lists uses and unused charges at confirmed expiry. Primal Rend, Primal Ruination, Primal Wrath, and Nascent Chaos list ready grants, uses, expirations, and overwrites. Pre-pull effects count as grants. Consuming a ready effect counts as use even if the damage ghosts. Effects still active at the fight's end are not counted as wasted.
+
+#### Melee downtime
 
 Melee downtime groups consecutive Tomahawks into one line, timestamped at the first Tomahawk. It shows the preceding and following melee GCDs and every gap between casts. Abilities woven between GCDs do not break the chain. No exact replacement loss is assigned because the available melee action is uncertain.
 
@@ -341,13 +365,15 @@ Melee downtime groups consecutive Tomahawks into one line, timestamped at the fi
 
 Songs grant distinct Codas. Radiant Finale consumes them for a 2%, 4%, or 6% personal damage bonus. Radiant Encore then deals 700, 800, or 1,100 potency, with 50% potency on additional targets. Raging Strikes adds 15% damage. The report shows consumed Codas, Encore potency, and song durations. Radiant Finale’s possible-use count follows a 120-second buff cycle, while its action data retains the actual 110-second cooldown.
 
+Cooldown timing also covers Barrage, Empyreal Arrow and Sidewinder. Alignment uses Raging Strikes, including DoT snapshots, and Radiant Encore lists missing-cast or missing-hit context.
+
 Barrage makes Refulgent Arrow strike three times or raises Shadowbite to 300 potency. Caustic Bite and Stormbite retain their personal buff snapshot on each target. Iron Jaws refreshes both effects with a new snapshot. Application damage and tick potency are reported separately.
 
 #### Variable potency from damage
 
 Pitch Perfect has 100, 220, or 360 potency for one, two, or three stacks. Apex Arrow has $140+7(G-20)$ potency for Soul Voice Gauge $G$ from 20 to 100. Using at least 80 gauge grants Blast Arrow Ready.
 
-Hidden resource values are estimated from normalized damage. Burst Shot (220), Refulgent Arrow (280), Empyreal Arrow (260), and Heartbreak Shot (180) provide fixed-potency references. Each hit is divided by its Crit/DH outcome and recorded damage multiplier. Potted hits correct FF Logs' recorded 1.05 factor to the configured potion factor $Q$:
+Hidden resource values are estimated from normalized damage. Burst Shot (220), Refulgent Arrow (280), Empyreal Arrow (260), and Heartbreak Shot (180) provide fixed-potency references. Each hit is divided by its DH/Crit outcome and recorded damage multiplier. Potted hits correct FF Logs' recorded 1.05 factor to the configured potion factor $Q$:
 
 ```math
 D_{\mathrm{norm}}=\frac{D_{\mathrm{logged}}}{C^{I_C}\,1.25^{I_D}\,M_{\mathrm{FF}}}\times Q.
@@ -359,11 +385,13 @@ Candidate potencies allow a 94%–106% damage roll plus 0.5% rounding tolerance.
 
 ### Machinist
 
+Cooldown timing includes recorded Blazing Shot recharge reductions. Reassemble alignment compares Drill, Air Anchor, Chain Saw and Excavator. Combo diagnostics cover Slug Shot/Clean Shot and their Heated versions. Follow-up context covers Excavator, Full Metal Field, incomplete Hypercharge/Wildfire windows and missing Queen finishers.
+
 #### Hypercharge and Wildfire
 
 Hypercharge grants five stacks that add 20 potency to single-target weaponskills, including Blazing Shot. Auto Crossbow receives no bonus. Reassemble guarantees a critical direct hit on the next eligible weaponskill. Full Metal Field guarantees that outcome independently.
 
-Wildfire adds 240 potency per weaponskill that lands during its ten-second window, up to six hits and 1,440 potency. Pet attacks and auto-attacks do not contribute. Detonator can end the window early. Wildfire does not roll Crit or DH. The report lists hit counts and potency. Windows with fewer than six hits also list their contributing weaponskills. Double Check and Checkmate use a charge simulation with the recorded Blazing Shots, which reduce both recharge timers by 15 seconds. It respects the three-charge cap and targetable windows. The result is an upper bound that does not model weaving or buff alignment.
+Wildfire adds 240 potency per weaponskill that lands during its ten-second window, up to six hits and 1,440 potency. Pet attacks and auto-attacks do not contribute. Detonator can end the window early. Wildfire does not roll DH or Crit. The report lists hit counts and potency. Windows with fewer than six hits also list their contributing weaponskills. Double Check and Checkmate use a charge simulation with the recorded Blazing Shots, which reduce both recharge timers by 15 seconds. It respects the three-charge cap and targetable windows. The result is an upper bound that does not model weaving or buff alignment.
 
 #### Automaton Queen and Battery
 
@@ -378,6 +406,8 @@ Queen and Rook damage uses an approximate 0.89 conversion to player-comparable p
 For Lindwurm II, the preceding phase-one kill establishes carried Battery when available. A pre-pull Queen's spent Battery is counted separately. Otherwise, later Queens with known Battery can narrow the opening gauge to 50, 60, 70, 80, 90, or 100. A unique fit requires at least two opening hits and two comparable later Queens, allowing a 95%–105% damage roll, multiplier rounding of ±0.005, and damage rounding of ±2. Overkill and damage-penalty hits cannot establish the reference. An unresolved opening Queen retains a labelled 100-Battery assumption.
 
 ### Dancer
+
+Cooldown timing covers Devilment, Flourish and Technical Step. Alignment reports Technical Finish and Devilment separately. Combo diagnostics cover Fountain and Bladeshower. Follow-up context covers Last Dance, Tillana, Starfall Dance and Dance of the Dawn.
 
 #### Finishes and personal buffs
 

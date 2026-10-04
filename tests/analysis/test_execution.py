@@ -1,5 +1,7 @@
 """Execution diagnostics must follow actual events and explicit evidence."""
 
+import pytest
+
 from ffxiv_potency.analysis.execution import (
     charge_maximum,
     coverage,
@@ -7,6 +9,29 @@ from ffxiv_potency.analysis.execution import (
     summarize_execution,
 )
 from ffxiv_potency.analysis.targetability import TargetableTime
+
+
+@pytest.mark.parametrize("window,opening_cast,expected", [
+    ((-357, 19643, 1.15), None, (2, 1)),
+    ((-357, 19643, 1.15), -900, (2, 1)),
+    ((0, 20000, 1.15), 0, (2, 0)),
+    ((-20000, 0, 1.15), None, (1, 0)),
+    (None, None, (1, 0)),
+])
+def test_raging_strikes_counts_evidenced_pre_pull_use_once(window, opening_cast, expected):
+    casts = [{"timestamp": 120000, "sourceID": 1, "abilityGameID": 101}]
+    if opening_cast is not None:
+        casts.append({"timestamp": opening_cast, "sourceID": 1, "abilityGameID": 101})
+    result = summarize_execution(
+        "bard", casts, [], [], [], [], [],
+        {101: "Raging Strikes", 1000125: "Raging Strikes"},
+        {"Raging Strikes": {"recast_seconds": 120}}, {}, 1, 0, 240000,
+        TargetableTime(240, "timeline", ((0, 240000),)),
+        {1000125: (window,)} if window else {},
+    )
+    cooldown = next(c for c in result.cooldowns if c.name == "Raging Strikes")
+    assert (cooldown.uses, cooldown.pre_pull_uses) == expected
+    assert cooldown.possible == 2
 
 
 def test_charge_simulation_boundaries_reductions_and_downtime():

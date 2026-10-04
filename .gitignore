@@ -1,3 +1,4 @@
+# Default Python ignores
 .venv/
 .verify-venv/
 pytest-of-root/
@@ -10,6 +11,9 @@ dist/
 build/
 *.egg-info/
 
+# Ignore environment variables file
+.env
+
 # Keep normalized JSON in Git; raw downloaded pages are local snapshots.
 data/**/source.html
 data/raid_buffs/
@@ -17,4 +21,3 @@ data/raid_effects/sources/
 data/logs/
 data/analysis-cache/
 data/research/
-.env

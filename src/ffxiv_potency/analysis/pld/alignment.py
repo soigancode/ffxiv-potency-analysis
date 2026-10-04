@@ -6,7 +6,8 @@ from .buffs import FIGHT_OR_FLIGHT
 
 ALIGNMENT_ACTIONS = (
     "Goring Blade", "Imperator", "Confiteor", "Blade of Faith", "Blade of Truth",
-    "Blade of Valor", "Blade of Honor", "Circle of Scorn", "Expiacion",
+    "Blade of Valor", "Blade of Honor", "Circle of Scorn", "Expiacion", "Intervene",
+    "Holy Spirit", "Holy Circle",
 )
 
 

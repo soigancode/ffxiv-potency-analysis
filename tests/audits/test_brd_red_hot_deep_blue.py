@@ -67,7 +67,7 @@ def test_anonymous_brd_analysis_groups_landed_events(
     cli._print_analysis(analyze_saved_fight(tmp_path, actions))
     output = capsys.readouterr().out
     assert "Player: Anonymous\n" in output
-    assert "Action totals:" in output and "Auto-attacks:" in output
+    assert "Action totals and auto-attacks:" in output and "Auto-attacks:" in output
     assert "Shot: 149 hits" in output
     assert "Matched potency events" not in output
 

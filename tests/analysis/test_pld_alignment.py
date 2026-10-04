@@ -32,3 +32,13 @@ def test_missing_buff_and_repeated_target_hits_remain_visible():
     assert a.outside[0].seconds == 4
     assert a.outside[0].potential_gain == 203
     assert a.outside[0].window_start_seconds is None
+
+
+def test_intervene_and_enhanced_spells_keep_resolved_potency_in_alignment():
+    a = summarize_alignment([(1000, 'Intervene', 150, True),
+                             (2000, 'Holy Spirit', 700, True),
+                             (3000, 'Holy Circle', 250, False)],
+                            {FIGHT_OR_FLIGHT: ((0, 20000, 1.25),)}, 0, 30000, 1.25)
+    assert a.inside_potency == 850
+    assert a.outside_potency == 250
+    assert a.outside[0].potential_gain == 62.5

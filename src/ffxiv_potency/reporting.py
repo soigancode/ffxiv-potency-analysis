@@ -1,12 +1,162 @@
 """Compact human-readable reports. Formatting never enters calculation caches."""
 
 from pathlib import Path
+from textwrap import fill
 
 from .analysis.brd.dots import DOT_NAMES
 from .analysis.execution import Coverage
 from .analysis.mch.wildfire import MchWildfireSummary
 from .analysis.models import AnalysisResult
+from .report_document import emit_table, emit_text
 
+
+def decimal_potency(minimum, maximum):
+    return (f"{minimum:,.1f}" if minimum == maximum
+            else f"{minimum:,.1f}-{maximum:,.1f}")
+
+
+def print_burst_opportunities(windows, stamp):
+    if not windows:
+        emit_text("\n  Burst completion: unavailable (no recorded Fight or Flight windows).")
+        return
+    labels = ("Imperator", "Goring", "Confiteor", "Faith", "Truth", "Valor", "Honor",
+              "Scorn", "Expiacion", "Intervene")
+    def completion(window):
+        if any(action.expected is None for action in window.actions):
+            return "n/a"
+        expected = sum(action.expected or 0 for action in window.actions)
+        completed = sum(min(action.casts, action.expected or 0) for action in window.actions)
+        return f"{completed / expected:.1%}" if expected else "n/a"
+
+    missing_hits = {
+        (row, col): (
+            f"{action.name}: {action.casts} completed "
+            f"{'cast' if action.casts == 1 else 'casts'}, {action.hits} landed "
+            f"{'hit' if action.hits == 1 else 'hits'}. "
+            "See follow-up context and missing-hit diagnostics for recorded context."
+        )
+        for row, window in enumerate(windows)
+        for col, action in enumerate(window.actions)
+        if action.hits < action.casts
+    }
+    emit_text("\n  Burst completion:")
+    table(("Burst", "Buff start", "Buff end", *labels, "Completion"),
+          [(str(i), stamp(w.start_seconds), stamp(w.end_seconds),
+            *(f"{a.casts}/{a.expected if a.expected is not None else '?'}" for a in w.actions),
+            completion(w))
+           for i, w in enumerate(windows, 1)],
+          cell_notes={(row, col + 3): note for (row, col), note in missing_hits.items()})
+    emit_text("  Cells show completed casts / conservative opportunities. ? = expectation unconfirmed.")
+    emit_text("  Completion counts casts, capped per action. n/a = incomplete expectations or no opportunities.")
+    emit_text("  Opportunities use recorded grants, reference cooldowns and time alive and targetable.")
+    emit_text("  Cooldown additions preserve recorded outside-window and later uses.")
+    emit_text("  Outside multi-target follow-ups retain an unknown alignment expectation.")
+    emit_text("\n  Landed hits and potency:")
+    table(("Burst", *labels, "Landed potency"),
+          [(str(i), *(str(a.hits) for a in w.actions), f"{w.landed_potency:,.1f}")
+           for i, w in enumerate(windows, 1)],
+          cell_notes={(row, col + 1): note for (row, col), note in missing_hits.items()})
+    emit_text("  Goring = Goring Blade. Faith, Truth, Valor and Honor refer to their Blade actions.")
+    emit_text("  Scorn = Circle of Scorn. Hits follow each window's casts, including later impacts.")
+    emit_text("  Hit columns exclude periodic ticks.")
+    emit_text("  Potency includes all landed damage and auto-attacks with a Fight or Flight snapshot.")
+
+
+def print_cooldown_timing(rows):
+    if not rows:
+        return
+    emit_text("\n  Cooldown timing:")
+    table(("Action", "Ready while targetable", "Longest delay"),
+          [(r.name, f"{r.ready_seconds:.1f}s" if r.ready_seconds is not None else "n/a",
+            f"{r.longest_delay_seconds:.1f}s" if r.longest_delay_seconds is not None else "n/a")
+           for r in rows])
+    emit_text("  Timing starts after the first recorded use. Forced downtime and deaths excluded.")
+    if any(r.minimum for r in rows):
+        emit_text("  Charged actions show minimum confirmed time at full charges.")
+    emit_text("  Delays may reflect intentional buff alignment.")
+
+
+def print_burst_alignment(alignments, stamp):
+    for alignment in alignments:
+        emit_text()
+        if not alignment.evidence_available:
+            emit_text(f"  {alignment.name} alignment: unavailable (no recorded buff windows).")
+            continue
+        total = alignment.inside_potency + alignment.outside_potency
+        coverage = f"{alignment.inside_potency / total:.1%}" if total else "n/a"
+        label = (f"Landed potency inside {alignment.name}" if alignment.kind != "guaranteed"
+                 else f"Landed potency enhanced by {alignment.name}")
+        emit_text(f"  {label}: {alignment.inside_potency:,.1f} / {total:,.1f} ({coverage})")
+        emit_text(fill("Scope: " + ", ".join(alignment.scope) + ".", width=100,
+                   initial_indent="  ", subsequent_indent="         "))
+        table(("Burst", "Buff start", "Buff end", "Inside", "Outside", "Coverage"),
+              [(str(i), stamp(w.start_seconds), stamp(w.end_seconds),
+                f"{w.inside_potency:,.1f}", f"{w.outside_potency:,.1f}",
+                f"{w.inside_potency / (w.inside_potency + w.outside_potency):.1%}"
+                if w.inside_potency + w.outside_potency else "n/a")
+               for i, w in enumerate(alignment.windows, 1)])
+        if alignment.outside:
+            heading = (f"Actions outside {alignment.name}" if alignment.kind != "guaranteed"
+                       else f"Actions without {alignment.name}")
+            emit_text(f"\n  {heading}:")
+            gain = "Potential buff gain" if alignment.kind == "damage" else "Expected hit-bonus gain"
+            table(("Action", "Uses", "Potency", gain),
+                  [(r.action, str(r.uses), f"{r.potency:,.1f}", f"{r.potential_gain:,.1f}")
+                   for r in alignment.outside])
+        if alignment.kind == "damage":
+            emit_text(f"  Potency excludes {alignment.name}. Includes regular uses between buff windows.")
+        else:
+            emit_text("  Hit-bonus gains estimate damage using assumed gear and baseline DH/Crit rates.")
+            emit_text("  These estimates exclude other players' rate buffs and do not change potency or PPS.")
+        if alignment.kind == "guaranteed":
+            emit_text("  Finite charges and regular uses between windows limit achievable gains.")
+        if len(alignments) > 1:
+            emit_text("  Overlapping buff estimates are separate and should not be added.")
+        emit_text("  Potential gains are not confirmed losses.")
+
+
+def print_combo_diagnostics(combos, stamp, *, heading=True):
+    if combos is None:
+        return
+    if heading:
+        emit_text("\nCombos:")
+    if combos.losses:
+        table(("Action", "Uncomboed hits", "Base potency lost"),
+              [(r.name, str(r.hits), f"{r.potency_lost:,.1f}")
+               for r in sorted(combos.losses, key=lambda r: (-r.potency_lost, r.name))])
+        emit_text("  Base losses account for overkill, before buffs and penalties.")
+    else:
+        emit_text("  No recorded combo losses.")
+    if combos.unconfirmed_hits:
+        n = combos.unconfirmed_hits
+        emit_text(f"  Unconfirmed combo evidence: {n} landed " + ("hit" if n == 1 else "hits"))
+        emit_text("  Unresolved combo hits retain a base-to-combo potency range.")
+    grouped = {}
+    for row in sorted(combos.inferred, key=lambda r: r.seconds):
+        if row.comboed:
+            continue
+        key = (row.packet if row.packet is not None else row.seconds, row.name)
+        if key not in grouped:
+            grouped[key] = row, 0, 0.0
+        first, hits, loss = grouped[key]
+        grouped[key] = first, hits + 1, loss + row.potency_lost
+    for row, hits, loss in grouped.values():
+        previous = row.previous_gcd or "previous GCD unavailable"
+        evidence = f"{hits} landed hits; " if hits > 1 else ""
+        emit_text(f"  {stamp(row.seconds)} {previous} -> {row.name}: "
+              + f"{loss:,.1f} estimated base potency lost "
+              + f"({evidence}uncomboed inferred from normalized damage; combo field unavailable)")
+
+
+def print_follow_up_context(rows, stamp):
+    if not rows:
+        return
+    emit_text("\n  Follow-up context:")
+    for row in rows:
+        label = "Cast" if row.outcome == "cast, no hit" else "Sequence"
+        outcome = "casts, no hits" if row.outcome == "cast, no hit" and len(row.actions) > 1 else row.outcome
+        detail = f"{', '.join(row.actions)}" + (f" {outcome}" if outcome != "incomplete" else "")
+        emit_text(f"    {label} {stamp(row.seconds)}: {detail} - {row.reason}")
 
 def reported_coverage_gaps(effect: Coverage) -> tuple[tuple[float, float], ...]:
     """Suppress small DoT warning gaps without changing calculated coverage."""
@@ -23,8 +173,11 @@ def table(
     notes: list[str] | None = None,
     blank_before: bool = False,
     column_widths: list[int] | None = None,
+    cell_notes: dict[tuple[int, int], str] | None = None,
 ) -> None:
     if not rows:
+        return
+    if emit_table(labels, rows, notes, indent, cell_notes):
         return
     widths = [max(len(label), *(len(row[i]) for row in rows)) for i, label in enumerate(labels)]
     if column_widths is not None:
@@ -37,13 +190,13 @@ def table(
         )
 
     if blank_before:
-        print()
-    print(line(labels))
+        emit_text()
+    emit_text(line(labels))
     for i, row in enumerate(rows):
-        print(line(row))
+        emit_text(line(row))
         if notes and notes[i]:
             for note_line in notes[i].splitlines():
-                print(indent + "  " + note_line)
+                emit_text(indent + "  " + note_line)
 
 
 def wildfire_note(window: MchWildfireSummary) -> str:
@@ -130,6 +283,59 @@ def confirmed_ghosts(result: AnalysisResult) -> list[tuple[float, str, str, str]
     )
 
 
+def missing_hit_context(result: AnalysisResult) -> list[tuple[float, str, str, str]]:
+    """Reuse recorded ghost, HP-lock and unconfirmed evidence in burst notes."""
+    confirmed = confirmed_ghosts(result)
+    seen = {(time, name) for time, name, _, _ in confirmed}
+    endings = {(time, name): reason for name, events in result.ghosted_ending_times
+               for time, reason in events}
+    low = {(time, name): hp for name, events in result.ghosted_target_low_hp for time, hp in events}
+    targets = {(time, name): target for name, events in result.ghosted_targets
+               for time, target in events}
+    return sorted(confirmed + [
+        (time, name, targets.get((time, name), ""),
+         f"target at {low[time, name]} HP" if (time, name) in low
+         else endings.get((time, name), "reason unconfirmed"))
+        for name, times in result.ghosted_times for time in times if (time, name) not in seen
+    ])
+
+
+def print_pld_followup_context(bursts, windows, result, stamp):
+    recorded = [entry for entry in missing_hit_context(result) if any(
+        window.start_seconds <= entry[0] < window.end_seconds
+        and any(action.name == entry[1] and action.hits < action.casts
+                for action in window.actions) for window in windows
+    )]
+    entries = [(time, f"    {stamp(time)} {name}" + (f" on {target}" if target else "")
+                + f" ({reason})") for time, name, target, reason in recorded]
+    for index, burst in enumerate(bursts):
+        end = bursts[index + 1].seconds if index + 1 < len(bursts) else result.duration_seconds
+        explained = {name for time, name, _, _ in recorded if burst.seconds <= time < end}
+        for issue in burst.issues:
+            actions = tuple(name for name in issue.actions
+                            if issue.kind != "no_hit" or name not in explained)
+            if not actions:
+                continue
+            outcome = (("cast, no hit" if len(actions) == 1 else "casts, no hits")
+                       if issue.kind == "no_hit" else "missing")
+            reason = {
+                "death": "player died during sequence",
+                "downtime": "boss downtime during sequence" if issue.kind == "missing_cast" else "boss downtime",
+                "fight_end": "fight ended during sequence",
+                "fight ending": "fight ended before hit landed",
+                "expiry": f"{issue.effect} expired",
+                "prepull": "sequence began before saved interval",
+                "unconfirmed": "reason unconfirmed",
+            }.get(issue.reason, issue.reason)
+            entries.append((burst.seconds,
+                            f"    Burst {stamp(burst.seconds)}: {', '.join(actions)} {outcome} - {reason}"))
+        entries.extend((burst.seconds, f"    Burst {stamp(burst.seconds)}: {note}") for note in burst.notes)
+    if entries:
+        emit_text("\n  Follow-up context:")
+        for _, line in sorted(entries, key=lambda row: row[0]):
+            emit_text(line)
+
+
 def issue_notes(result: AnalysisResult) -> str:
     deaths = sum(w.name == "Dead" for w in result.status_windows)
     dd = sum(w.name == "Damage Down" for w in result.status_windows)
@@ -177,21 +383,21 @@ def print_analysis(
     patch_source = (result.patch_source or "").replace(
         "latest configured patch (date unavailable)", "latest configured patch, date unavailable"
     )
-    print()
-    print(
+    emit_text()
+    emit_text(
         f"Player: {cli._display_player_name(result.source_name, anonymous=anonymous)}"
         + (f" | Rank: {rank}" if rank is not None else "")
     )
-    print(
+    emit_text(
         f"Fight: {cli._format_fight(result)} | Duration: {duration(result.duration_seconds)}"
         + (" (wipe)" if result.kill is False else "")
         + f" | Targetable: {targetable}"
     )
-    print(
+    emit_text(
         f"Date: {cli._fight_date(directory, full_year=True) if directory else 'n/a'} (UTC) | Patch: {result.played_patch or bracket}"
         + (f" ({patch_source})" if patch_source and patch_source != "fight date" else "")
     )
-    print(f"Gear: {gear} | Food: {food}")
+    emit_text(f"Gear: {gear} | Food: {food}")
     metrics = []
     if result.encounter_id in {4549, 4551}:
         metrics.append(f"DPS: {result.dps:,.1f}" if result.dps is not None else "DPS: n/a")
@@ -207,7 +413,7 @@ def print_analysis(
             f"{label}: {value:,.1f}" if value is not None else f"{label}: n/a"
             for label, value in (("rDPS", result.rdps), ("nDPS", result.ndps))
         )
-    print(
+    emit_text(
         f"\nLanded potency: {potency(result.potency_min, result.potency_max)} | PPS: {cli._format_pps(result.pps_min, result.pps_max)} | "
         + " | ".join(metrics)
     )
@@ -228,7 +434,6 @@ def print_analysis(
             findings.append(
                 f"Surging Tempest: {len(w.tempest_missing)} avoidable unbuffed "
                 + ("attack" if len(w.tempest_missing) == 1 else "attacks")
-                + f", {w.tempest_lost_potency:,.1f} potency lost"
             )
         if w.unused_expired_charges:
             findings.append(
@@ -237,6 +442,9 @@ def print_analysis(
         findings.extend(ready_loss_findings(w.ready))
         if w.tomahawks:
             findings.append(tomahawk_summary(w))
+    if result.combos and result.combos.losses:
+        hits = sum(c.hits for c in result.combos.losses)
+        findings.append(f"Combos: {hits} uncomboed " + ("hit" if hits == 1 else "hits"))
     if result.pld:
         combos = result.pld.combos
         if combos is not None and combos.losses:
@@ -289,15 +497,19 @@ def print_analysis(
         )
     if result.unmatched:
         findings.append("Unmatched damage present: potency is incomplete")
-    print("\nExecution summary:")
+    emit_text("\nExecution summary:")
     for line in findings or ["No confirmed issues in this log."]:
-        print("  " + line)
+        emit_text("  " + line)
     if result.pld and result.pld.combos:
         inferred_losses = [c for c in result.pld.combos.inferred if not c.comboed]
         if inferred_losses:
             hits = len(inferred_losses)
-            print(f"  Inferred combo losses: {hits} uncomboed "
+            emit_text(f"  Inferred combo losses: {hits} uncomboed "
                   + ("hit" if hits == 1 else "hits"))
+    if result.combos:
+        hits = sum(not c.comboed for c in result.combos.inferred)
+        if hits:
+            emit_text(f"  Inferred combo losses: {hits} uncomboed " + ("hit" if hits == 1 else "hits"))
     opportunities = [c for c in cooldowns.values()
                      if c.possible is not None and c.uses < c.possible]
     if opportunities:
@@ -305,690 +517,19 @@ def print_analysis(
         shared_basis = next(iter(bases)) if len(bases) == 1 else None
         qualifier = ("full-duration upper bound" if shared_basis == "full duration"
                      else f"upper bound from {shared_basis}" if shared_basis else "upper bounds")
-        print(f"  Cooldown opportunities ({qualifier}):")
+        emit_text(f"  Cooldown opportunities ({qualifier}):")
         for c in opportunities:
             basis = ("full-duration upper bound" if c.basis == "full duration"
                      else f"upper bound from {c.basis}")
             detail = f" ({basis})" if shared_basis is None else ""
-            print(f"    {c.name}: {c.uses}/{c.possible} uses{detail}")
+            emit_text(f"    {c.name}: {c.uses}/{c.possible} uses{detail}")
 
-    def uses(name):
-        c = cooldowns.get(name)
-        if c:
-            return f"{c.uses}/{c.possible}" if c.possible is not None else str(c.uses)
-        return str(counts.get(name, 0))
-
-    def coverage_rows(names):
-        effects = [c for c in execution.coverage if c.name in names] if execution else []
-        detailed = any(c.applications or c.refreshes for c in effects)
-        rows = []
-        for c in effects:
-            uptime = (
-                f"{c.covered_seconds / c.targetable_seconds:.2%}" if c.targetable_seconds else "n/a"
-            )
-            rows.append(
-                (c.name, uptime, f"{c.targetable_seconds - c.covered_seconds:.1f}s")
-                + ((str(c.applications), str(c.refreshes)) if detailed else ())
-            )
-        labels = ("Effect", "Uptime", "Missing time")
-        table(labels + (("Applications", "Refreshes") if detailed else ()), rows)
-        for c in effects:
-            for a, b in reported_coverage_gaps(c):
-                print(f"  {stamp(a)} - {stamp(b)} {c.name} ({b - a:.1f}s targetable)")
-
-    def ready_lines(selected, indent="  "):
-        for r in execution.ready if execution else ():
-            if r.name in selected:
-                print(indent + ready_line(r))
-                for time, reason in r.losses:
-                    print(f"{indent}  {stamp(time)}: {reason}")
-
-    def coverage_line(name, label=None, indent="  "):
-        c = next((c for c in execution.coverage if c.name == name), None) if execution else None
-        if c:
-            uptime = (
-                f"{c.covered_seconds / c.targetable_seconds:.2%}" if c.targetable_seconds else "n/a"
-            )
-            print(
-                f"{indent}{label or 'Uptime'}: {uptime} | Missing time: {c.targetable_seconds - c.covered_seconds:.1f}s"
-            )
-            for a, b in reported_coverage_gaps(c):
-                print(f"{indent}  {stamp(a)} - {stamp(b)}: {b - a:.1f}s targetable gap")
-
-    if result.pld:
-        p = result.pld
-        print("\nFight or Flight and offensive abilities:")
-        for name in ("Fight or Flight", "Imperator", "Requiescat", "Circle of Scorn", "Expiacion", "Intervene"):
-            if name != "Requiescat" or counts.get(name):
-                value = counts.get(name, 0)
-                print(f"  {name}: {uses(name)} " + ("use" if value == 1 else "uses"))
-        if p.cooldown_timing:
-            print("\n  Cooldown timing:")
-            table(("Action", "Ready while targetable", "Longest delay"),
-                  [(c.name,
-                    f"{c.ready_seconds:.1f}s" if c.ready_seconds is not None else "n/a",
-                    f"{c.longest_delay_seconds:.1f}s"
-                    if c.longest_delay_seconds is not None else "n/a")
-                   for c in p.cooldown_timing])
-            print("  Timing starts after the first recorded use. Forced downtime and deaths excluded.")
-            print("  Intervene shows minimum confirmed time at full charges.")
-            print("  Delays may reflect intentional buff alignment.")
-        if p.alignment is not None:
-            print()
-            alignment = p.alignment
-            total = alignment.inside_potency + alignment.outside_potency
-            coverage = f"{alignment.inside_potency / total:.1%}" if total else "n/a"
-            print(f"  Landed potency inside Fight or Flight: {alignment.inside_potency:,.1f}"
-                  + f" / {total:,.1f} ({coverage})")
-            print("  Scope: Goring Blade, Imperator, Confiteor, Blades, Circle of Scorn and Expiacion.")
-            table(("Burst", "Buff start", "Buff end", "Inside", "Outside", "Coverage"),
-                  [(str(i), stamp(w.start_seconds), stamp(w.end_seconds),
-                    f"{w.inside_potency:,.1f}", f"{w.outside_potency:,.1f}",
-                    f"{w.inside_potency / (w.inside_potency + w.outside_potency):.1%}"
-                    if w.inside_potency + w.outside_potency else "n/a")
-                   for i, w in enumerate(alignment.windows, 1)])
-            if alignment.outside:
-                outside_actions: dict[str, tuple[int, float, float]] = {}
-                for finding in alignment.outside:
-                    outside_uses, outside_potency, outside_gain = outside_actions.get(finding.action, (0, 0.0, 0.0))
-                    outside_actions[finding.action] = (
-                        outside_uses + 1, outside_potency + finding.potency, outside_gain + finding.potential_gain,
-                    )
-                print("\n  Actions outside Fight or Flight:")
-                table(("Action", "Uses", "Potency", "Potential buff gain"),
-                      [(name, str(outside_uses), f"{outside_potency:,.1f}", f"{outside_gain:,.1f}")
-                       for name, (outside_uses, outside_potency, outside_gain) in sorted(
-                           outside_actions.items(), key=lambda row: (-row[1][2], row[0]),
-                       )])
-            print("  Potency excludes Fight or Flight. Includes regular uses between buff windows.")
-            print("  Potential gains are not confirmed losses.")
-        print("\nCombos, ready effects and spell charges:")
-        if p.combos is not None:
-            if p.combos.losses:
-                print("  Combo losses:")
-                table(("Action", "Uncomboed hits", "Base potency lost"),
-                      [(c.name, str(c.hits), f"{c.potency_lost:,.1f}")
-                       for c in sorted(p.combos.losses, key=lambda c: (-c.potency_lost, c.name))])
-                print("  Base losses account for overkill, before buffs and penalties.")
-            else:
-                print("  No confirmed combo losses.")
-            if p.combos.unconfirmed_hits:
-                hits = p.combos.unconfirmed_hits
-                print(f"  Unconfirmed combo evidence: {hits} landed "
-                      + ("hit" if hits == 1 else "hits"))
-                print("  Unresolved combo hits retain a base-to-combo potency range.")
-            if p.combos.inferred:
-                for inferred in sorted(p.combos.inferred, key=lambda c: c.seconds):
-                    outcome = "comboed" if inferred.comboed else "uncomboed"
-                    previous = inferred.previous_gcd or "previous GCD unavailable"
-                    print(f"  {stamp(inferred.seconds)} {previous} -> {inferred.name}: "
-                          + f"{inferred.potency_lost:,.1f} estimated base potency lost "
-                          + f"({outcome} inferred from normalized damage; combo field unavailable)")
-        sequence_names = {"Atonement", "Supplication", "Sepulchre"}
-        for label, effects in (
-            ("Atonement sequences", [r for r in p.ready if r.name in sequence_names]),
-            ("Other ready effects and spell charges", [r for r in p.ready
-                                                      if r.name not in sequence_names]),
-        ):
-            if effects:
-                print(f"\n  {label}:")
-                for r in effects:
-                    print("    " + ready_line(r))
-                    for time, reason in r.losses:
-                        print(f"      {stamp(time)}: {reason}")
-        print("\nImperator/Requiescat follow-ups:")
-        table(("Burst", "Trigger", "Confiteor", "Faith", "Truth", "Valor", "Honor", "Landed potency"),
-              [(stamp(b.seconds), b.trigger, *(str(f.casts) for f in b.follow_ups),
-                f"{sum(f.potency for f in b.follow_ups):,.1f}") for b in p.bursts])
-        print("  Follow-up columns count completed casts. Potency includes only landed hits.")
-        for b in p.bursts:
-            for issue in b.issues:
-                outcome = (("cast, no hit" if len(issue.actions) == 1 else "casts, no hits")
-                           if issue.kind == "no_hit" else "missing")
-                reason = {
-                    "death": "player died during sequence",
-                    "downtime": "boss downtime during sequence" if issue.kind == "missing_cast" else "boss downtime",
-                    "fight_end": "fight ended during sequence",
-                    "fight ending": "fight ended before hit landed",
-                    "expiry": f"{issue.effect} expired",
-                    "prepull": "sequence began before saved interval",
-                    "unconfirmed": "reason unconfirmed",
-                }.get(issue.reason, issue.reason)
-                print(f"    {stamp(b.seconds)}: {', '.join(issue.actions)} {outcome} - {reason}")
-            for note in b.notes:
-                print(f"    {stamp(b.seconds)}: {note}")
-        print("\nSpell casts:")
-        enhancement_order = {"Divine Might": 0, "Requiescat": 1, "None": 2}
-        spell_counts = sorted(p.spell_counts, key=lambda row: (
-            row[0], enhancement_order.get(row[1], 3), row[2],
-        ))
-        table(("Spell", "Enhancement", "Cast evidence", "Casts"),
-              [(name, effect, kind, str(n)) for name, effect, kind, n in spell_counts])
-        print("  Unconfirmed cast time includes openers whose begin-cast is outside the saved interval.")
-        print("\nCircle of Scorn:")
-        table(("Applications", "Periodic ticks", "Application potency", "Periodic potency"),
-              [(str(p.circle.applications), str(p.circle.ticks),
-                f"{p.circle.application_potency:,.1f}", f"{p.circle.tick_potency:,.1f}")])
-        print("\nMelee downtime:")
-        if p.ranged:
-            count = len(p.ranged)
-            total = sum(len(c.actions) for c in p.ranged)
-            print(f"  {total} ranged " + ("GCD" if total == 1 else "GCDs")
-                  + f" in {count} " + ("chain" if count == 1 else "chains"))
-        else:
-            print("  No ranged GCD chains identified.")
-        holy_spirit_casts = {round(time, 6): kind for time, kind in p.holy_spirit_casts}
-
-        def ranged_name(name, time):
-            if name == "Shield Lob":
-                return "SL"
-            if name != "Holy Spirit":
-                return name
-            kind = holy_spirit_casts.get(round(time, 6), "unconfirmed")
-            return f"HS ({'hard-cast' if kind == 'hard cast' else kind})"
-
-        for c in p.ranged:
-            before = (f"{ranged_name(c.previous, c.seconds - c.previous_gap)}"
-                      + f" -> {c.previous_gap:.2f}s -> "
-                      if c.previous and c.previous_gap is not None else "")
-            time = c.seconds
-            chain = ranged_name(c.actions[0], time)
-            for gap, name in zip(c.gaps, c.actions[1:]):
-                time += gap
-                chain += f" -> {gap:.2f}s -> {ranged_name(name, time)}"
-            after = (f" -> {c.following_gap:.2f}s -> "
-                     + ranged_name(c.following, time + c.following_gap)
-                     if c.following and c.following_gap is not None else "")
-            print(f"    {stamp(c.seconds)}: {before}{chain}{after}")
-        print("  HS = Holy Spirit; SL = Shield Lob.")
-        print("  Instant Holy Spirit and the opening Holy Spirit are excluded.")
-    if result.war:
-        w = result.war
-        print("\nSurging Tempest:")
-        uptime = f"{w.tempest_uptime:.2%}" if w.tempest_uptime is not None else "n/a"
-        hit = f"{w.tempest_hits / w.total_hits:.2%}" if w.total_hits else "n/a"
-        print(f"  Uptime: {uptime} | Buffed attacks: {hit} ({w.tempest_hits}/{w.total_hits})")
-        for time, name in w.tempest_missing:
-            print(f"    {stamp(time)} {name}")
-        print(f"  Avoidable potency lost: {w.tempest_lost_potency:,.1f}")
-        print("  Opening setup, confirmed downtime setup, and application gaps up to 1s excluded from warnings.")
-        print("\nInner Release and follow-ups:")
-        print(f"  Infuriate: {w.infuriate_uses} uses")
-        print(
-            f"  Inner Release: {w.inner_release_uses}"
-            + (
-                f"/{cooldowns['Inner Release'].possible}"
-                if "Inner Release" in cooldowns and cooldowns["Inner Release"].possible is not None
-                else ""
-            )
-            + " uses (including pre-pull)"
-        )
-        print(
-            f"  Free Fell Cleave/Decimate uses: {w.guaranteed_spenders}/{3 * w.inner_release_uses}"
-        )
-        for time, charges in w.expired_charges:
-            noun = "charge" if charges == 1 else "charges"
-            print(f"    {stamp(time)}: {charges} unused {noun} expired")
-        print()
-        for r in w.ready:
-            print("  " + ready_line(r))
-            for time, reason in r.losses:
-                print(f"    {stamp(time)}: {reason}")
-        print("\nMelee downtime:")
-        print("  " + tomahawk_summary(w) if w.tomahawks else "  No ranged GCDs used.")
-        for t in w.tomahawks:
-            before = f"{t.previous} -> {t.previous_gap:.2f}s -> " if t.previous else ""
-            after = f" -> {t.following_gap:.2f}s -> {t.following}" if t.following else ""
-            chain = "Tomahawk" + "".join(f" -> {gap:.2f}s -> Tomahawk" for gap in t.gaps)
-            print(f"    {stamp(t.seconds)}: {before}{chain}{after}")
-    if job == "bard" or result.brd_songs or result.brd_potency_estimates:
-        print("\nSongs and personal buffs:")
-        for name in ("Raging Strikes", "Battle Voice"):
-            print(f"  {name}: {uses(name)} uses")
-        coverage_line("Songs", "Song uptime")
-        table(
-            ("Song", "Uses", "Total duration"),
-            [
-                (name, str(count), f"{dict(result.brd_song_durations).get(name, 0) * count:.1f}s")
-                for name, count in result.brd_songs
-            ],
-            blank_before=True,
-        )
-        if execution:
-            for time in execution.repertoire_losses:
-                print(
-                    f"  {stamp(time)}: at least 1 unused Repertoire stack (Empyreal Arrow confirmed)"
-                )
-        print("\nRadiant Finale and Encore:")
-        print(
-            f"  Radiant Finale: {uses('Radiant Finale')} uses | Radiant Encore: {counts.get('Radiant Encore', 0)} uses"
-        )
-        table(
-            ("Finale", "Codas", "Damage bonus", "Encore hits", "Encore potency"),
-            [
-                (
-                    stamp(f.timestamp_seconds),
-                    str(f.coda),
-                    f"{2 * f.coda}%",
-                    str(f.encore_hits),
-                    potency(f.encore_potency_min, f.encore_potency_max),
-                )
-                for f in result.brd_finales
-            ],
-        )
-        print("\nDoT coverage:")
-        coverage_rows({"Caustic Bite", "Stormbite"})
-        if execution and any(c.name in DOT_NAMES for c in execution.coverage):
-            print()
-        for dot in sorted(
-            result.brd_dots,
-            key=lambda dot: {"Caustic Bite": 0, "Stormbite": 1, "Iron Jaws": 2}.get(dot.name, 3),
-        ):
-            if dot.name == "Iron Jaws":
-                print(
-                    f"  Iron Jaws: {dot.landed_uses} refresh hits | {dot.direct_potency:,.0f} potency"
-                )
-                continue
-            print(
-                f"  {dot.name}: {dot.landed_uses} application {'hit' if dot.landed_uses == 1 else 'hits'}, {dot.ticks} ticks | {dot.direct_potency:,.0f} application + {dot.tick_potency:,.0f} tick potency"
-            )
-        if not execution or not any(
-            c.name in {"Caustic Bite", "Stormbite"} for c in execution.coverage
-        ):
-            print("  Coverage unavailable (missing or multiple target instances).")
-        print("  DoTs snapshot buffs and potions at application or refresh.")
-        print("\nApex Arrow and Pitch Perfect:")
-        for estimate in result.brd_potency_estimates:
-            if estimate.action == "Radiant Encore":
-                continue
-            if estimate.action == "Pitch Perfect":
-                print()
-            hits_label = "hit" if estimate.uncertain_hits == 1 else "hits"
-            if estimate.apex_uses:
-                ambiguous = sum(len(u.plausible_gauges) != 1 for u in estimate.apex_uses)
-                print(
-                    f"  {estimate.action}: {estimate.estimated_hits} hits | {ambiguous} uses with ambiguous potency ({estimate.uncertain_hits} affected {hits_label})"
-                )
-            else:
-                print(
-                    f"  {estimate.action}: {estimate.estimated_hits} hits, {estimate.uncertain_hits} uncertain {'estimate' if estimate.uncertain_hits == 1 else 'estimates'}"
-                )
-            table(
-                ("Time", "Plausible gauge", "Best fit", "Hits", "Landed potency"),
-                [
-                    (
-                        stamp(u.seconds),
-                        "/".join(map(str, u.plausible_gauges)) or "outside expected range",
-                        str(u.gauge),
-                        str(u.hits),
-                        f"{u.potency:,.0f}" if u.potency is not None else "n/a",
-                    )
-                    for u in estimate.apex_uses
-                ],
-            )
-            for hit in estimate.pitch_uncertain_hits:
-                detail = "plausible: " + " or ".join(hit.plausible_fits)
-                if len(hit.plausible_fits) == 1 and not hit.outside_expected:
-                    print(
-                        f"    {stamp(hit.seconds)}: {hit.best_fit} (limited same-target references)"
-                    )
-                    continue
-                if (
-                    hit.outside_expected
-                    and hit.observed_damage is not None
-                    and hit.lower_damage is not None
-                    and hit.upper_damage is not None
-                ):
-                    direction = "above" if hit.observed_damage > hit.upper_damage else "below"
-                    detail = f"Damage: {hit.observed_damage:,.0f} | Expected: {hit.lower_damage:,.0f}-{hit.upper_damage:,.0f} ({hit.distance_from_bound_percent:.1f}% {direction} range)"
-                elif hit.outside_expected:
-                    detail = "outside expected damage (range unavailable)"
-                print(f"    {stamp(hit.seconds)}: best fit {hit.best_fit} | {detail}")
-            if estimate.weak_reference_hits:
-                print(
-                    f"  {estimate.weak_reference_hits} hits had fewer than 3 same-target references"
-                )
-    if job == "machinist" or result.mch_wildfires or result.pet_deployments:
-        print("\nTools and Reassemble:")
-        table(
-            ("Action", "Uses", "Possible"),
-            [
-                (c.name, str(c.uses), str(c.possible) if c.possible is not None else "n/a")
-                for c in execution.cooldowns
-                if c.name not in {"Reassemble", "Wildfire"}
-            ]
-            if execution
-            else [],
-        )
-        print("  Double Check/Checkmate maxima use recorded Blazing Shots and enemy windows.")
-        print("  Weaving constraints and buff alignment are not modelled.")
-        print()
-        print(f"  Reassemble: {uses('Reassemble')} uses")
-        ready_lines({"Full Metal Field", "Excavator"})
-        print("\nWildfire:")
-        print(f"  Uses: {uses('Wildfire')}")
-        table(
-            ("Applied", "Detonated", "GCDs", "Landed potency", "End"),
-            [
-                (
-                    stamp(w.applied_seconds),
-                    stamp(w.detonated_seconds) if w.detonated_seconds is not None else "none",
-                    f"{w.landed_weaponskills}/6",
-                    f"{w.potency:,.0f}",
-                    "Detonator" if w.detonated_early else "Natural",
-                )
-                for w in result.mch_wildfires
-            ],
-            notes=[wildfire_note(w) for w in result.mch_wildfires],
-        )
-        print("\nHypercharge:")
-        h = (
-            next((r for r in execution.ready if r.name == "Hypercharge"), None)
-            if execution
-            else None
-        )
-        if h and h.evidence_available:
-            print(f"  Uses: {len(h.windows)} | GCDs used: {h.uses}/{h.grants}")
-            print(
-                f"  Complete windows: {sum(w.uses == w.charges for w in h.windows)}/{len(h.windows)}"
-            )
-            table(
-                ("Started", "GCDs", "End"),
-                [
-                    (stamp(w.start_seconds), f"{w.uses}/{w.charges}", w.end_reason)
-                    for w in h.windows
-                    if w.uses < w.charges
-                ],
-                blank_before=True,
-            )
-        else:
-            print(f"  Uses: {counts.get('Hypercharge', 0)} | Window evidence unavailable")
-        print("\nAutomaton Queen and Battery:")
-        rows = []
-        for d in result.pet_deployments:
-            hits = dict(d.landed_actions)
-            gauge = str(d.gauge_spent) + ("~" if d.gauge_assumed or d.mch_gauge_inferred else "")
-            rows.append(
-                (
-                    "Pre-pull" if d.mch_prepull else stamp(d.timestamp_seconds),
-                    gauge,
-                    str(hits.get("Arm Punch", 0)),
-                    str(hits.get("Roller Dash", 0)),
-                    ", ".join(
-                        {"Pile Bunker": "Bunker", "Crowned Collider": "Collider"}.get(name, name)
-                        for name in d.mch_missing_finishers
-                    )
-                    or "-",
-                    potency(d.potency_min, d.potency_max),
-                )
-            )
-        table(
-            (
-                "Summoned",
-                "Battery",
-                "Arm Punch",
-                "Roller Dash",
-                "Missing Finisher(s)",
-                "Landed potency",
-            ),
-            rows,
-        )
-        for d in result.pet_deployments:
-            if d.mch_overdrive_seconds is not None:
-                print(f"  {stamp(d.mch_overdrive_seconds)} Queen Overdrive")
-            if d.mch_gauge_inferred:
-                print(f"  Opening Battery: {d.gauge_spent} (estimated from Queen damage)")
-            elif d.gauge_assumed:
-                print(f"  Opening Battery: {d.gauge_spent} (assumed carry-over, unconfirmed)")
-    if result.dnc_finishes or proc:
-        print("\nDances and personal buffs:")
-        print(f"  Devilment: {uses('Devilment')} uses")
-        ready_lines({"Starfall Dance"})
-        print(f"  Flourish: {uses('Flourish')} uses")
-        print("\n  Standard Finish:")
-        print(
-            f"    Uses: {sum(1 for f in result.dnc_finishes if 'Standard Finish' in f.action)} | Finishing Move: {counts.get('Finishing Move', 0)} uses"
-        )
-        coverage_line("Standard Finish", indent="    ")
-        for name, strength in result.dnc_initial_buffs:
-            print(f"    Pre-pull {name}: +{(strength - 1) * 100:.0f}% damage (inferred)")
-        print()
-        ready_lines({"Last Dance"})
-        print(f"\n  Technical Step: {uses('Technical Step')} uses")
-        table(
-            ("Time", "Steps", "Hits", "Landed potency"),
-            [
-                (
-                    stamp(f.seconds),
-                    str(f.steps) if f.steps is not None else "n/a",
-                    str(f.hits),
-                    f"{f.potency:,.0f}",
-                )
-                for f in result.dnc_finishes
-                if "Technical Finish" in f.action
-            ],
-        )
-        print()
-        ready_lines({"Tillana", "Dance of the Dawn"})
-    if proc:
-        print("\nProc usage:")
-        death_column = any(r.death_lost for r in proc.ready_procs)
-        labels = (
-            "Effect",
-            "Random grants",
-            "Flourish grants",
-            "Uses",
-            "Expired",
-            "Overwritten",
-            *(("Death",) if death_column else ()),
-            "Remaining",
-        )
-        table(
-            labels,
-            [
-                (
-                    r.name,
-                    str(r.random_grants) if r.random_grants is not None else "n/a",
-                    str(r.guaranteed_grants) if r.guaranteed_grants is not None else "n/a",
-                    str(r.uses),
-                    str(r.expired),
-                    str(r.overwritten),
-                    *((str(r.death_lost),) if death_column else ()),
-                    str(r.remaining),
-                )
-                for r in proc.ready_procs
-            ],
-        )
-        print("  Effects active at fight end count as remaining, not lost.")
-        print()
-        ready_lines({"Fan Dance IV"})
-        losses = sorted(
-            (time, name, reason) for r in proc.ready_procs for time, name, reason in r.losses
-        )
-        for reason, label in (
-            ("expired", "Expired procs"),
-            ("overwritten", "Overwritten procs"),
-            ("death", "Procs lost on death"),
-        ):
-            matching = [(time, name) for time, name, why in losses if why == reason]
-            if matching:
-                print(f"\n  {label}:")
-                for time, name in matching:
-                    print(f"    {stamp(time)}: {name}")
-        print("\nEsprit and Saber Dance:")
-        saber = counts.get("Saber Dance", 0)
-        dawn = counts.get("Dance of the Dawn", 0)
-        print(
-            f"  Saber Dance: {saber} | Dance of the Dawn: {dawn} | Esprit spent: {50 * (saber + dawn):,}"
-        )
-        print("  Esprit generation and overcap cannot be reconstructed exactly.")
-        print("\nDancer proc luck:")
-        starting = "/".join(map(str, proc.starting_feathers)) or "unknown"
-        print(f"  Starting feathers: {starting} ({proc.starting_feathers_source})")
-        rows = []
-        initial_trials = 0
-        initial_grants = 0
-        initial_expected = 0.0
-        known = True
-        for r in proc.ready_procs:
-            if r.name == "Threefold":
-                continue
-            n = sum(c for _, c in r.trials)
-            initial_trials += n
-            initial_expected += r.expected
-            if r.random_grants is None:
-                known = False
-            else:
-                initial_grants += r.random_grants
-            rows.append(
-                (
-                    r.name,
-                    str(n),
-                    f"{r.expected:.1f}",
-                    str(r.random_grants) if r.random_grants is not None else "n/a",
-                    f"{r.random_grants / n:.1%}" if r.random_grants is not None and n else "n/a",
-                )
-            )
-        rows.append(
-            (
-                "Initial GCD total",
-                str(initial_trials),
-                f"{initial_expected:.1f}",
-                str(initial_grants) if known else "n/a",
-                f"{initial_grants / initial_trials:.1%}" if known and initial_trials else "n/a",
-            )
-        )
-        rows.append(
-            (
-                "Feather",
-                str(proc.feather_trials),
-                f"{proc.expected_feathers:.1f}",
-                f"{proc.feather_successes_min}"
-                if proc.feather_successes_min is not None
-                else "n/a",
-                f"{proc.feather_successes_min / proc.feather_trials:.1%}"
-                if proc.feather_successes_min is not None and proc.feather_trials
-                else "n/a",
-            )
-        )
-        rows.append(
-            (
-                "Threefold",
-                str(proc.fan_trials),
-                f"{proc.expected_threefold:.1f}",
-                str(proc.random_threefold) if proc.random_threefold is not None else "n/a",
-                f"{proc.random_threefold / proc.fan_trials:.1%}"
-                if proc.random_threefold is not None and proc.fan_trials
-                else "n/a",
-            )
-        )
-        table(
-            ("Stage", "Opportunities", "Expected", "Observed", "Proc rate"), rows, blank_before=True
-        )
-        print("  Feather observed count and proc rate are minimums supported by the log.")
-        print("  Each random stage: 50% expected. Ordinary GCD-to-Feather chain: 25%.")
-        print("  Flourish skips the unlock roll. Threefold rolls after spending a feather.")
-        print(f"  Feathers spent: {proc.feathers_used} | Ending gauge and overcap unlogged")
-        print("\n  Luck indices: 50 = average (approximate rarity, not proc rates)")
-        for name, value in (
-            ("Initial GCD", proc.initial_proc_luck),
-            ("GCD-to-Feather chain", proc.feather_luck_min),
-            ("Threefold", proc.threefold_luck),
-        ):
-            print(
-                f"    {name}: {value:.1f}/100" if value is not None else f"    {name}: unavailable"
-            )
-        print(
-            f"\n  Feather luck score: at least {proc.combined_feather_luck_min:.1f}/100"
-            if proc.combined_feather_luck_min is not None
-            else "  Feather luck score: unavailable (insufficient or inconsistent proc/resource evidence)"
-        )
-        print("    50 = baseline | 100 = every random roll succeeded")
-        print("    Unlogged Feather overcap can increase the true score.")
-
-    if result.potion.uses:
-        p = result.potion
-        print("\nPotions:")
-        item = p.item.name if p.item else "unidentified"
-        print(f"  Uses: {p.uses} | Item: {item}")
-        for i, w in enumerate(p.windows, 1):
-            if w.start_seconds is not None and w.end_seconds is not None:
-                print(f"    Window {i}: {stamp(w.start_seconds)} - {stamp(w.end_seconds)}")
-            else:
-                print(f"    Window {i}: start/end unknown")
-        base = (p.potted_potency_min + p.potted_potency_max) / 2
-        gain = (p.gained_potency_min + p.gained_potency_max) / 2
-        extra = f" (+{gain / base:.2%})" if base else ""
-        print(
-            f"  Potted base potency: {potency(p.potted_potency_min, p.potted_potency_max)} | Potency gained: {potency(p.gained_potency_min, p.gained_potency_max)}{extra}"
-        )
-    print("\nHit bonus and luck:")
-    print(f"  Luck baseline: {result.luck_baseline:.2%}")
-    for label, value in (
-        ("Luck", result.luck_score),
-        ("Adjusted Luck", result.adjusted_luck_score),
-    ):
-        print(
-            f"  {label}: {value:.2%} ({100 * (value - result.luck_baseline):+.2f} percentage points vs baseline)"
-        )
-    print(f"  Hit Bonus: {result.hit_bonus:+.2%}")
-    print(
-        f"  Adjusted Hit Bonus: {result.adjusted_hit_bonus:+.2%} ({100 * (result.adjusted_hit_bonus - result.hit_bonus):+.2f} percentage points vs raw)"
-    )
-    h = result.random_hit_outcomes
-    if h is not None:
-        total = h.normal + h.direct + h.critical + h.critical_direct
-        normal_baseline = (
-            1
-            - result.direct_gear_baseline
-            - result.critical_gear_baseline
-            + result.direct_critical_gear_baseline
-        )
-        table(
-            ("Random outcome", "Hits", "Observed", "Gear baseline", "Difference"),
-            [
-                (
-                    name,
-                    str(count),
-                    f"{count / total:.2%}" if total else "n/a",
-                    f"{baseline:.2%}",
-                    f"{100 * (count / total - baseline):+.2f} pp" if total else "n/a",
-                )
-                for name, count, baseline in (
-                    ("Normal Hit", h.normal, normal_baseline),
-                    (
-                        "Direct Hit",
-                        h.direct,
-                        result.direct_gear_baseline - result.direct_critical_gear_baseline,
-                    ),
-                    (
-                        "Critical Hit",
-                        h.critical,
-                        result.critical_gear_baseline - result.direct_critical_gear_baseline,
-                    ),
-                    (
-                        "Direct Critical Hit",
-                        h.critical_direct,
-                        result.direct_critical_gear_baseline,
-                    ),
-                )
-            ],
-            blank_before=True,
-        )
-    else:
-        print("  Random outcome breakdown unavailable (older/custom result).")
-    print(
-        "  Guaranteed Direct Hits and Critical Hits count toward Hit Bonus, but are excluded from Luck and this table."
-    )
-    print("  Periodic ticks without recorded outcomes are also excluded.")
-    if job == "machinist":
-        print("  Wildfire has no hit bonus.")
-    print("\nDeaths and damage penalties:")
+    emit_text("\nDeaths and damage penalties:")
     for w in deaths:
         ending, separator, detail = w.end_reason.partition(": ")
         if ending == "resurrected":
             ending = "revived"
-        print(
+        emit_text(
             f"  {stamp(w.start_seconds)}: died -> {stamp(w.end_seconds)}: {ending}"
             f" | Time dead: {w.end_seconds - w.start_seconds:.1f}s"
             + (f" | {detail}" if separator else "")
@@ -1061,58 +602,775 @@ def print_analysis(
         notes=penalty_notes,
         blank_before=bool(deaths),
     )
-    if rows:
-        print()
     for line in penalty_totals:
-        print(line)
+        emit_text(line)
     if not deaths and not rows:
-        print("  No deaths or recorded damage penalties.")
+        emit_text("  No deaths or recorded damage penalties.")
     elif rows:
-        print("  Losses cover landed attacks. Missed attacks while dead are not estimated.")
+        emit_text("  Losses cover landed attacks. Missed attacks while dead are not estimated.")
+
+    def uses(name):
+        c = cooldowns.get(name)
+        if c:
+            return f"{c.uses}/{c.possible}" if c.possible is not None else str(c.uses)
+        return str(counts.get(name, 0))
+
+    def coverage_rows(names):
+        effects = [c for c in execution.coverage if c.name in names] if execution else []
+        detailed = any(c.applications or c.refreshes for c in effects)
+        rows = []
+        for c in effects:
+            uptime = (
+                f"{c.covered_seconds / c.targetable_seconds:.2%}" if c.targetable_seconds else "n/a"
+            )
+            rows.append(
+                (c.name, uptime, f"{c.targetable_seconds - c.covered_seconds:.1f}s")
+                + ((str(c.applications), str(c.refreshes)) if detailed else ())
+            )
+        labels = ("Effect", "Uptime", "Missing time")
+        table(labels + (("Applications", "Refreshes") if detailed else ()), rows)
+        for c in effects:
+            for a, b in reported_coverage_gaps(c):
+                emit_text(f"  {stamp(a)} - {stamp(b)} {c.name} ({b - a:.1f}s targetable)")
+
+    def ready_lines(selected, indent="  "):
+        for r in execution.ready if execution else ():
+            if r.name in selected:
+                emit_text(indent + ready_line(r))
+                for time, reason in r.losses:
+                    emit_text(f"{indent}  {stamp(time)}: {reason}")
+
+    def coverage_line(name, label=None, indent="  "):
+        c = next((c for c in execution.coverage if c.name == name), None) if execution else None
+        if c:
+            uptime = (
+                f"{c.covered_seconds / c.targetable_seconds:.2%}" if c.targetable_seconds else "n/a"
+            )
+            emit_text(
+                f"{indent}{label or 'Uptime'}: {uptime} | Missing time: {c.targetable_seconds - c.covered_seconds:.1f}s"
+            )
+            for a, b in reported_coverage_gaps(c):
+                emit_text(f"{indent}  {stamp(a)} - {stamp(b)}: {b - a:.1f}s targetable gap")
+
+    has_job_sections = bool(result.pld or result.war or job in {"bard", "machinist", "dancer"}
+                            or result.brd_songs or result.brd_potency_estimates
+                            or result.mch_wildfires or result.pet_deployments
+                            or result.dnc_finishes or proc)
+
+    def job_cooldowns():
+        if has_job_sections:
+            emit_text("\nCooldowns and burst windows:")
+        if result.pld:
+            p = result.pld
+            for name in ("Fight or Flight", "Imperator", "Requiescat", "Circle of Scorn", "Expiacion", "Intervene"):
+                if name != "Requiescat" or counts.get(name):
+                    value = counts.get(name, 0)
+                    emit_text(f"  {name}: {uses(name)} " + ("use" if value == 1 else "uses"))
+            if p.cooldown_timing:
+                emit_text("\n  Cooldown timing:")
+                table(("Action", "Ready while targetable", "Longest delay"),
+                      [(c.name,
+                        f"{c.ready_seconds:.1f}s" if c.ready_seconds is not None else "n/a",
+                        f"{c.longest_delay_seconds:.1f}s"
+                        if c.longest_delay_seconds is not None else "n/a")
+                       for c in p.cooldown_timing])
+                emit_text("  Timing starts after the first recorded use. Forced downtime and deaths excluded.")
+                emit_text("  Intervene shows minimum confirmed time at full charges.")
+                emit_text("  Delays may reflect intentional buff alignment.")
+            print_burst_opportunities(p.burst_opportunities, stamp)
+            print_pld_followup_context(p.bursts, p.burst_opportunities, result, stamp)
+            emit_text("\n  Spell casts:")
+            enhancement_order = {"Divine Might": 0, "Requiescat": 1, "None": 2}
+            spell_counts = sorted(p.spell_counts, key=lambda row: (
+                row[0], enhancement_order.get(row[1], 3), row[2],
+            ))
+            table(("Spell", "Enhancement", "Cast evidence", "Casts"),
+                  [(name, effect, "hard-cast" if kind == "hard cast" else kind, str(n))
+                   for name, effect, kind, n in spell_counts])
+            emit_text("  Unconfirmed cast time includes openers whose begin-cast is outside the saved interval.")
+        if result.war:
+            w = result.war
+            emit_text(
+                f"  Inner Release: {w.inner_release_uses}"
+                + (
+                    f"/{cooldowns['Inner Release'].possible}"
+                    if "Inner Release" in cooldowns and cooldowns["Inner Release"].possible is not None
+                    else ""
+                )
+                + " uses"
+                + (" (including pre-pull)" if any(
+                    b.seconds is None or b.seconds < 0 for b in w.bursts
+                ) else "")
+            )
+            emit_text(
+                f"  IR spenders: {w.guaranteed_spenders}/{3 * w.inner_release_uses} uses"
+            )
+            for r in w.ready:
+                if r.name == "Nascent Chaos":
+                    continue
+                emit_text("  " + ready_line(r))
+                for time, reason in r.losses:
+                    emit_text(f"    {stamp(time)}: {reason}")
+            emit_text(f"  Infuriate: {w.infuriate_uses} uses")
+            for r in w.ready:
+                if r.name == "Nascent Chaos":
+                    emit_text("  " + ready_line(r))
+                    for time, reason in r.losses:
+                        emit_text(f"    {stamp(time)}: {reason}")
+            for name in ("Upheaval/Orogeny", "Onslaught"):
+                if name in cooldowns:
+                    emit_text(f"  {name}: {uses(name)} "
+                          + ("use" if cooldowns[name].uses == 1 else "uses"))
+            print_cooldown_timing(result.cooldown_timing)
+            if w.bursts:
+                emit_text("\n  Inner Release windows:")
+                table(("Burst", "Start", "IR spenders", "Rend", "Ruination", "Wrath"),
+                      [(str(i), stamp(b.seconds) if b.seconds is not None else "Pre-pull",
+                        f"{b.spenders}/3", f"{b.rend}/1", f"{b.ruination}/1", f"{b.wrath}/1")
+                       for i, b in enumerate(w.bursts, 1)], blank_before=False)
+                emit_text("  IR spenders = Fell Cleave/Decimate using Inner Release charges.")
+                emit_text("  Rend = Primal Rend; Ruination = Primal Ruination; Wrath = Primal Wrath.")
+                emit_text("  Columns count completed casts. Missing-hit context is listed below.")
+                if any(b.seconds is None for b in w.bursts):
+                    emit_text("  Pre-pull rows count only casts recorded in the downloaded timeline.")
+            for time, charges in w.expired_charges:
+                noun = "charge" if charges == 1 else "charges"
+                emit_text(f"    {stamp(time)}: {charges} unused {noun} expired")
+            potion_bursts = w.potion_bursts
+            if potion_bursts:
+                emit_text("\n  Potion burst windows:")
+                table(("Potion", "Start", "End", "IR spenders", "Infuriate", "NC", "Rend", "Ruination",
+                       "Wrath", "Upheaval", "Onslaught"),
+                      [(str(i), stamp(b.start_seconds) if b.start_seconds is not None else "n/a",
+                        stamp(b.end_seconds) if b.end_seconds is not None else "n/a",
+                        *(str(count) for _, count in b.casts))
+                       for i, b in enumerate(potion_bursts, 1)], blank_before=False)
+                emit_text("  NC = Inner Chaos/Chaotic Cyclone; Upheaval includes Orogeny.")
+                emit_text("  Rend = Primal Rend; Ruination = Primal Ruination; Wrath = Primal Wrath.")
+                emit_text("  Action columns count completed casts, not fixed requirements.")
+                if any(b.start_seconds is None or b.end_seconds is None for b in potion_bursts):
+                    emit_text("  Unknown windows count only casts linked to recorded potted hits.")
+            print_burst_alignment(result.burst_alignment, stamp)
+            print_follow_up_context(result.follow_up_context, stamp)
+        if job == "bard" or result.brd_songs or result.brd_potency_estimates:
+            for name in ("Raging Strikes", "Battle Voice"):
+                cooldown = cooldowns.get(name)
+                note = " (including pre-pull)" if cooldown and cooldown.pre_pull_uses else ""
+                emit_text(f"  {name}: {uses(name)} uses{note}")
+            print_cooldown_timing(result.cooldown_timing)
+            print_burst_alignment(result.burst_alignment, stamp)
+            emit_text("\n  Radiant Finale and Encore:")
+            emit_text(
+                f"  Radiant Finale: {uses('Radiant Finale')} uses | Radiant Encore: {counts.get('Radiant Encore', 0)} uses"
+            )
+            table(
+                ("Finale", "Codas", "Damage bonus", "Encore hits", "Encore potency"),
+                [
+                    (
+                        stamp(f.timestamp_seconds),
+                        str(f.coda),
+                        f"{2 * f.coda}%",
+                        str(f.encore_hits),
+                        potency(f.encore_potency_min, f.encore_potency_max),
+                    )
+                    for f in result.brd_finales
+                ],
+            )
+            ready_lines({"Radiant Encore"})
+            print_follow_up_context(result.follow_up_context, stamp)
+        if job == "machinist" or result.mch_wildfires or result.pet_deployments:
+            emit_text("  Tools and Reassemble:")
+            table(
+                ("Action", "Uses", "Possible"),
+                [
+                    (c.name, str(c.uses), str(c.possible) if c.possible is not None else "n/a")
+                    for c in execution.cooldowns
+                    if c.name not in {"Reassemble", "Wildfire"}
+                ]
+                if execution
+                else [],
+            )
+            emit_text("  Double Check/Checkmate maxima use recorded Blazing Shots and enemy windows.")
+            emit_text("  Weaving constraints and buff alignment are not modelled.")
+            emit_text()
+            emit_text(f"  Reassemble: {uses('Reassemble')} uses")
+            print_cooldown_timing(result.cooldown_timing)
+            print_burst_alignment(result.burst_alignment, stamp)
+            emit_text("\n  Wildfire:")
+            emit_text(f"  Uses: {uses('Wildfire')}")
+            table(
+                ("Applied", "Detonated", "GCDs", "Landed potency", "End"),
+                [
+                    (
+                        stamp(w.applied_seconds),
+                        stamp(w.detonated_seconds) if w.detonated_seconds is not None else "none",
+                        f"{w.landed_weaponskills}/6",
+                        f"{w.potency:,.0f}",
+                        "Detonator" if w.detonated_early else "Natural",
+                    )
+                    for w in result.mch_wildfires
+                ],
+                notes=[wildfire_note(w) for w in result.mch_wildfires],
+            )
+            emit_text("\n  Hypercharge:")
+            h = (
+                next((r for r in execution.ready if r.name == "Hypercharge"), None)
+                if execution
+                else None
+            )
+            if h and h.evidence_available:
+                emit_text(f"  Uses: {len(h.windows)} | GCDs used: {h.uses}/{h.grants}")
+                emit_text(
+                    f"  Complete windows: {sum(w.uses == w.charges for w in h.windows)}/{len(h.windows)}"
+                )
+                table(
+                    ("Started", "GCDs", "End"),
+                    [
+                        (stamp(w.start_seconds), f"{w.uses}/{w.charges}", w.end_reason)
+                        for w in h.windows
+                        if w.uses < w.charges
+                    ],
+                    blank_before=True,
+                )
+            else:
+                emit_text(f"  Uses: {counts.get('Hypercharge', 0)} | Window evidence unavailable")
+        if result.dnc_finishes or proc:
+            emit_text(f"  Devilment: {uses('Devilment')} uses")
+            ready_lines({"Starfall Dance"})
+            emit_text(f"  Flourish: {uses('Flourish')} uses")
+            print_cooldown_timing(result.cooldown_timing)
+            print_burst_alignment(result.burst_alignment, stamp)
+            emit_text("\n  Standard Finish:")
+            emit_text(
+                f"    Uses: {sum(1 for f in result.dnc_finishes if 'Standard Finish' in f.action)} | Finishing Move: {counts.get('Finishing Move', 0)} uses"
+            )
+            coverage_line("Standard Finish", indent="    ")
+            for name, strength in result.dnc_initial_buffs:
+                emit_text(f"    Pre-pull {name}: +{(strength - 1) * 100:.0f}% damage (inferred)")
+            emit_text()
+            ready_lines({"Last Dance"})
+            emit_text(f"\n  Technical Step: {uses('Technical Step')} uses")
+            table(
+                ("Time", "Steps", "Hits", "Landed potency"),
+                [
+                    (
+                        stamp(f.seconds),
+                        str(f.steps) if f.steps is not None else "n/a",
+                        str(f.hits),
+                        f"{f.potency:,.0f}",
+                    )
+                    for f in result.dnc_finishes
+                    if "Technical Finish" in f.action
+                ],
+            )
+            emit_text()
+            ready_lines({"Tillana", "Dance of the Dawn"})
+            print_follow_up_context(result.follow_up_context, stamp)
+
+    def job_effects():
+        if has_job_sections:
+            emit_text("\nCombos, ready effects and charges:")
+        if result.pld:
+            p = result.pld
+            if p.combos is not None:
+                if p.combos.losses:
+                    emit_text("  Combo losses:")
+                    table(("Action", "Uncomboed hits", "Base potency lost"),
+                          [(c.name, str(c.hits), f"{c.potency_lost:,.1f}")
+                           for c in sorted(p.combos.losses, key=lambda c: (-c.potency_lost, c.name))])
+                    emit_text("  Base losses account for overkill, before buffs and penalties.")
+                else:
+                    emit_text("  No confirmed combo losses.")
+                if p.combos.unconfirmed_hits:
+                    hits = p.combos.unconfirmed_hits
+                    emit_text(f"  Unconfirmed combo evidence: {hits} landed "
+                          + ("hit" if hits == 1 else "hits"))
+                    emit_text("  Unresolved combo hits retain a base-to-combo potency range.")
+                if p.combos.inferred:
+                    for inferred in sorted(p.combos.inferred, key=lambda c: c.seconds):
+                        outcome = "comboed" if inferred.comboed else "uncomboed"
+                        previous = inferred.previous_gcd or "previous GCD unavailable"
+                        emit_text(f"  {stamp(inferred.seconds)} {previous} -> {inferred.name}: "
+                              + f"{inferred.potency_lost:,.1f} estimated base potency lost "
+                              + f"({outcome} inferred from normalized damage; combo field unavailable)")
+            sequence_names = {"Atonement", "Supplication", "Sepulchre"}
+            for label, effects in (
+                ("Atonement sequences", [r for r in p.ready if r.name in sequence_names]),
+                ("Other ready effects and spell charges", [r for r in p.ready
+                                                          if r.name not in sequence_names]),
+            ):
+                if effects:
+                    emit_text(f"\n  {label}:")
+                    for r in effects:
+                        emit_text("    " + ready_line(r))
+                        for time, reason in r.losses:
+                            emit_text(f"      {stamp(time)}: {reason}")
+        if result.war:
+            w = result.war
+            emit_text("  Surging Tempest:")
+            uptime = f"{w.tempest_uptime:.2%}" if w.tempest_uptime is not None else "n/a"
+            hit = f"{w.tempest_hits / w.total_hits:.2%}" if w.total_hits else "n/a"
+            emit_text(f"  Uptime: {uptime} | Buffed attacks: {hit} ({w.tempest_hits}/{w.total_hits})")
+            for time, name in w.tempest_missing:
+                emit_text(f"    {stamp(time)} {name}")
+            emit_text(f"  Avoidable potency lost: {w.tempest_lost_potency:,.1f}")
+            emit_text("  Opening setup, confirmed downtime setup, and application gaps up to 1s excluded from warnings.")
+            print_combo_diagnostics(result.combos, stamp, heading=False)
+        if job == "bard" or result.brd_songs or result.brd_potency_estimates:
+            emit_text("  Songs and Repertoire:")
+            coverage_line("Songs", "Song uptime")
+            table(
+                ("Song", "Uses", "Total duration"),
+                [
+                    (name, str(count), f"{dict(result.brd_song_durations).get(name, 0) * count:.1f}s")
+                    for name, count in result.brd_songs
+                ],
+                blank_before=True,
+            )
+            if execution:
+                for time in execution.repertoire_losses:
+                    emit_text(
+                        f"  {stamp(time)}: at least 1 unused Repertoire stack (Empyreal Arrow confirmed)"
+                    )
+            emit_text("\n  Apex Arrow and Pitch Perfect:")
+            for estimate in result.brd_potency_estimates:
+                if estimate.action == "Radiant Encore":
+                    continue
+                if estimate.action == "Pitch Perfect":
+                    emit_text()
+                hits_label = "hit" if estimate.uncertain_hits == 1 else "hits"
+                if estimate.apex_uses:
+                    ambiguous = sum(len(u.plausible_gauges) != 1 for u in estimate.apex_uses)
+                    emit_text(
+                        f"  {estimate.action}: {estimate.estimated_hits} hits | {ambiguous} uses with ambiguous potency ({estimate.uncertain_hits} affected {hits_label})"
+                    )
+                else:
+                    emit_text(
+                        f"  {estimate.action}: {estimate.estimated_hits} hits, {estimate.uncertain_hits} uncertain {'estimate' if estimate.uncertain_hits == 1 else 'estimates'}"
+                    )
+                table(
+                    ("Time", "Plausible gauge", "Best fit", "Hits", "Landed potency"),
+                    [
+                        (
+                            stamp(u.seconds),
+                            "/".join(map(str, u.plausible_gauges)) or "outside expected range",
+                            str(u.gauge),
+                            str(u.hits),
+                            f"{u.potency:,.0f}" if u.potency is not None else "n/a",
+                        )
+                        for u in estimate.apex_uses
+                    ],
+                )
+                for hit in estimate.pitch_uncertain_hits:
+                    detail = "plausible: " + " or ".join(hit.plausible_fits)
+                    if len(hit.plausible_fits) == 1 and not hit.outside_expected:
+                        emit_text(
+                            f"    {stamp(hit.seconds)}: {hit.best_fit} (limited same-target references)"
+                        )
+                        continue
+                    if (
+                        hit.outside_expected
+                        and hit.observed_damage is not None
+                        and hit.lower_damage is not None
+                        and hit.upper_damage is not None
+                    ):
+                        direction = "above" if hit.observed_damage > hit.upper_damage else "below"
+                        detail = f"Damage: {hit.observed_damage:,.0f} | Expected: {hit.lower_damage:,.0f}-{hit.upper_damage:,.0f} ({hit.distance_from_bound_percent:.1f}% {direction} range)"
+                    elif hit.outside_expected:
+                        detail = "outside expected damage (range unavailable)"
+                    emit_text(f"    {stamp(hit.seconds)}: best fit {hit.best_fit} | {detail}")
+                if estimate.weak_reference_hits:
+                    emit_text(
+                        f"  {estimate.weak_reference_hits} hits had fewer than 3 same-target references"
+                    )
+        if job == "machinist" or result.mch_wildfires or result.pet_deployments:
+            ready_lines({"Full Metal Field", "Excavator"})
+            emit_text("\n  Automaton Queen and Battery:")
+            rows = []
+            for d in result.pet_deployments:
+                hits = dict(d.landed_actions)
+                gauge = str(d.gauge_spent) + ("~" if d.gauge_assumed or d.mch_gauge_inferred else "")
+                rows.append(
+                    (
+                        "Pre-pull" if d.mch_prepull else stamp(d.timestamp_seconds),
+                        gauge,
+                        str(hits.get("Arm Punch", 0)),
+                        str(hits.get("Roller Dash", 0)),
+                        ", ".join(
+                            {"Pile Bunker": "Bunker", "Crowned Collider": "Collider"}.get(name, name)
+                            for name in d.mch_missing_finishers
+                        )
+                        or "-",
+                        potency(d.potency_min, d.potency_max),
+                    )
+                )
+            table(
+                (
+                    "Summoned",
+                    "Battery",
+                    "Arm Punch",
+                    "Roller Dash",
+                    "Missing Finisher(s)",
+                    "Landed potency",
+                ),
+                rows,
+            )
+            for d in result.pet_deployments:
+                if d.mch_overdrive_seconds is not None:
+                    emit_text(f"  {stamp(d.mch_overdrive_seconds)} Queen Overdrive")
+                if d.mch_gauge_inferred:
+                    emit_text(f"  Opening Battery: {d.gauge_spent} (estimated from Queen damage)")
+                elif d.gauge_assumed:
+                    emit_text(f"  Opening Battery: {d.gauge_spent} (assumed carry-over, unconfirmed)")
+            print_follow_up_context(result.follow_up_context, stamp)
+            print_combo_diagnostics(result.combos, stamp, heading=False)
+        if proc:
+            emit_text("  Proc usage:")
+            death_column = any(r.death_lost for r in proc.ready_procs)
+            labels = (
+                "Effect",
+                "Random grants",
+                "Flourish grants",
+                "Uses",
+                "Expired",
+                "Overwritten",
+                *(("Death",) if death_column else ()),
+                "Remaining",
+            )
+            table(
+                labels,
+                [
+                    (
+                        r.name,
+                        str(r.random_grants) if r.random_grants is not None else "n/a",
+                        str(r.guaranteed_grants) if r.guaranteed_grants is not None else "n/a",
+                        str(r.uses),
+                        str(r.expired),
+                        str(r.overwritten),
+                        *((str(r.death_lost),) if death_column else ()),
+                        str(r.remaining),
+                    )
+                    for r in proc.ready_procs
+                ],
+            )
+            emit_text("  Effects active at fight end count as remaining, not lost.")
+            emit_text()
+            ready_lines({"Fan Dance IV"})
+            losses = sorted(
+                (time, name, reason) for r in proc.ready_procs for time, name, reason in r.losses
+            )
+            for reason, label in (
+                ("expired", "Expired procs"),
+                ("overwritten", "Overwritten procs"),
+                ("death", "Procs lost on death"),
+            ):
+                matching = [(time, name) for time, name, why in losses if why == reason]
+                if matching:
+                    emit_text(f"\n  {label}:")
+                    for time, name in matching:
+                        emit_text(f"    {stamp(time)}: {name}")
+            emit_text("\n  Esprit and Saber Dance:")
+            saber = counts.get("Saber Dance", 0)
+            dawn = counts.get("Dance of the Dawn", 0)
+            emit_text(
+                f"  Saber Dance: {saber} | Dance of the Dawn: {dawn} | Esprit spent: {50 * (saber + dawn):,}"
+            )
+            emit_text("  Esprit generation and overcap cannot be reconstructed exactly.")
+        if result.dnc_finishes or proc:
+            print_combo_diagnostics(result.combos, stamp, heading=False)
+
+        if job == "bard" or result.brd_dots:
+            emit_text("\n  DoT coverage and refreshes:")
+            coverage_rows({"Caustic Bite", "Stormbite"})
+            for dot in result.brd_dots:
+                if dot.name == "Iron Jaws":
+                    emit_text(f"  Iron Jaws: {dot.landed_uses} refresh hits | {dot.direct_potency:,.0f} potency")
+            if not execution or not any(
+                c.name in {"Caustic Bite", "Stormbite"} for c in execution.coverage
+            ):
+                emit_text("  Coverage unavailable (missing or multiple target instances).")
+
+    def job_dot_totals():
+        if result.pld or result.brd_dots:
+            emit_text("\n  DoTs:")
+        labels = ("DoT", "Applications", "Periodic ticks", "Application potency", "Periodic potency", "Total potency")
+        if result.pld:
+            circle = result.pld.circle
+            table(labels,
+                  [("Circle of Scorn", str(circle.applications), str(circle.ticks),
+                    f"{circle.application_potency:,.1f}", f"{circle.tick_potency:,.1f}",
+                    f"{circle.application_potency + circle.tick_potency:,.1f}")])
+        if result.brd_dots:
+            dots = sorted(
+                (dot for dot in result.brd_dots if dot.name != "Iron Jaws"),
+                key=lambda dot: {"Caustic Bite": 0, "Stormbite": 1}.get(dot.name, 2),
+            )
+            table(labels,
+                  [(dot.name, str(dot.landed_uses), str(dot.ticks),
+                    f"{dot.direct_potency:,.1f}", f"{dot.tick_potency:,.1f}",
+                    f"{dot.direct_potency + dot.tick_potency:,.1f}") for dot in dots])
+            if len(dots) > 1:
+                total = sum(dot.direct_potency + dot.tick_potency for dot in dots)
+                emit_text(f"  Total potency: {total:,.1f}")
+            emit_text("  DoTs snapshot buffs and potions at application or refresh.")
+
+    def job_downtime():
+        if result.pld:
+            p = result.pld
+            emit_text("\nMelee downtime:")
+            if p.ranged:
+                count = len(p.ranged)
+                total = sum(len(c.actions) for c in p.ranged)
+                emit_text(f"  {total} ranged " + ("GCD" if total == 1 else "GCDs")
+                      + f" in {count} " + ("chain" if count == 1 else "chains"))
+            else:
+                emit_text("  No ranged GCD chains identified.")
+            holy_spirit_casts = {round(time, 6): kind for time, kind in p.holy_spirit_casts}
+
+            def ranged_name(name, time):
+                if name == "Shield Lob":
+                    return "SL"
+                if name != "Holy Spirit":
+                    return name
+                kind = holy_spirit_casts.get(round(time, 6), "unconfirmed")
+                return f"HS ({'hard-cast' if kind == 'hard cast' else kind})"
+
+            for c in p.ranged:
+                before = (f"{ranged_name(c.previous, c.seconds - c.previous_gap)}"
+                          + f" -> {c.previous_gap:.2f}s -> "
+                          if c.previous and c.previous_gap is not None else "")
+                time = c.seconds
+                chain = ranged_name(c.actions[0], time)
+                for gap, name in zip(c.gaps, c.actions[1:]):
+                    time += gap
+                    chain += f" -> {gap:.2f}s -> {ranged_name(name, time)}"
+                after = (f" -> {c.following_gap:.2f}s -> "
+                         + ranged_name(c.following, time + c.following_gap)
+                         if c.following and c.following_gap is not None else "")
+                emit_text(f"    {stamp(c.seconds)}: {before}{chain}{after}")
+            emit_text("  HS = Holy Spirit; SL = Shield Lob.")
+            emit_text("  Instant Holy Spirit and the opening Holy Spirit are excluded.")
+        if result.war:
+            w = result.war
+            emit_text("\nMelee downtime:")
+            emit_text("  " + tomahawk_summary(w) if w.tomahawks else "  No ranged GCDs used.")
+            for t in w.tomahawks:
+                before = f"{t.previous} -> {t.previous_gap:.2f}s -> " if t.previous else ""
+                after = f" -> {t.following_gap:.2f}s -> {t.following}" if t.following else ""
+                chain = "T" + "".join(f" -> {gap:.2f}s -> T" for gap in t.gaps)
+                emit_text(f"    {stamp(t.seconds)}: {before}{chain}{after}")
+            if w.tomahawks:
+                emit_text("  T = Tomahawk.")
+
+    job_cooldowns()
+    job_effects()
+    job_downtime()
+
+    if result.potion.uses:
+        p = result.potion
+        emit_text("\nPotions:")
+        item = p.item.name if p.item else "unidentified"
+        emit_text(f"  Uses: {p.uses} | Item: {item}")
+        if p.window_totals:
+            table(("Potion", "Start", "End", "Landed base potency", "Potion gain"),
+                  [(str(i), stamp(w.start_seconds) if w.start_seconds is not None else "n/a",
+                    stamp(w.end_seconds) if w.end_seconds is not None else "n/a",
+                    decimal_potency(t.base_potency_min, t.base_potency_max),
+                    decimal_potency(t.gained_potency_min, t.gained_potency_max))
+                   for i, (w, t) in enumerate(zip(p.windows, p.window_totals), 1)],
+                  indent="    ",
+                  blank_before=False)
+        else:
+            for i, w in enumerate(p.windows, 1):
+                if w.start_seconds is not None and w.end_seconds is not None:
+                    emit_text(f"    Window {i}: {stamp(w.start_seconds)} - {stamp(w.end_seconds)}")
+                else:
+                    emit_text(f"    Window {i}: start/end unknown")
+        base = (p.potted_potency_min + p.potted_potency_max) / 2
+        gain = (p.gained_potency_min + p.gained_potency_max) / 2
+        extra = f" (+{gain / base:.2%})" if base else ""
+        base_text = potency(p.potted_potency_min, p.potted_potency_max)
+        gain_text = potency(p.gained_potency_min, p.gained_potency_max)
+        if p.window_totals:
+            base_text = decimal_potency(p.potted_potency_min, p.potted_potency_max)
+            gain_text = decimal_potency(p.gained_potency_min, p.gained_potency_max)
+        emit_text(
+            f"  Potted base potency: {base_text} | Potency gained: {gain_text}{extra}"
+        )
+        if p.window_totals:
+            emit_text("  Potency includes all landed damage and auto-attacks with a potion snapshot.")
     if result.ghosted or result.reduced_damage_hits:
-        print("\nGhosted attacks and reduced hits:")
-        endings = {
-            (time, name): reason
-            for name, events in result.ghosted_ending_times
-            for time, reason in events
-        }
-        low = {
-            (time, name): hp for name, events in result.ghosted_target_low_hp for time, hp in events
-        }
-        targets = {
-            (time, name): target
-            for name, events in result.ghosted_targets
-            for time, target in events
-        }
-        print(f"  Confirmed ghosted hits: {len(ghosts)}")
+        emit_text("\nGhosted attacks and reduced hits:")
+        emit_text(f"  Confirmed ghosted hits: {len(ghosts)}")
         for time, name, target, reason in ghosts:
-            print(
+            emit_text(
                 f"    {stamp(time)} {name}" + (f" on {target}" if target else "") + f" ({reason})"
             )
         confirmed = {(t, n) for t, n, _, _ in ghosts}
-        others = sorted(
-            (t, n) for n, times in result.ghosted_times for t in times if (t, n) not in confirmed
-        )
+        others = [entry for entry in missing_hit_context(result)
+                  if (entry[0], entry[1]) not in confirmed]
         if others:
-            print("  HP-lock or other missing hits:")
-            for t, n in others:
-                reason = (
-                    f"target at {low[t, n]} HP"
-                    if (t, n) in low
-                    else endings.get((t, n), "reason unconfirmed")
-                )
-                target = targets.get((t, n))
-                print(f"    {stamp(t)} {n}" + (f" on {target}" if target else "") + f" ({reason})")
+            emit_text("  HP-lock or other missing hits:")
+            for time, name, target, reason in others:
+                emit_text(f"    {stamp(time)} {name}" + (f" on {target}" if target else "") + f" ({reason})")
         if result.reduced_damage_hits:
-            print(f"  Reduced-damage hits: {len(result.reduced_damage_hits)}")
+            emit_text(f"  Reduced-damage hits: {len(result.reduced_damage_hits)}")
             for hit in result.reduced_damage_hits:
                 fraction = hit.damage / (hit.damage + hit.overkill)
-                print(
+                emit_text(
                     f"    {stamp(hit.seconds)} {hit.action}"
                     + (f" on {hit.target}" if hit.target else "")
                     + f": {hit.damage:,.0f}/{hit.damage + hit.overkill:,.0f} damage ({fraction:.4%} potency retained, lethal overkill)"
                 )
-    print("\nAction totals:")
+    emit_text("\nHit Bonus and Luck:")
+    emit_text(f"  Hit Bonus: {result.hit_bonus:+.2%}")
+    emit_text(
+        f"    Adjusted Hit Bonus: {result.adjusted_hit_bonus:+.2%} ({100 * (result.adjusted_hit_bonus - result.hit_bonus):+.2f} percentage points vs raw)"
+    )
+    emit_text(f"  Luck baseline: {result.luck_baseline:.2%}")
+    for label, value in (
+        ("Luck", result.luck_score),
+        ("Adjusted Luck", result.adjusted_luck_score),
+    ):
+        emit_text(
+            f"    {label}: {value:.2%} ({100 * (value - result.luck_baseline):+.2f} percentage points vs baseline)"
+        )
+    h = result.random_hit_outcomes
+    if h is not None:
+        total = h.normal + h.direct + h.critical + h.critical_direct
+        normal_baseline = (
+            1
+            - result.direct_gear_baseline
+            - result.critical_gear_baseline
+            + result.direct_critical_gear_baseline
+        )
+        table(
+            ("Random outcome", "Hits", "Gear baseline", "Observed", "Difference"),
+            [
+                (
+                    name,
+                    str(count),
+                    f"{baseline:.2%}",
+                    f"{count / total:.2%}" if total else "n/a",
+                    f"{100 * (count / total - baseline):+.2f} pp" if total else "n/a",
+                )
+                for name, count, baseline in (
+                    ("Normal Hit", h.normal, normal_baseline),
+                    (
+                        "Direct Hit",
+                        h.direct,
+                        result.direct_gear_baseline - result.direct_critical_gear_baseline,
+                    ),
+                    (
+                        "Critical Hit",
+                        h.critical,
+                        result.critical_gear_baseline - result.direct_critical_gear_baseline,
+                    ),
+                    (
+                        "Direct Critical Hit",
+                        h.critical_direct,
+                        result.direct_critical_gear_baseline,
+                    ),
+                )
+            ],
+            blank_before=False,
+        )
+    else:
+        emit_text("  Random outcome breakdown unavailable (older/custom result).")
+    emit_text(
+        "  Guaranteed Direct Hits and Critical Hits count toward Hit Bonus, but are excluded from Luck and this table."
+    )
+    emit_text("  Simulated DoT ticks are excluded from Hit Bonus and Luck because their actual DH and Crit outcomes are unavailable.")
+    emit_text("  Adjusted values subtract the expected benefit from other players' Direct Hit and Critical Hit rate buffs.")
+    if job == "machinist":
+        emit_text("  Wildfire has no hit bonus.")
+    if proc:
+        emit_text("\n  Dancer proc luck:")
+        starting = "/".join(map(str, proc.starting_feathers)) or "unknown"
+        emit_text(f"  Starting feathers: {starting} ({proc.starting_feathers_source})")
+        rows = []
+        initial_trials = 0
+        initial_grants = 0
+        initial_expected = 0.0
+        known = True
+        for r in proc.ready_procs:
+            if r.name == "Threefold":
+                continue
+            n = sum(c for _, c in r.trials)
+            initial_trials += n
+            initial_expected += r.expected
+            if r.random_grants is None:
+                known = False
+            else:
+                initial_grants += r.random_grants
+            rows.append(
+                (
+                    r.name,
+                    str(n),
+                    f"{r.expected:.1f}",
+                    str(r.random_grants) if r.random_grants is not None else "n/a",
+                    f"{r.random_grants / n:.1%}" if r.random_grants is not None and n else "n/a",
+                )
+            )
+        rows.append(
+            (
+                "Initial GCD total",
+                str(initial_trials),
+                f"{initial_expected:.1f}",
+                str(initial_grants) if known else "n/a",
+                f"{initial_grants / initial_trials:.1%}" if known and initial_trials else "n/a",
+            )
+        )
+        rows.append(
+            (
+                "Feather",
+                str(proc.feather_trials),
+                f"{proc.expected_feathers:.1f}",
+                f"{proc.feather_successes_min}"
+                if proc.feather_successes_min is not None
+                else "n/a",
+                f"{proc.feather_successes_min / proc.feather_trials:.1%}"
+                if proc.feather_successes_min is not None and proc.feather_trials
+                else "n/a",
+            )
+        )
+        rows.append(
+            (
+                "Threefold",
+                str(proc.fan_trials),
+                f"{proc.expected_threefold:.1f}",
+                str(proc.random_threefold) if proc.random_threefold is not None else "n/a",
+                f"{proc.random_threefold / proc.fan_trials:.1%}"
+                if proc.random_threefold is not None and proc.fan_trials
+                else "n/a",
+            )
+        )
+        table(
+            ("Stage", "Opportunities", "Expected", "Observed", "Proc rate"), rows, blank_before=True
+        )
+        emit_text("  Feather observed count and proc rate are minimums supported by the log.")
+        emit_text("  Each random stage: 50% expected. Ordinary GCD-to-Feather chain: 25%.")
+        emit_text("  Flourish skips the unlock roll. Threefold rolls after spending a feather.")
+        emit_text(f"  Feathers spent: {proc.feathers_used} | Ending gauge and overcap unlogged")
+        emit_text("\n  Luck indices: 50 = average (approximate rarity, not proc rates)")
+        for name, value in (
+            ("Initial GCD", proc.initial_proc_luck),
+            ("GCD-to-Feather chain", proc.feather_luck_min),
+            ("Threefold", proc.threefold_luck),
+        ):
+            emit_text(
+                f"    {name}: {value:.1f}/100" if value is not None else f"    {name}: unavailable"
+            )
+        emit_text(
+            f"\n  Feather luck score: at least {proc.combined_feather_luck_min:.1f}/100"
+            if proc.combined_feather_luck_min is not None
+            else "  Feather luck score: unavailable (insufficient or inconsistent proc/resource evidence)"
+        )
+        emit_text("    50 = baseline | 100 = every random roll succeeded")
+        emit_text("    Unlogged Feather overcap can increase the true score.")
+
+
+    emit_text("\nAction totals and auto-attacks:")
     pet_names = {name for d in result.pet_deployments for name, _ in d.landed_actions}
     action_rows = [
         (
@@ -1135,25 +1393,26 @@ def print_analysis(
                 ("Pet action" if pet else "Action", *labels[1:]),
                 rows, column_widths=shared_widths,
             )
+    job_dot_totals()
     if result.auto_attacks:
-        print("\nAuto-attacks:")
+        emit_text("\n  Auto-attacks:")
         for a in result.auto_attacks:
-            print(f"  {a.name}: {a.hits} hits | Weapon delay: {a.weapon_delay_seconds:.2f}s")
-            print(
-                f"  Base potency per hit: {a.potency_per_hit:.2f} | Landed potency: {a.total_potency:,.0f}"
+            emit_text(f"    {a.name}: {a.hits} hits | Weapon delay: {a.weapon_delay_seconds:.2f}s")
+            emit_text(
+                f"    Base potency per hit: {a.potency_per_hit:.2f} | Landed potency: {a.total_potency:,.0f}"
             )
     if result.unmatched:
-        print("\nUnmatched landed damage:")
+        emit_text("\nUnmatched landed damage:")
         for name, count in result.unmatched:
-            print(f"  {name}: {count}")
-    print("\nData and assumptions:")
-    print(
+            emit_text(f"  {name}: {count}")
+    emit_text("\nData and assumptions:")
+    emit_text(
         f"  Actions: valid since {result.actions_since}"
         if result.actions_since
         else "  Actions: custom snapshot"
     )
-    print(f"  Partition: {partition} | Ranking patch bracket: {bracket}")
-    print(
+    emit_text(f"  Partition: {partition} | Ranking patch bracket: {bracket}")
+    emit_text(
         "  Gear stats assumed | Party main-stat bonus: "
         + (
             f"{result.party_bonus_percent}% (recorded)"
@@ -1161,24 +1420,23 @@ def print_analysis(
             else "5% (assumed; older saved fight)"
         )
     )
-    print(f"  Targetable time: {result.targetable_time_source}")
+    emit_text(f"  Targetable time: {result.targetable_time_source}")
     if result.combat_start_offset_seconds is not None:
-        print("  Timeline: FF Logs combat time "
+        emit_text("  Timeline: FF Logs combat time "
               + f"({result.combat_start_offset_seconds:.3f}s pre-pull excluded).")
     elif result.encounter_id == 4550:
-        print("  Timeline: original dungeon start (combat-time metadata unavailable).")
+        emit_text("  Timeline: original dungeon start (combat-time metadata unavailable).")
     if result.echo_status:
-        print(
+        emit_text(
             f"  Echo: {'0%' if result.echo_status == 'absent' else result.echo_status}"
             + (" (12% damage normalised by 1.12)" if result.echo_status == "observed" else "")
         )
     for a, b in result.food_missing_windows:
-        print(f"  Without food: {stamp(a)} - {stamp(b)}")
+        emit_text(f"  Without food: {stamp(a)} - {stamp(b)}")
     if cooldowns:
-        print("  Standard cooldown maxima use full duration with initial charges ready.")
+        emit_text("  Standard cooldown maxima use full duration with initial charges ready.")
     if job == "bard":
-        print("  Radiant Finale possible uses follow the 120s buff cycle.")
+        emit_text("  Radiant Finale possible uses follow the 120s buff cycle.")
     if result.dnc_finishes:
-        print("  Finish damage snapshots the preceding buff state.")
-    print("  Adjusted metrics subtract expected external Crit/DH buff benefit.")
-    print()
+        emit_text("  Finish damage snapshots the preceding buff state.")
+    emit_text()

@@ -77,7 +77,9 @@ def test_dancing_mad_potion_windows_and_phase_regression(
 
     cli._print_analysis(result)
     output = capsys.readouterr().out
-    assert "  Uses: 5" in output
+    assert result.potion.uses == len(result.potion.windows) == 5
+    assert "  Uses: 5 | Item:" in output
+    assert output.split("Potions:\n")[1].splitlines()[1].startswith("    Potion ")
     assert "average interval" not in output
     assert "longest interval" not in output
     assert output.count("Detonator") == 3

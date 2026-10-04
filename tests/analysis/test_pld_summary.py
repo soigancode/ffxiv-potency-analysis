@@ -29,12 +29,25 @@ def test_chain_begins_at_first_ranged_gcd_and_shows_every_gap():
                                     (5000, 1), (7500, 3), (10000, 4)]]
     casts[3]["type"] = "begincast"
     result = summary(casts)
-    assert result.holy_spirit_casts == ((5.0, "hard cast"),)
+    assert result.holy_spirit_casts == ((3.5, "hard cast"),)
     c = result.ranged[0]
     assert c.seconds == 2.5
     assert c.actions == ("Shield Lob", "Holy Spirit", "Shield Lob")
-    assert c.gaps == (2.5, 2.5)
+    assert c.gaps == (1.0, 4.0)
     assert (c.previous, c.previous_gap, c.following, c.following_gap) == ("Fast Blade", 2.5, "Atonement", 2.5)
+
+
+def test_hard_cast_gaps_use_recorded_start_between_instant_spell_and_melee_gcd():
+    casts = [cast(0, 2), cast(2500, 1), cast(5000, 1, type="begincast", duration=1100),
+             cast(6100, 1), cast(7500, 2)]
+    original = [dict(event) for event in casts]
+    result = summary(casts, [buff(2000, 1002673)])
+    chain = result.ranged[0]
+    assert chain.seconds == 5.0
+    assert (chain.previous, chain.previous_gap) == ("Holy Spirit", 2.5)
+    assert (chain.following, chain.following_gap) == ("Fast Blade", 2.5)
+    assert result.holy_spirit_casts == ((2.5, "instant"), (5.0, "hard cast"))
+    assert casts == original
 
 
 def test_opening_holy_spirit_and_instant_and_unconfirmed_uses_are_excluded():

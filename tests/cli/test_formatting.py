@@ -129,28 +129,35 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
         "Gear: custom profile | Food: Caramel Popcorn [HQ]",
     ]
     assert "Landed potency: 350-400 | PPS: 35.00-40.00 | rDPS: 12,330.4 | nDPS: 12,345.6" in output
-    assert "Potions:\n  Uses: 3 | Item: Grade 4 Gemdraught of Dexterity [HQ]" in output
+    assert "Potions:\n  Uses: 3 | Item: Grade 4 Gemdraught of Dexterity [HQ]\n    Window 1:" in output
+    assert "  Potion: Grade 4 Gemdraught of Dexterity [HQ]" not in output
     assert "Window 1: -00m02s - 00m28s" in output
     assert "Potted base potency: 100 | Potency gained: 7 (+7.00%)" in output
     assert "03m42s Chain Saw on Test Boss (target at 0 HP)" in output
     assert "00m12s Chain Saw on Test Add (target defeated before hit landed)" in output
     assert "03m42s Iron Jaws on Test Boss: 1/26,098 damage (0.0038% potency retained, lethal overkill)" in output
     assert output.index("Wildfire:") < output.index("Automaton Queen and Battery:") < output.index("Potions:")
-    assert output.index("Potions:") < output.index("Hit bonus and luck:") < output.index("Ghosted attacks and reduced hits:") < output.index("Action totals:") < output.index("Auto-attacks:") < output.index("Data and assumptions:")
+    assert output.index("Execution summary:") < output.index("Deaths and damage penalties:") < output.index("Cooldowns and burst windows:")
+    assert output.index("Potions:") < output.index("Ghosted attacks and reduced hits:") < output.index("Hit Bonus and Luck:") < output.index("Action totals and auto-attacks:") < output.index("  Auto-attacks:") < output.index("Data and assumptions:")
+    assert "\nAuto-attacks:" not in output
     assert "Base potency per hit: 88.00" in output
     normalized = " ".join(output.split())
     assert "00m12s 85 85 1 n/a" in normalized
     assert "03m42s 95/100 95 1 n/a" in normalized
     assert "03m42s: best fit 3-stack full hit | Damage: 31,482 | Expected: 32,445-36,948 (3.0% below range)" in output
     assert "    GCDs: " + " -> ".join(["BS"] * 5) in output
-    assert "Action totals:\n  Action" in output
+    assert "Action totals and auto-attacks:\n  Action" in output
     assert "Difference" in output
     assert "Drill 1 1 600" in normalized
-    assert "Direct Hit 3 30.00% 20.82%" in normalized
+    assert "Random outcome Hits Gear baseline Observed Difference" in normalized
+    assert "Direct Hit 3 20.82% 30.00%" in normalized
     assert output.index("Direct Hit") < output.index("Critical Hit")
     assert "Luck: 42.31% (+17.33 percentage points vs baseline)" in output
     assert "Adjusted Luck: 40.12% (+15.14 percentage points vs baseline)" in output
     assert "Adjusted Hit Bonus: +45.00% (-3.00 percentage points vs raw)" in output
+    adjusted_note = "Adjusted values subtract the expected benefit from other players' Direct Hit and Critical Hit rate buffs."
+    assert output.count(adjusted_note) == 1
+    assert output.index("Simulated DoT ticks are excluded from Hit Bonus and Luck because their actual DH and Crit outcomes are unavailable.") < output.index(adjusted_note) < output.index("Action totals and auto-attacks:")
     assert "Guaranteed Direct Hits and Critical Hits count toward Hit Bonus, but are excluded from Luck" in output
     cli._print_analysis(replace(expected, played_patch="7.51", patch_source="fight date",
                                 gear_name="7.4 Savage BiS", gear_source="assumed", actions_since="7.4"), directory=directory)
@@ -164,9 +171,10 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
                      (WarTomahawk(422, "Inner Chaos", 2.54, "Heavy Swing", 3.48, (9.87,)),))
     cli._print_analysis(replace(expected, war=war))
     war_output = capsys.readouterr().out
-    assert war_output.index("Surging Tempest:") < war_output.index("Inner Release and follow-ups:") < war_output.index("Melee downtime:")
+    assert war_output.index("Cooldowns and burst windows:") < war_output.index("Surging Tempest:") < war_output.index("Melee downtime:")
     assert "Tomahawk: 2 uses in 1 chain" in war_output
-    assert "07m02s: Inner Chaos -> 2.54s -> Tomahawk -> 9.87s -> Tomahawk -> 3.48s -> Heavy Swing" in war_output
+    assert "07m02s: Inner Chaos -> 2.54s -> T -> 9.87s -> T -> 3.48s -> Heavy Swing" in war_output
+    assert "  T = Tomahawk." in war_output
     cli._print_analysis(replace(expected, party_bonus_percent=3, echo_status="observed"))
     echo_output = capsys.readouterr().out
     assert "Party main-stat bonus: 3% (recorded)" in echo_output
@@ -174,7 +182,7 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     cli._print_analysis(replace(expected, potion=PotionSummary(0, 0, 0, 0, 0)))
     unpotted = capsys.readouterr().out
     assert "Potions:" not in unpotted and "Potted base potency:" not in unpotted
-    assert "Hit bonus and luck:" in unpotted
+    assert "Hit Bonus and Luck:" in unpotted
     cli._print_analysis(replace(expected, echo_status="absent"))
     assert "Echo: 0%" in capsys.readouterr().out
 

@@ -146,9 +146,15 @@ def test_tyrant_wildfire_snapshot_does_not_create_second_potion(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "  Uses: 1 | Item:" in output
-    assert "    Window 1: 10m00s - 10m30s\n" in output
-    assert "Window 2:" not in output
+    assert 'Uses: 1 | Item: Grade 4 Gemdraught of Dexterity [HQ]' in output
+    assert '  Potion: Grade 4 Gemdraught of Dexterity [HQ]' not in output
+    potion_view = output.split("Potions:\n")[1].split("\nHit Bonus and Luck:")[0]
+    assert "1 10m00s 10m30s" in " ".join(potion_view.split())
+    assert "Landed base potency" in potion_view
+    assert "Window 1:" not in potion_view
+    assert len(result.potion.window_totals) == 1
+    assert result.potion.window_totals[0].base_potency_min == pytest.approx(
+        result.potion.potted_potency_min)
     compact = " ".join(output.split())
     assert "Damage Down 01m52s 02m22s" in compact
     assert "Damage Down 03m26s 03m56s" in compact

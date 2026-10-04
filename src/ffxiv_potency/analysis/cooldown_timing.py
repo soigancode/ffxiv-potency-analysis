@@ -19,6 +19,7 @@ def cooldown_timing(
     start: float,
     end: float,
     windows: tuple[tuple[float, float], ...],
+    reductions: tuple[tuple[float, float], ...] = (),
 ) -> CooldownTiming:
     """Measure readiness after the first use, intersecting eligible windows.
 
@@ -40,13 +41,21 @@ def cooldown_timing(
         delays.append(sum(max(0.0, min(b, y, end) - max(a, x, start))
                           for x, y in windows) / 1000)
 
-    for time in (*times[1:], end):
+    events = sorted([(t, 1, 0.0) for t in times[1:]]
+                    + [(t, 0, reduction) for t, reduction in reductions
+                       if times[0] <= t < end and reduction > 0]
+                    + [(end, 2, 0.0)])
+    for time, kind, reduction in events:
         while available < charges and recharge <= time:
             available += 1
             if available == charges:
                 ready_since = recharge
             else:
                 recharge += recast_ms
+        if kind == 0:
+            if available < charges:
+                recharge = max(time, recharge - reduction)
+            continue
         if ready_since is not None:
             record(ready_since, time)
             ready_since = None

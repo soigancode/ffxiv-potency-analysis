@@ -20,6 +20,12 @@ def test_warrior_log(tmp_path, audit_war, prefix, expected, monkeypatch):
     assert result.targetable_seconds == pytest.approx(seconds[expected[0]])
     assert result.pps_min == pytest.approx(result.potency_min / seconds[expected[0]])
     assert result.war is not None
+    assert len(result.war.potion_bursts) == result.potion.uses
+    assert sum(b.base_potency for b in result.war.potion_bursts) == pytest.approx(
+        (result.potion.potted_potency_min + result.potion.potted_potency_max) / 2)
+    assert sum(b.gained_potency for b in result.war.potion_bursts) == pytest.approx(
+        (result.potion.gained_potency_min + result.potion.gained_potency_max) / 2)
+    assert sum(b.spenders for b in result.war.bursts) == result.war.guaranteed_spenders
     assert all(count > 0 for _, count in result.war.expired_charges)
     assert sum(count for _, count in result.war.expired_charges) == result.war.unused_expired_charges
     if expected[0] == "Esty Meow":

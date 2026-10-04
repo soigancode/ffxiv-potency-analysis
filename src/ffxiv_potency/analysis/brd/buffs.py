@@ -12,6 +12,16 @@ __all__ = ["_brd_self_multiplier", "brd_self_buff_windows"]
 SELF_DAMAGE_BUFFS = {"Raging Strikes": 1.15, "Mage's Ballad": 1.01}
 
 
+def opening_raging_strikes(buff_windows, ability_names, start) -> bool:
+    """Identify an evidenced Raging Strikes window already active at pull."""
+    return any(
+        a < start < b
+        for status, windows in buff_windows.items()
+        if ability_names.get(status) == "Raging Strikes"
+        for a, b, _ in windows
+    )
+
+
 def brd_self_buff_windows(
     casts: list[dict[str, Any]],
     buffs: list[dict[str, Any]],

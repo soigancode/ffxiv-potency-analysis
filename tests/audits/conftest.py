@@ -213,12 +213,51 @@ def _audit_dnc(tmp_path, archive_name, prefix, expected, starting):
         else:
             possibilities = {(0, count) for _, count in possibilities}
     assert proc.feather_successes_min == min(count for _, count in possibilities)
+    from statistics import median
+
+    def combo_fit(hit):
+        if (hit.get("overkill") or hit.get("targetResources", {}).get("hitPoints") in {0, 1}
+                or not isinstance(hit.get("multiplier"), (int, float))):
+            return None
+        physical = {'Cascade', 'Windmill', 'Reverse Cascade', 'Fountainfall',
+                    'Rising Windmill', 'Bloodshower', 'Saber Dance', 'Last Dance',
+                    'Fan Dance', 'Fan Dance II', 'Fan Dance III', 'Fan Dance IV'}
+        def normalize(e):
+            value = e['amount'] / e['multiplier'] / (critical_multiplier if e.get('hitType') == 2 else 1) / (1.25 if e.get('directHit') else 1)
+            if '1000049' in str(e.get('buffs', '')).split('.'):
+                value *= 1.05 / potion
+            return value
+        references = sorted((e for e in damage
+            if e.get('type') == 'damage' and not e.get('tick') and not e.get('fake')
+            and e.get('sourceID') == source_id and e.get('amount', 0) > 0
+            and e.get('hitType') in {1, 2} and not e.get('overkill')
+            and e.get('targetID') == hit.get('targetID')
+            and (e.get('targetInstance') or 1) == (hit.get('targetInstance') or 1)
+            and e.get('targetResources', {}).get('hitPoints') not in {0, 1}
+            and names.get(e.get('abilityGameID')) in physical
+            and isinstance(e.get('multiplier'), (int, float)) and e['multiplier'] > 0
+            and abs(e['timestamp'] - hit['timestamp']) <= 60000),
+            key=lambda e: abs(e['timestamp'] - hit['timestamp']))[:30]
+        if len(references) < 3:
+            return None
+        scale = [normalize(e) / BASE[names[e['abilityGameID']]] for e in references]
+        center = median(scale)
+        scale = [d for d in scale if .935 <= d / center <= 1.065]
+        if len(scale) < 3:
+            return None
+        name = names[hit['abilityGameID']]
+        choices = [BASE[name], 280 if name == 'Fountain' else 160]
+        observed = normalize(hit) / median(scale)
+        fits = [p for p in choices if .935 <= observed / p <= 1.065]
+        return fits[0] if len(fits) == 1 else None
+
     critical_stat, direct_stat = (3585, 1877) if result.gear_id == "relic_7_55" else (3549, 2035)
     critical_chance = (50 + 200 * (critical_stat - 420) // 2780) / 1000
     critical_bonus = (400 + 200 * (critical_stat - 420) // 2780) / 1000
     critical_multiplier = 1 + critical_bonus
     direct_chance = (550 * (direct_stat - 420) // 2780) / 1000
     totals = defaultdict(float)
+    upper_totals = defaultdict(float)
     auto = potted = gain = luck = maximum = adjustment = 0.0
     for hits in packets.values():
         # At 40%/25% falloff, normalizing Crit/DH reveals the primary hit
@@ -271,6 +310,18 @@ def _audit_dnc(tmp_path, archive_name, prefix, expected, starting):
                 value = 280 if name == "Fountain" else 160
             if hit is not primary:
                 value *= FALLOFF.get(name, 1)
+            extra = 0.0
+            fit = combo_fit(hit) if name in {"Fountain", "Bladeshower"} and not isinstance(hit.get("bonusPercent"), (int, float)) else None
+            if fit is not None:
+                value = fit * (FALLOFF.get(name, 1) if hit is not primary else 1)
+            if name in {"Fountain", "Bladeshower"} and fit is None and not isinstance(hit.get("bonusPercent"), (int, float)):
+                # Independently bound clipped or ambiguous missing-field hits.
+                extra = (280 if name == "Fountain" else 160) - BASE[name]
+                if hit is not primary:
+                    extra *= FALLOFF.get(name, 1)
+                extra *= buffs * hit["amount"] / (hit["amount"] + max(0, hit.get("overkill", 0)))
+                if "1000049" in statuses:
+                    extra *= potion
             value *= buffs * hit["amount"] / (hit["amount"] + max(0, hit.get("overkill", 0)))
             if "1000049" in statuses:
                 potted += value
@@ -280,6 +331,8 @@ def _audit_dnc(tmp_path, archive_name, prefix, expected, starting):
                 auto += value
             else:
                 totals[name] += value
+                upper_totals[name] += value + extra
+            value += extra / 2
             if name == "Starfall Dance":
                 assert hit["hitType"] == 2 and hit["directHit"]
                 continue
@@ -307,8 +360,10 @@ def _audit_dnc(tmp_path, archive_name, prefix, expected, starting):
     assert {action.name for action in result.actions} == set(totals)
     for action in result.actions:
         assert action.potency_min == pytest.approx(totals[action.name]), action.name
+        assert action.potency_max == pytest.approx(upper_totals[action.name]), action.name
     assert result.auto_attacks[0].total_potency == pytest.approx(auto)
-    assert result.potency_min == result.potency_max == pytest.approx(sum(totals.values()) + auto)
+    assert result.potency_min == pytest.approx(sum(totals.values()) + auto)
+    assert result.potency_max == pytest.approx(sum(upper_totals.values()) + auto)
     assert result.potion.potted_potency_min == pytest.approx(potted)
     assert result.potion.gained_potency_min == pytest.approx(gain)
     assert result.luck_score == pytest.approx(luck / maximum)

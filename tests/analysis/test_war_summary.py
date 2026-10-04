@@ -4,6 +4,22 @@ from ffxiv_potency.analysis.targetability import TargetableTime, targetable_inte
 from ffxiv_potency.analysis.war.summary import summarize_war
 
 
+def test_tempest_pre_start_snapshots_do_not_count_as_avoidable_losses():
+    start = 10000
+    result = summarize_war(
+        [], [], [], {}, {}, 1, start, 70000,
+        [(9688, "Attack", 100, 1), (9688, "Heavy Swing", 240, 1),
+         (11000, "Maim", 340, 1), (16000, "Heavy Swing", 240, 1.1),
+         (50000, "Heavy Swing", 240, 1)],
+        TargetableTime(60, "timeline", ((start, 70000),)),
+        {1002677: ((15000, 45000, 1.1),)},
+    )
+    assert result.tempest_missing == ((40.0, "Heavy Swing"),)
+    assert result.tempest_lost_potency == 24
+    assert result.total_hits == 5
+    assert result.tempest_hits == 1
+
+
 def test_ready_losses_charges_and_tomahawk_neighbors():
     names = {
         1: "Heavy Swing",

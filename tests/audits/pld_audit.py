@@ -149,12 +149,32 @@ def audit_pld(tmp_path, archive, prefix):
     spell_evidence = {}
     circle_direct = circle_ticks = 0.0
     alignment_inside = alignment_outside = 0.0
+    burst_potency = [0.0 for _ in result.pld.burst_opportunities]
+    timeline_start = end - result.duration_seconds * 1000
+    # Verify downtime timing against raw begin-cast records, independently of
+    # spell replay and the shared ranged-chain calculation.
+    holy_starts = {
+        round((event["timestamp"] - timeline_start) / 1000, 6)
+        for event in read("cast-events")
+        if event.get("type") == "begincast" and event.get("sourceID") == source
+        and not event.get("fake") and names.get(event.get("abilityGameID")) == "Holy Spirit"
+    }
+    for time, kind in result.pld.holy_spirit_casts:
+        if kind == "hard cast":
+            assert round(time, 6) in holy_starts
+    for chain in result.pld.ranged:
+        time = chain.seconds
+        for index, name in enumerate(chain.actions):
+            if index:
+                time += chain.gaps[index - 1]
+            if name == "Holy Spirit":
+                assert round(time, 6) in holy_starts
     combo_hits = defaultdict(int)
     combo_losses = defaultdict(float)
     combo_unconfirmed = 0
     alignment_scope = {"Goring Blade", "Imperator", "Confiteor", "Blade of Faith",
                        "Blade of Truth", "Blade of Valor", "Blade of Honor",
-                       "Circle of Scorn", "Expiacion"}
+                       "Circle of Scorn", "Expiacion", "Intervene", "Holy Spirit", "Holy Circle"}
     for hits in grouped.values():
         def full_damage(hit):
             return (hit["amount"] + max(0, hit.get("overkill", 0))) / (
@@ -212,6 +232,12 @@ def audit_pld(tmp_path, archive, prefix):
                 potted += unpotted_value
                 gain += value * potion - unpotted_value
                 value *= potion
+            if 1000076 in statuses and status_active(1000076, time):
+                for i, window in enumerate(result.pld.burst_opportunities):
+                    a = round(timeline_start + window.start_seconds * 1000)
+                    b = round(timeline_start + window.end_seconds * 1000)
+                    if a <= time < b:
+                        burst_potency[i] += value
             if name in alignment_scope:
                 if 1000076 in statuses and status_active(1000076, time):
                     alignment_inside += value / 1.25
@@ -244,6 +270,19 @@ def audit_pld(tmp_path, archive, prefix):
 
     for action in result.actions:
         assert action.potency_min == pytest.approx(totals[action.name]), action.name
+    for i, window in enumerate(result.pld.burst_opportunities):
+        assert window.landed_potency == pytest.approx(burst_potency[i])
+        a = round(timeline_start + window.start_seconds * 1000)
+        b = round(timeline_start + window.end_seconds * 1000)
+        for row in window.actions:
+            cs = [c for c in casts if c.get("sourceID") == source
+                  and names[c["abilityGameID"]] == row.name and a <= c["timestamp"] < b]
+            keys = {(c.get("packetID"), c["abilityGameID"]) for c in cs}
+            assert row.casts == len(keys)
+            assert row.hits == sum((h.get("packetID"), h["abilityGameID"]) in keys
+                                   for h in landed if not h.get("tick")
+                                   and h.get("sourceID") == source)
+            assert row.expected is None or row.expected >= row.casts
     assert result.auto_attacks[0].total_potency == pytest.approx(auto)
     assert result.potency_min == pytest.approx(sum(totals.values()) + auto)
     assert result.targetable_seconds is not None

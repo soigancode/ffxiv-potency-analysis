@@ -7,6 +7,7 @@ from typing import Any
 from ..events import _event_name
 from ..ranged import ranged_chains
 from ..targetability import TargetableTime
+from .bursts import WarBurst, WarPotionBurst
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +47,8 @@ class WarSummary:
     infuriate_uses: int
     tomahawks: tuple[WarTomahawk, ...]
     expired_charges: tuple[tuple[float, int], ...] = ()
+    bursts: tuple[WarBurst, ...] = ()
+    potion_bursts: tuple[WarPotionBurst, ...] = ()
 
 
 READY = (
@@ -246,7 +249,8 @@ def summarize_war(
     avoidable = [
         (time, name, value)
         for time, name, value, factor in hit_rows
-        if factor == 1
+        if start <= time < end
+        and factor == 1
         and name != "Damnation"
         and not (any(begin <= time <= finish for begin, finish in setup + application_gaps))
     ]

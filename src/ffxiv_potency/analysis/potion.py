@@ -5,8 +5,28 @@ from __future__ import annotations
 from typing import Any
 
 from .events import _event_name, _has_buff
-from .models import PotionWindow
+from .models import PotionWindow, PotionWindowTotal
 from .profiles import _CombatProfile
+
+
+def summarize_potion_windows(
+    windows: tuple[PotionWindow, ...],
+    contributions: list[tuple[float, float, float, float, float]],
+) -> tuple[PotionWindowTotal, ...]:
+    """Attribute recorded potted damage to its snapshot window, retaining ranges."""
+    totals = [[0.0, 0.0, 0.0, 0.0] for _ in windows]
+    for seconds, *values in contributions:
+        if not windows:
+            continue
+        distances = []
+        for w in windows:
+            begin = w.start_seconds if w.start_seconds is not None else w.observed_start_seconds
+            finish = w.end_seconds if w.end_seconds is not None else w.observed_end_seconds
+            distances.append(max((begin or 0) - seconds, seconds - (finish or begin or 0), 0))
+        index = min(range(len(windows)), key=distances.__getitem__)
+        for column, value in enumerate(values):
+            totals[index][column] += value
+    return tuple(PotionWindowTotal(*row) for row in totals)
 
 
 def _potion_windows(
@@ -101,5 +121,4 @@ def _potion_windows(
             ),
         )
     )
-
 

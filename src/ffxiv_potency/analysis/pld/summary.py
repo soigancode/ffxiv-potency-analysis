@@ -3,12 +3,14 @@
 from collections import Counter
 from dataclasses import dataclass, replace
 
+from ..burst_opportunities import BurstWindow
 from ..cooldown_timing import CooldownTiming
 from ..events import _event_name
 from ..execution import ReadyUse, ready_summary
 from ..ranged import RangedChain, ranged_chains
 from .alignment import PldAlignment, summarize_alignment
 from .buffs import fight_or_flight_strength
+from .burst_opportunities import summarize_burst_opportunities
 from .combos import PldComboSummary, summarize_combos
 from .cooldowns import summarize_cooldowns
 from .follow_ups import PldFollowUpIssue, follow_up_issues
@@ -51,6 +53,7 @@ class PldSummary:
     alignment: PldAlignment | None = None
     cooldown_timing: tuple[CooldownTiming, ...] = ()
     combos: PldComboSummary | None = None
+    burst_opportunities: tuple[BurstWindow, ...] = ()
 
 
 READY = (
@@ -118,10 +121,11 @@ def summarize_pld(casts, buffs, life, combatants, names, actions, source, start,
         (e["packetID"], e.get("abilityGameID")): _event_name(gcds[i - 1], names)
         for i, e in enumerate(gcds) if i and e.get("packetID") is not None
     }
+    combo_inferences = combo_inferences or {}
     combo_inferences = {
         id(e): replace(combo_inferences[id(e)], previous_gcd=previous_gcds.get(
             (e.get("packetID"), e.get("abilityGameID"))))
-        for e in damage or () if id(e) in (combo_inferences or {})
+        for e in damage or () if id(e) in combo_inferences
     }
     ranged = {(e.get("packetID"), e.get("abilityGameID")) for e in gcds
               if _event_name(e, names) == "Shield Lob"}
@@ -130,9 +134,14 @@ def summarize_pld(casts, buffs, life, combatants, names, actions, source, start,
     ranged.update((s.packet, s.ability_id) for s in state.spells
                   if s.name == "Holy Spirit" and s.cast_kind == "hard cast"
                   and (s.packet, s.ability_id) != opener_packet)
+    gcd_starts = {(s.packet, s.ability_id): start + s.gcd_start_seconds * 1000
+                  for s in state.spells if s.gcd_start_seconds is not None}
+    ranged_gcds = [dict(e, timestamp=gcd_starts.get(
+        (e.get("packetID"), e.get("abilityGameID")), e["timestamp"])) for e in gcds]
     return PldSummary(ready, tuple((*key, n) for key, n in sorted(counts.items())),
-                      tuple(bursts), ranged_chains(gcds, names, start, ranged), circle,
-                      tuple((s.seconds, s.cast_kind) for s in state.spells
+                      tuple(bursts), ranged_chains(ranged_gcds, names, start, ranged), circle,
+                      tuple((s.gcd_start_seconds if s.gcd_start_seconds is not None else s.seconds,
+                             s.cast_kind) for s in state.spells
                             if s.name == "Holy Spirit"),
                       summarize_alignment(alignment_rows, buff_windows or {}, start, end,
                                           fight_or_flight_strength(actions))
@@ -140,4 +149,7 @@ def summarize_pld(casts, buffs, life, combatants, names, actions, source, start,
                       summarize_cooldowns(own, actions, names, life, source, start, end, targetable)
                       if targetable is not None else (),
                       summarize_combos(damage, actions, names, source, combo_inferences)
-                      if damage is not None else None)
+                      if damage is not None else None,
+                      summarize_burst_opportunities(own, own_buffs, life, names, actions,
+                          source, start, end, buff_windows or {}, targetable, damage,
+                          alignment_rows) if buff_windows is not None else ())

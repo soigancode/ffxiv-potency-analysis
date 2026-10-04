@@ -58,7 +58,7 @@ def test_damage_down_scales_only_affected_hits(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert output.index("Apex Arrow and Pitch Perfect:") < output.index("Deaths and damage penalties:")
+    assert output.index("Deaths and damage penalties:") < output.index("Apex Arrow and Pitch Perfect:")
     assert "Damage Down 00m39s 01m29s" in " ".join(output.split())
     assert "    Refreshed: 01m29s" in output
     assert result.damage_penalties[0].affected_hits == 80

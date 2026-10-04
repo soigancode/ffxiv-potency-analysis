@@ -20,6 +20,7 @@ class PldSpell:
     ability_id: int
     enhancement: str
     cast_kind: str
+    gcd_start_seconds: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,7 +102,8 @@ def replay_spells(casts: list[dict[str, Any]], buffs: list[dict[str, Any]],
             cast_kind = "hard cast" if begin is not None else (
                 "instant" if enhancement != "None" or name in BLADES else "unconfirmed")
             spells.append(PldSpell(name, (time - start) / 1000, e.get("packetID"),
-                                   e["abilityGameID"], enhancement, cast_kind))
+                                   e["abilityGameID"], enhancement, cast_kind,
+                                   (begin["timestamp"] - start) / 1000 if begin is not None else None))
         elif kind == "death":
             for status in statuses:
                 lose(status, time, "lost on death", dead)

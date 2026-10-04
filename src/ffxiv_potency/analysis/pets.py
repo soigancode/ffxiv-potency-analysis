@@ -49,7 +49,8 @@ def _reconstruct_pet_deployments(
             ).get(packet, [])
             if not gain_events:
                 continue
-            if requires_combo and not any(e.get("bonusPercent") is not None for e in gain_events):
+            if requires_combo and not any(isinstance(e.get("bonusPercent"), (int, float))
+                                          and e["bonusPercent"] > 0 for e in gain_events):
                 continue
             configured_maxima = [
                 profile.gauge_maximum

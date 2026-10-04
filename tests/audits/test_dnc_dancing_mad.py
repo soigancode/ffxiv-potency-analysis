@@ -112,7 +112,7 @@ def test_dancer_clear_totals_luck_and_output(
     _print_analysis(result)
     output = capsys.readouterr().out
     assert "Technical Step:" in output and "Dance of the Dawn:" in output
-    assert "Dances and personal buffs:\n  Devilment:" in output
+    assert "Cooldowns and burst windows:\n  Devilment:" in output
     assert output.index("Devilment:") < output.index("Starfall Dance:") < output.index("Flourish:")
     assert "\n  Time    Steps" in output
     assert "\n\n  Time    Steps" not in output
@@ -126,7 +126,7 @@ def test_dancer_clear_totals_luck_and_output(
     assert "Ordinary GCD-to-Feather chain: 25%" in output
     assert "unknown origin" not in output and "Unexplained removals" not in output
     assert output.index("Gear:") < output.index("Food:") < output.index("Party main-stat bonus:")
-    luck_section = output.split("Dancer proc luck:", 1)[1].split("\nPotions:", 1)[0]
+    luck_section = output.split("Dancer proc luck:", 1)[1].split("\nAction totals and auto-attacks:", 1)[0]
     assert luck_section.index("Stage") < luck_section.index("Luck indices:") < luck_section.index("Feather luck score:")
     assert "Combined luck score:" not in output
     if player == "Skye Uwu":

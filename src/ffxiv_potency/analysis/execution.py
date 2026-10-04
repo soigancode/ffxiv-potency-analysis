@@ -5,6 +5,7 @@ from collections import Counter
 from dataclasses import dataclass
 from math import ceil
 
+from .brd.buffs import opening_raging_strikes
 from .brd.dots import DOT_DURATION_MS, reconstruct_brd_dots
 from .events import _event_name
 from .targetability import TargetableTime
@@ -16,6 +17,7 @@ class CooldownUse:
     uses: int
     possible: int | None
     basis: str = "full duration"
+    pre_pull_uses: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -293,7 +295,7 @@ def summarize_execution(
     counts = Counter(_event_name(e, names) for e in own)
     selected = {
         "paladin": ("Fight or Flight", "Imperator", "Circle of Scorn", "Expiacion", "Intervene"),
-        "warrior": ("Inner Release", "Infuriate"),
+        "warrior": ("Inner Release", "Infuriate", "Upheaval", "Onslaught"),
         "bard": ("Raging Strikes", "Battle Voice", "Radiant Finale"),
         "machinist": (
             "Reassemble",
@@ -340,7 +342,22 @@ def summarize_execution(
                 if recast
                 else None
             )
-        cooldowns.append(CooldownUse(name, counts[name], maximum, basis))
+        if job == "warrior":
+            from .war.diagnostics import COOLDOWN_GROUPS
+            consumers = COOLDOWN_GROUPS.get(name, (name,))
+        else:
+            consumers = (name,)
+        used = sum(counts[n] for n in consumers)
+        pre_pull_uses = 0
+        if job == "bard" and name == "Raging Strikes":
+            pre_pull_uses = sum(
+                e["timestamp"] < start and _event_name(e, names) == name for e in own
+            )
+            if not pre_pull_uses and opening_raging_strikes(buff_windows, names, start):
+                used += 1
+                pre_pull_uses = 1
+        cooldowns.append(CooldownUse("/".join(consumers), used,
+                                     maximum, basis, pre_pull_uses))
     initial = {
         a.get("ability")
         for c in combatants
@@ -473,6 +490,8 @@ def summarize_execution(
             )
     ready = []
     rules = []
+    if job == "bard":
+        rules = [("Radiant Encore", 1003863, {"Radiant Encore"}, 30000, 1)]
     if job == "machinist":
         rules = [
             ("Hypercharge", 1002688, {"Blazing Shot", "Auto Crossbow"}, 10000, 5),
@@ -489,6 +508,7 @@ def summarize_execution(
         ]
     # Resolve actual status IDs by master-data names instead of depending on fallback IDs.
     status_names = {
+        "Radiant Encore": "Radiant Encore Ready",
         "Hypercharge": "Overheated",
         "Full Metal Field": "Full Metal Machinist",
         "Excavator": "Excavator Ready",

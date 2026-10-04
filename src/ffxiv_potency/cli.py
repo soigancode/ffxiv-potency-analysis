@@ -77,8 +77,8 @@ CURRENT_FIGHTS = {
     "m11s": 103,
     "m12sp1": 104,
     "m12sp2": 105,
-    "umad": 1085,
     "dmu": 1085,
+    "umad": 1085,
     "doomtrain": 1083,
     "enuo": 1084,
     "amt": 4550,
@@ -194,6 +194,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--actions", type=Path, help=f"override the job's default {LATEST_KNOWN_PATCH} actions.json"
     )
     analyse.add_argument("--output", type=Path, default=Path("data/logs"), help="download root")
+    analyse.add_argument("--html", type=Path, help="also write a standalone HTML report")
     for command in (analyse, compare, fflogs):
         command.add_argument("--gear", help="gear profile ID; default selects BiS by fight date")
     return parser
@@ -961,6 +962,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 result, directory=directory,
                 anonymous=reference is not None and reference.report_code.startswith("a:"),
             )
+            if args.html is not None:
+                from .html_report import write_html_report
+
+                write_html_report(
+                    result, args.html, directory=directory,
+                    anonymous=reference is not None and reference.report_code.startswith("a:"),
+                )
+                print(f"Saved HTML report: {args.html}")
             return 0
 
         if args.command == "fflogs":
