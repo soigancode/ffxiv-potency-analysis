@@ -143,6 +143,7 @@ abbr[title]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .metric-help:hover .metric-tooltip,.metric-help:focus-within .metric-tooltip{display:block}
 td[data-state=info]{color:var(--accent-text);text-decoration:underline dotted;
 text-underline-offset:3px;cursor:help}
+table[data-cooldown-timing] td[data-state=info]{color:inherit}
 td[data-state=unknown]{color:var(--muted)}.row-note{font-size:12px;color:var(--muted);white-space:normal}
 .execution .report-line{padding-left:12px;border-left:2px solid var(--accent);margin:10px 0}
 .assumptions summary{cursor:pointer;font-size:19px;font-weight:650}
@@ -565,6 +566,7 @@ def _table(block: ReportTable, *, show_attention_key: bool = True, crosshair: bo
     return ('<div class="table-wrap" tabindex="0" role="region" aria-label="'
             + escape(", ".join(block.labels), quote=True) + '"><table'
             + (' data-sortable' if sortable else '')
+            + (' data-cooldown-timing' if timing else '')
             + (' data-spells' if spells else '')
             + (' data-potions' if potions else '')
             + (' data-landed-hits' if landed_hits else '')
@@ -845,7 +847,8 @@ def write_leaderboard_report(results: list[AnalysisResult], directories: list[Pa
                              ranks: list[int], labels: tuple[str, ...],
                              rows: list[tuple[str, ...]], output: Path, *,
                              job: str, skipped: tuple[tuple[int, str], ...] = (),
-                             notes: tuple[str, ...] = (), metadata: tuple[str, ...] = ()) -> None:
+                             notes: tuple[str, ...] = (), metadata: tuple[str, ...] = (),
+                             ranked: bool = True) -> None:
     """Save the comparison and complete analyses together without recalculating."""
     from .cli import (
         CURRENT_FIGHTS,
@@ -859,7 +862,8 @@ def write_leaderboard_report(results: list[AnalysisResult], directories: list[Pa
         raise ValueError('leaderboard reports require matching results, directories, ranks and rows')
     fight = next((alias.upper() for alias, encounter in CURRENT_FIGHTS.items()
                   if encounter == results[0].encounter_id), results[0].fight_name)
-    navigation = ['<a class="leaderboard-link" href="#leaderboard">Leaderboard</a>']
+    report_label = 'Leaderboard' if ranked else 'Comparison'
+    navigation = [f'<a class="leaderboard-link" href="#leaderboard">{report_label}</a>']
     table_rows = []
     reports = []
     baseline = results[min(range(len(ranks)), key=lambda index: ranks[index])]
@@ -870,9 +874,9 @@ def write_leaderboard_report(results: list[AnalysisResult], directories: list[Pa
         player = _display_player_name(result.source_name, anonymous=anonymous)
         player = re.sub(r'\x1b\[[0-9;]*m', '', player)
         anchor = f'player-{index}'
-        name = f'Rank {rank} - {player}'
+        name = f'Rank {rank} - {player}' if ranked else player
         sections = []
-        analysis = _render_analysis_report(result, directory=directory, rank=rank,
+        analysis = _render_analysis_report(result, directory=directory, rank=rank if ranked else None,
                                            anonymous=anonymous, anchor_prefix=anchor + '-',
                                            embedded=True, section_navigation=sections)
         navigation.append(f'<details class="sidebar-player" data-player="{anchor}"'
@@ -896,7 +900,8 @@ def write_leaderboard_report(results: list[AnalysisResult], directories: list[Pa
                        + '</summary><div class="player-body">'
                        + analysis + '</div></details>')
     table_rows = [row for _, row in sorted(zip(ranks, table_rows), key=lambda item: item[0])]
-    help_labels = {'dPPS': 'PPS difference from the lowest selected FF Logs rank',
+    help_labels = {'dPPS': ('PPS difference from the lowest selected FF Logs rank' if ranked
+                            else 'PPS difference from the first selected player'),
                    'aHB': 'Adjusted Hit Bonus', 'aLuck': 'Adjusted Luck',
                    'HB': 'Hit Bonus', 'PPS': 'Potency per Second (Targetable)'}
     note_items = []
@@ -909,11 +914,12 @@ def write_leaderboard_report(results: list[AnalysisResult], directories: list[Pa
             note_items.append(note)
     help_labels['Notes'] = '\n'.join('- ' + note for note in note_items) if note_items else 'No flagged issues.'
     headings = []
-    for column, label in enumerate(('Rank', 'Player', *labels)):
-        if label == 'Rank' or label in sort_values:
+    order_label = 'Rank' if ranked else '#'
+    for column, label in enumerate((order_label, 'Player', *labels)):
+        if label == order_label or label in sort_values:
             heading = (_action_name(label, help_labels[label], floating=True)
                        if label in help_labels else escape(label))
-            direction = 'ascending' if label == 'Rank' else 'none'
+            direction = 'ascending' if label == order_label else 'none'
             headings.append(f'<th scope="col" aria-sort="{direction}"><button type="button"'
                             f' data-sort-column="{column}">'
                             + heading
@@ -923,16 +929,17 @@ def write_leaderboard_report(results: list[AnalysisResult], directories: list[Pa
                             floating=label == 'Notes') if label in help_labels else escape(label)) + '</th>')
     metadata_line = ' | '.join(sorted(metadata, key=lambda text: not text.startswith('Patch:')))
     ranking_metric = 'DPS' if results[0].encounter_id in {4549, 4551} else 'rDPS'
-    metadata_line += (' | ' if metadata_line else '') + f'Ranked by {ranking_metric}'
+    if ranked:
+        metadata_line += (' | ' if metadata_line else '') + f'Ranked by {ranking_metric}'
     encounter_id = results[0].encounter_id
     fight_name = (ENCOUNTER_NAMES.get(encounter_id, results[0].fight_name)
                   if encounter_id is not None else results[0].fight_name)
     summary = ('<section id="leaderboard"><h2>'
-               + escape(job.title() + ' / ' + fight_name + ' Leaderboard') + '</h2>'
+               + escape(job.title() + ' / ' + fight_name + ' ' + report_label) + '</h2>'
                + ('<p class="metadata">' + escape(metadata_line) + '</p>' if metadata_line else '')
                +
                '<p>Select a player to open their full analysis.</p><div class="table-wrap"'
-               ' tabindex="0" role="region" aria-label="Leaderboard comparison"><table><thead><tr>'
+               f' tabindex="0" role="region" aria-label="{report_label}"><table><thead><tr>'
                + ''.join(headings) + '</tr></thead><tbody>'
                + ''.join(table_rows) + '</tbody></table></div>')
     if skipped:
@@ -1000,7 +1007,7 @@ revealReport();
 """
     content = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
                '<meta name="viewport" content="width=device-width, initial-scale=1">'
-               f'<title>{escape(JOB_ABBREVIATIONS.get(job, job))} {escape(fight)} Leaderboard | FFXIV Potency Analysis</title>'
+               f'<title>{escape(JOB_ABBREVIATIONS.get(job, job))} {escape(fight)} {report_label} | FFXIV Potency Analysis</title>'
                '<style>' + css + '</style></head><body><div class="layout"><aside>'
                '<div class="brand">FFXIV potency analysis</div><nav aria-label="Players">'
                + ''.join(navigation) + '</nav></aside><main>' + summary + ''.join(reports)

@@ -3,6 +3,13 @@
 import json
 from pathlib import Path
 
+from bs4 import BeautifulSoup
+
+
+def saved_html_report(output: str) -> BeautifulSoup:
+    line = next(line for line in output.splitlines() if line.startswith("Saved HTML report: "))
+    return BeautifulSoup(Path(line.removeprefix("Saved HTML report: ")).read_text(), "html.parser")
+
 
 def _write_selected_log(directory: Path, source_id: int, subtype: str = "Machinist") -> None:
     directory.mkdir(parents=True, exist_ok=True)
@@ -24,4 +31,3 @@ def _write_selected_log(directory: Path, source_id: int, subtype: str = "Machini
     (directory / "rankings.json").write_text(
         '{"metric":"ndps","rankings":{},"rdps":{}}', encoding="utf-8"
     )
-

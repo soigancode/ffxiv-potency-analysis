@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 from bs4 import BeautifulSoup, Tag
@@ -827,10 +828,41 @@ def test_analyse_html_export_uses_same_result_once(tmp_path, monkeypatch, capsys
     assert cli.main(["analyse", str(directory), "--actions", str(actions),
                      "--html", str(destination)]) == 0
     assert calls == [(directory, actions)]
-    assert "Player: Test Player" in capsys.readouterr().out
+    assert capsys.readouterr().out == f"Saved HTML report: {destination}\n"
     document = destination.read_text(encoding="utf-8")
     assert "--accent:#6ee1d6" in document
     assert required_tag(BeautifulSoup(document, "html.parser"), "h1").get_text() == "Test Player"
+
+
+@pytest.mark.parametrize('custom', [None, 'custom.html'])
+def test_saved_log_defaults_to_html_and_status_only(tmp_path, monkeypatch, capsys, result, custom):
+    monkeypatch.chdir(tmp_path)
+    directory = tmp_path / 'abc123/fight-9/source-18'
+    _write_selected_log(directory, 18)
+    actions = tmp_path / 'actions.json'
+    actions.write_text('{"job":"machinist","patch":"7.55"}')
+    result = replace(result, encounter_id=101)
+    calls = []
+
+    def analyze(*args):
+        calls.append(args)
+        return result
+
+    def no_terminal_report(*args, **kwargs):
+        raise AssertionError('The CLI must not print an analysis report')
+
+    monkeypatch.setattr(cli, 'analyze_saved_fight', analyze)
+    monkeypatch.setattr(cli, '_print_analysis', no_terminal_report)
+    arguments = ['analyse', str(directory), '--actions', str(actions)]
+    if custom is not None:
+        arguments += ['--report', custom]
+    assert cli.main(arguments) == 0
+    expected = Path('reports') / (custom or 'mch_m9s_abc123_9_18.html')
+    captured = capsys.readouterr()
+    assert captured.out == f'Saved HTML report: {expected}\n'
+    assert 'Calculating potency' in captured.err
+    assert len(calls) == 1
+    assert 'Test Player' in expected.read_text()
 
 
 def test_analyse_reports_html_write_errors(tmp_path, monkeypatch, capsys, result):
@@ -1099,7 +1131,7 @@ def test_ranked_html_export_uses_canonical_filename_and_same_result_once(
 
     monkeypatch.setattr(cli, 'analyze_saved_fight', analyze)
     before = _encode(result)
-    assert cli.main(['fflogs', job, fight, '7', '--html']) == 0
+    assert cli.main(['fflogs', job, fight, '7']) == 0
     assert calls == [(directory, tmp_path / 'actions.json')]
     assert _encode(result) == before
     document = BeautifulSoup((tmp_path / 'reports' / filename).read_text(), 'html.parser')
@@ -1107,7 +1139,7 @@ def test_ranked_html_export_uses_canonical_filename_and_same_result_once(
     assert required_tag(document, 'h1').get_text() == ('Anonymous' if anonymous else 'Test Player')
     output = capsys.readouterr().out
     assert f'Saved HTML report: reports/{filename}' in output
-    assert 'Player:' in output
+    assert 'Player:' not in output
 
 
 @pytest.mark.parametrize('arguments', [

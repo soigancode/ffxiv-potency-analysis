@@ -11,7 +11,8 @@ def test_analyse_gear_override_reaches_calculation(monkeypatch, tmp_path) -> Non
     monkeypatch.setattr(cli, "_source_job", lambda _: "machinist")
     monkeypatch.setattr(cli, "_actions_for_job", lambda *args: Path("actions.json"))
     monkeypatch.setattr(cli, "_verify_supported_fight", lambda _: None)
-    monkeypatch.setattr(cli, "_print_analysis", lambda *args, **kwargs: None)
+    monkeypatch.setattr(cli, "_default_analysis_report", lambda *args: tmp_path / "report.html")
+    monkeypatch.setattr("ffxiv_potency.html_report.write_html_report", lambda *args, **kwargs: None)
 
     def analyze(directory, actions, *, gear=None):
         calls.append(gear)
@@ -26,8 +27,9 @@ def test_compare_gear_override_reaches_download_pipeline(monkeypatch) -> None:
     urls = ["https://www.fflogs.com/reports/abc?fight=1&source=2",
             "https://www.fflogs.com/reports/def?fight=1&source=3"]
 
-    def compare(urls, output, actions, progress, *, gear=None):
+    def compare(urls, output, actions, progress, *, gear=None, html_output=None):
         calls.append(gear)
+        assert html_output == Path("reports/comparison.html")
         return ()
 
     monkeypatch.setattr(cli, "_download_and_compare", compare)

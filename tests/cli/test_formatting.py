@@ -119,6 +119,9 @@ def test_cli_prints_saved_fight_analysis(monkeypatch, tmp_path: Path, capsys) ->
     monkeypatch.setattr(cli, "analyze_saved_fight", fake_analyze)
 
     assert cli.main(["analyse", str(directory), "--actions", str(actions)]) == 0
+    status = capsys.readouterr().out
+    assert status.startswith("Saved HTML report:") and "Player:" not in status
+    cli._print_analysis(expected, directory=directory)
     output = capsys.readouterr().out
     assert output.startswith("\nPlayer:") and output.endswith("\n\n")
     lines = output.strip().splitlines()

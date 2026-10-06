@@ -2,13 +2,21 @@
 
 import shutil
 from pathlib import Path
-from zipfile import ZipFile
 
 import pytest
 
 from ffxiv_potency import cli
+from ffxiv_potency.analysis.models import (
+    ActionSummary,
+    AnalysisResult,
+    DncFinishSummary,
+    HitOutcomeSummary,
+    PotionSummary,
+)
 from ffxiv_potency.fflogs.selection import ReportFight, ReportPlayer
 from ffxiv_potency.jobguide import SnapshotResult
+
+from .helpers import _write_selected_log, saved_html_report
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -24,19 +32,48 @@ def test_jobguide_accepts_dancer_aliases(tmp_path, monkeypatch, capsys, alias):
     assert "Wrote 41 actions:" in capsys.readouterr().out
 
 
-def test_cli_analyses_and_compares_supplied_dancer_logs(tmp_path, monkeypatch, capsys):
+def test_cli_analyses_and_compares_dancer_reports(tmp_path, monkeypatch, capsys):
+    # Real-log calculations are covered by tests/audits/test_dnc_dancing_mad.py.
+    # Exercise job selection and the actual HTML writers with prepared results here.
     shutil.copytree(ROOT / "data/jobs/dnc", tmp_path / "data/jobs/dnc")
     logs = tmp_path / "data/logs"
-    with ZipFile(ROOT / "tests/fixtures/logs/dnc_dancing_mad.zip") as archive:
-        for member in archive.namelist():
-            if member.endswith(".json"):
-                path = logs / member
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(archive.read(member))
-    monkeypatch.chdir(tmp_path)
     first = logs / "VWJv7x9DbRa4ktH6/fight-7/source-4"
+    second = logs / "6mCVqpY1HN47daLG/fight-10/source-9"
+    _write_selected_log(first, 4, "Dancer")
+    _write_selected_log(second, 9, "Dancer")
+    results = {
+        directory: AnalysisResult(
+            fight_name="Dancing Mad", encounter_id=1085, source_name=player,
+            ndps=None, duration_seconds=60, raw_damage_events=1,
+            landed_damage_events=1, matched_damage_events=1,
+            potency_min=1200, potency_max=1200,
+            actions=(ActionSummary("Technical Step", 0, 0, 0, uses=1),
+                     ActionSummary("Technical Finish", 1, 1200, 1200, uses=1)),
+            auto_attacks=(), pet_deployments=(),
+            hit_outcomes=HitOutcomeSummary(1, 0, 0, 0),
+            potion=PotionSummary(0, 0, 0, 0, 0), unmatched=(), ghosted=(),
+            dnc_finishes=(DncFinishSummary(5, "Technical Finish", 4, 1, 1200),),
+            gear_name="7.55 Relic BiS", gear_source="assumed",
+        )
+        for directory, player in ((first, "Felix Austed"), (second, "Skye Uwu"))
+    }
+    analyzed: list[Path] = []
+
+    def analyze(directory: Path, actions_path: Path) -> AnalysisResult:
+        assert actions_path == Path("data/jobs/dnc/7.4/actions.json")
+        analyzed.append(directory.resolve())
+        return results[directory.resolve()]
+
+    def fail_download(*args, **kwargs):
+        raise AssertionError("saved Dancer reports should not download data")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli, "analyze_saved_fight", analyze)
+    monkeypatch.setattr(cli, "download_report_events", fail_download)
     assert cli.main(["analyse", str(first)]) == 0
-    output = capsys.readouterr().out
+    status = capsys.readouterr().out
+    assert "Felix Austed" not in status and "Technical Step" not in status
+    output = saved_html_report(status).get_text()
     assert "Felix Austed" in output
     assert "Technical Step:" in output
     assert "Gear: 7.55 Relic BiS (assumed)" in output
@@ -50,8 +87,13 @@ def test_cli_analyses_and_compares_supplied_dancer_logs(tmp_path, monkeypatch, c
         )
         == 0
     )
-    output = capsys.readouterr().out
+    status = capsys.readouterr().out
+    assert "Felix Austed" not in status and "Skye Uwu" not in status
+    report = saved_html_report(status)
+    output = report.get_text()
     assert "Felix Austed" in output and "Skye Uwu" in output
+    assert len(report.select(".player-report")) == 2
+    assert analyzed == [first, first, second]
 
 
 @pytest.mark.parametrize("alias", ["dnc", "dancer"])

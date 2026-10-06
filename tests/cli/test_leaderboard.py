@@ -13,7 +13,7 @@ from ffxiv_potency.analysis import (
 )
 from ffxiv_potency.fflogs import ReportReference
 
-from .helpers import _write_selected_log
+from .helpers import _write_selected_log, saved_html_report
 
 
 @pytest.mark.parametrize("alias", ["war", "WAR", "warrior", "WARRIOR"])
@@ -108,12 +108,12 @@ def test_cli_rankings_shortcuts_compare_top_logs(
             ((2, "report unavailable"),),
         )
 
-    def fake_resolve(source: str, output: Path, *, announce: bool = True) -> Path:
+    def fake_resolve(source: str, output: Path, *, announce: bool = True, **kwargs) -> Path:
         assert output == tmp_path and announce is False
         seen.append(source)
         return tmp_path / ("1" if "abc123" in source else "2")
 
-    def fake_compare(directories, override, *, rank_positions=None, skip_analysis_errors=False):
+    def fake_compare(directories, override, progress=None, *, rank_positions=None, skip_analysis_errors=False, **kwargs):
         assert directories == [tmp_path / "1", tmp_path / "2"]
         assert override is None
         assert rank_positions == (1, 3)
@@ -147,7 +147,7 @@ def test_top_ten_skips_one_unanalyzable_rank_and_shows_its_reason(
             (),
         )
 
-    def fake_resolve(source: str, output: Path, *, announce: bool = True) -> Path:
+    def fake_resolve(source: str, output: Path, *, announce: bool = True, **kwargs) -> Path:
         return tmp_path / ("bad" if "bad123" in source else "good")
 
     def fake_analyze(directory: Path, actions: Path) -> AnalysisResult:
@@ -170,7 +170,7 @@ def test_top_ten_skips_one_unanalyzable_rank_and_shows_its_reason(
     monkeypatch.setattr(cli, "analyze_saved_fight", fake_analyze)
     assert cli.main(["fflogs", "brd", "umad", "--output", str(tmp_path)]) == 0
     output = capsys.readouterr().out
-    assert "   2  Bard" in output
+    assert 'Rank 2 - Bard' in saved_html_report(output).get_text()
     assert "Skipped ranks: 1 (cannot match Stormbite tick to a landed DoT application)" in output
 
 
@@ -224,7 +224,7 @@ def test_cli_compares_inclusive_rank_range(monkeypatch, tmp_path: Path, capsys) 
             ((5001, "report inaccessible"),),
         )
 
-    def fake_compare(urls, output, actions, progress, *, rank_positions, skip_analysis_errors):
+    def fake_compare(urls, output, actions, progress, *, rank_positions, skip_analysis_errors, **kwargs):
         assert output == tmp_path and actions is None
         assert rank_positions == (5000, 5024)
         assert skip_analysis_errors
@@ -250,7 +250,7 @@ def test_cli_compares_selected_rank_positions(monkeypatch, tmp_path: Path, capsy
         return (((1, ReportReference("abc123", 9, 2)),
                  (153, ReportReference("def456", 3, 7))), ((2, "unavailable"),))
 
-    def fake_compare(urls, output, actions, progress, *, rank_positions, skip_analysis_errors):
+    def fake_compare(urls, output, actions, progress, *, rank_positions, skip_analysis_errors, **kwargs):
         assert rank_positions == (1, 153)
         assert skip_analysis_errors
         return ()
@@ -283,12 +283,12 @@ def test_cli_uses_dungeon_encounter_and_default_partition(monkeypatch, capsys) -
 def test_rank_range_keeps_comparing_after_unavailable_download(monkeypatch, tmp_path: Path) -> None:
     urls = ["first", "missing", "third"]
 
-    def fake_resolve(source: str, output: Path, *, announce: bool = True) -> Path:
+    def fake_resolve(source: str, output: Path, *, announce: bool = True, **kwargs) -> Path:
         if source == "missing":
             raise cli.FFLogsError("report unavailable")
         return tmp_path / source
 
-    def fake_compare(directories, actions, *, rank_positions, skip_analysis_errors):
+    def fake_compare(directories, actions, progress=None, *, rank_positions, skip_analysis_errors, **kwargs):
         assert directories == [tmp_path / "first", tmp_path / "third"]
         assert rank_positions == (5000, 5002)
         assert skip_analysis_errors
@@ -337,11 +337,11 @@ def test_rankings_show_current_step_before_lookup(monkeypatch, tmp_path: Path) -
             (),
         )
 
-    def fake_resolve(source: str, output: Path, *, announce: bool = True) -> Path:
+    def fake_resolve(source: str, output: Path, *, announce: bool = True, **kwargs) -> Path:
         return tmp_path / "saved"
 
     def fake_compare(directories, override, progress, *, rank_positions=None,
-                     skip_analysis_errors=False):
+                     skip_analysis_errors=False, **kwargs):
         assert rank_positions == (1, 2)
         assert skip_analysis_errors
         progress.clear()

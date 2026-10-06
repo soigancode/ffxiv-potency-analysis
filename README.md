@@ -99,13 +99,13 @@ Ranges and comma-separated selections contain 2–25 distinct leaderboard positi
 
 Use `pld`, `war`, `brd`, `mch`, or `dnc` for the job. The full job names also work.
 
-Add `--html` to save a browser report in `reports/`:
+Analysis and leaderboard commands save HTML reports in `reports/` by default. The terminal shows download and calculation progress, saved files and errors:
 
 ```bash
-ffxiv-potency fflogs pld m12sp1 7 --html
-ffxiv-potency fflogs war dmu --html
-ffxiv-potency fflogs pld dmu 1-5 --html
-ffxiv-potency fflogs pld dmu 1,3,7 --html
+ffxiv-potency fflogs pld m12sp1 7
+ffxiv-potency fflogs war dmu
+ffxiv-potency fflogs pld dmu 1-5
+ffxiv-potency fflogs pld dmu 1,3,7
 ```
 
 One rank saves `job_fight_rank.html`. Leaderboards save `job_fight_top.html`, ranges save `job_fight_first-last.html`, and selected ranks save `job_fight_ranks-1-3-7.html`. A leaderboard file includes the comparison table and every successfully analysed player's full report. Click a player to open their analysis. The sidebar highlights the section being viewed and lets you switch between reports. Click a leaderboard column header to sort, then click again to reverse the order. Hover over Notes for the comparison explanations. Skipped ranks retain their reasons. The files work offline. The `umad` alias uses `dmu` in filenames.
@@ -150,7 +150,7 @@ ffxiv-potency analyse "https://www.fflogs.com/reports/REPORT1?fight=9&source=18"
 
 The report shows the player, fight, duration, date, patch, assumed gear, potency, PPS, and FF Logs damage metrics. It marks wipes and lists deaths and damage penalties. All jobs use the same section order where applicable: execution summary, deaths and damage penalties, cooldowns and burst windows, combos and ready effects, melee downtime, potions, missing-hit diagnostics, Hit Bonus and Luck, action totals and auto-attacks, and data assumptions. DoT potency tables appear between the main action table and auto-attacks.
 
-Add `--html report.html` to `analyse` to also save an HTML report in `reports/` with the same results and section order as the terminal report. It shows the saved individual FF Logs rank when available. An explicit directory path overrides the default location. Open the file in a browser. Styles are included, so it works offline.
+Saved-log analysis uses `job_fight_rank.html` when an individual rank is available. Otherwise the filename includes the report, fight and source IDs. `compare` saves `reports/comparison.html` with the comparison and full player reports. Use `--report report.html` on `analyse`, `compare` or ranked `fflogs` commands to choose a filename. Bare filenames go in `reports/`, while an explicit directory path overrides that location. Open the saved file in a browser. Styles and scripts are included, so it works offline.
 
 To save a fight without analysing it, run `ffxiv-potency fflogs "<report URL>"`.
 

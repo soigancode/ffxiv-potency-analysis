@@ -12,17 +12,19 @@ from ffxiv_potency.analysis import (
 )
 from ffxiv_potency.fflogs import DownloadResult, ReportReference
 
-from .helpers import _write_selected_log
+from .helpers import _write_selected_log, saved_html_report
 
 
 def test_cli_analyses_historical_warrior_log(war_saved_sources, capsys):
     assert cli.main(["analyse", str(war_saved_sources[0])]) == 0
-    output = capsys.readouterr().out
+    status = capsys.readouterr().out
+    assert 'Player:' not in status
+    output = saved_html_report(status).get_text(' ')
     assert "Actions: valid since 7.4" in output
     assert "Gear: 7.4 Savage BiS (assumed)" in output
     assert "Grade 4 Gemdraught of Strength [HQ]" in output
-    assert "Surging Tempest:" in output and "Cooldowns and burst windows:" in output
-    assert "Melee downtime:" in output
+    assert "Surging Tempest" in output and "Cooldowns and burst windows" in output
+    assert "Melee downtime" in output
     assert "  Surging Tempest: 0 uses" not in output
     assert "Tomahawk:" in output
     assert "Metric Baseline Recorded Adjusted" in " ".join(output.split())
@@ -37,13 +39,15 @@ def test_cli_analyses_saved_brd_fight(
     monkeypatch.chdir(tmp_path)
 
     assert cli.main(["analyse", str(tmp_path)]) == 0
-    output = capsys.readouterr().out
+    report = saved_html_report(capsys.readouterr().out)
+    output = report.get_text(' ')
     assert "Pitch Perfect" in output
     assert "Apex Arrow" in output
     assert "phase transition" not in output
-    variable_section = output.split("Apex Arrow and Pitch Perfect:", 1)[1].split("\n\n", 1)[0]
-    assert "Radiant Encore" not in variable_section
-    assert "Radiant Encore" in output.split("Action totals and auto-attacks:", 1)[1]  # Still counted in the actions summary.
+    variable_heading = report.find('h3', string='Apex Arrow and Pitch Perfect')
+    assert variable_heading is not None
+    assert 'Radiant Encore' not in variable_heading.find_next('table').get_text()
+    assert "Radiant Encore" in output.split("Action totals and auto-attacks", 1)[1]
 
 
 

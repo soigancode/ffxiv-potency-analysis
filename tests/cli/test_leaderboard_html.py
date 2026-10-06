@@ -76,7 +76,7 @@ def test_leaderboard_html_reuses_analyses_and_lists_all_skips(
     monkeypatch.setattr(cli, 'analyze_saved_fight', analyze)
     before = _encode(result)
     args = ['fflogs', 'war', 'umad', *([selection] if selection else []),
-            '--gear', 'relic_7_55', '--html']
+            '--gear', 'relic_7_55']
     assert cli.main(args) == 0
     assert calls == ['abc123', 'bad123', 'def456']
     assert _encode(result) == before

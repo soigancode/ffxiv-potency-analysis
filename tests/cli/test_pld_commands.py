@@ -20,6 +20,8 @@ from ffxiv_potency.analysis.ranged import RangedChain
 from ffxiv_potency.fflogs.selection import ReportFight, ReportPlayer
 from ffxiv_potency.jobguide import SnapshotResult
 
+from .helpers import saved_html_report
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -72,33 +74,33 @@ def test_cli_analyse_compare_and_gear_override(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     first = logs / "dzyx6FtjcQXMDJP3/fight-13/source-98"
     assert cli.main(["analyse", str(first)]) == 0
-    output = capsys.readouterr().out
+    status = capsys.readouterr().out
+    assert 'Player:' not in status
+    report = saved_html_report(status)
+    output = report.get_text(' ')
     assert "Gear: 7.55 Real BiS (assumed)" in output
-    assert "Blade of Valor: unenhanced" in output
+    assert "Blade of Valor: unenhanced" in str(report)
     assert "Fight or Flight:" in output and "Circle of Scorn:" in output
     assert "rDPS/nDPS:" in output
-    assert "fight-13" not in output and "Fight ID" not in output
-    assert "\n  Spell casts:\n  Spell" in output
-    spell_table = output.split("\n  Spell casts:\n", 1)[1].split("\n\n", 1)[0]
+    spell_table = report.select_one('table[data-spells]')
+    assert spell_table is not None
     effect_order = {"Divine Might": 0, "Requiescat": 1, "None": 2}
-    spell_rows = [re.split(r"\s{2,}", row.strip()) for row in spell_table.splitlines()[1:]]
+    spell_rows = [[cell.get_text() for cell in row.select('td')] for row in spell_table.select('tbody tr')]
     assert {row[1] for row in spell_rows} == set(effect_order)
     spell_effects = [(row[0], effect_order[row[1]]) for row in spell_rows]
     assert spell_effects == sorted(spell_effects)
-    assert "\n  DoTs:\n  DoT" in output
-    assert output.index("Action totals and auto-attacks:") < output.index("\n  DoTs:") < output.index("\n  Auto-attacks:")
-    assert "\nDoTs:" not in output
-    assert "07m 31s" in output and " -> 2.50s -> HS (hard-cast) -> 2.50s -> " in output
-    assert output.isascii()
+    assert output.index("Action totals and auto-attacks") < output.index("DoTs") < output.rindex("Auto-attacks")
+    assert "07m 31s" in output and "HS (hard-cast)" in report.get_text()
     assert output.index("Direct Hit") < output.index("Critical Hit")
     assert cli.main(["analyse", str(first), "--gear", "relic_7_55"]) == 0
-    assert "Gear: 7.55 Relic BiS (user-selected)" in capsys.readouterr().out
+    assert "Gear: 7.55 Relic BiS (user-selected)" in saved_html_report(capsys.readouterr().out).get_text()
     assert cli.main(["compare",
                      "https://www.fflogs.com/reports/dzyx6FtjcQXMDJP3?fight=13&source=98",
                      "https://www.fflogs.com/reports/kp4CzadVbJXQ216Z?fight=7&source=23"]) == 0
-    output = capsys.readouterr().out
+    output = saved_html_report(capsys.readouterr().out).get_text()
     assert "rDPS/nDPS" in output and "dPPS" in output
     assert "aHB" in output and "aLuck" in output
+
 
 
 @pytest.mark.parametrize("alias", ["pld", "paladin"])

@@ -15,7 +15,7 @@ from ffxiv_potency.analysis import (
 )
 from ffxiv_potency.fflogs import DownloadResult
 
-from .helpers import _write_selected_log
+from .helpers import _write_selected_log, saved_html_report
 
 
 @pytest.mark.parametrize(("job", "ndps", "combined"), [
@@ -51,7 +51,9 @@ def test_cli_compares_supplied_warrior_logs(war_saved_sources, capsys):
                     f"?fight={reference.fight_id}&source={reference.source_id}")
     assert cli.main(["compare", *urls]) == 0
     output = capsys.readouterr().out
-    assert "Poto Gota" in output and "Chad Bradly" in output
+    assert "Player:" not in output
+    text = saved_html_report(output).get_text()
+    assert "Poto Gota" in text and "Chad Bradly" in text
 
 
 def test_cli_rejects_previous_partition_for_analyse_and_compare(
@@ -162,27 +164,23 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
 
     assert cli.main(["compare", *urls, "--actions", str(actions), "--output", str(tmp_path)]) == 0
     output = capsys.readouterr().out
-    assert output.startswith("\nFight:") and output.endswith("\n\n")
-    assert "Saved fight data:" not in output
-    assert "Fight: Boss" in output
-    assert "01m 40s" in output
-    assert "nDPS" in output and "15,000.0" in output
-    assert "rDPS" in output and "15,100.0" in output
-    assert "Player" in output and "aLuck" in output and "45.12%" in output
-    assert next(line for line in output.splitlines() if line.startswith("Player")).endswith("Date")
-    assert all(line.endswith("01/05/26") for line in output.splitlines()
-               if line.startswith(("Alice", "Bob")))
-    assert "Rank" not in output
-    assert "aLuck" in output and "45.12%" in output
-    header = next(line for line in output.splitlines() if line.startswith("Player"))
-    assert header.index("PPS") < header.index("aHB") < header.index("aLuck")
-    assert "HB" not in header.split()
-    assert "nDPS  Potency" in output
-    assert header.split()[-4:] == ["Notes", "Partition", "Patch", "Date"]
-    assert "Party" not in output and "Echo" not in output
-    assert "Crit" not in output and "DH" not in output and "CDH" not in output
-    assert "Alice" in output and "1,000" in output and "10" in output
-    assert "Bob" in output and "1,200" in output and "12" in output
+    assert output.startswith("Saved HTML report:")
+    assert "Saved fight data:" not in output and "Player:" not in output
+    report = saved_html_report(output)
+    text = report.get_text()
+    assert "Boss Comparison" in text and "01m 40s" in text
+    assert "nDPS" in text and "15,000.0" in text
+    assert "rDPS" in text and "15,100.0" in text
+    assert "Alice" in text and "Bob" in text and "aLuck" in text and "45.12%" in text
+    summary = report.select_one('#leaderboard')
+    assert summary is not None
+    header = [th.get_text().removesuffix(' (?)') for th in summary.select('th')]
+    assert header[:2] == ['#', 'Player']
+    assert header[-4:] == ['Notes', 'Partition', 'Patch', 'Date']
+    assert header.index('PPS') < header.index('aHB') < header.index('aLuck')
+    assert 'Ranked by' not in text
+    assert 'PPS difference from the first selected player' in str(report)
+
 
     cli._compare_directories(
         [tmp_path / "abc123/fight-9/source-18", tmp_path / "def456/fight-2/source-7"],
@@ -272,11 +270,11 @@ def test_cli_compare_requires_two_to_ten_urls(capsys, count: int) -> None:
 def test_cli_compare_accepts_ten_urls(monkeypatch, tmp_path: Path) -> None:
     url = "https://www.fflogs.com/reports/abc?fight=1&source=2"
 
-    def fake_resolve(source: str, output: Path, *, announce: bool = True) -> Path:
+    def fake_resolve(source: str, output: Path, *, announce: bool = True, **kwargs) -> Path:
         assert source == url and announce is False
         return tmp_path / "source-2"
 
-    def fake_compare(directories, override) -> None:
+    def fake_compare(directories, override, *args, **kwargs) -> None:
         assert directories == [tmp_path / "source-2"] * 10
         assert override is None
 
@@ -387,11 +385,11 @@ def test_compare_downloads_concurrently_and_keeps_input_order(monkeypatch, tmp_p
     simultaneous = Barrier(3, timeout=3)
     completed = []
 
-    def fake_resolve(source: str, output: Path, *, announce: bool = True) -> Path:
+    def fake_resolve(source: str, output: Path, *, announce: bool = True, **kwargs) -> Path:
         simultaneous.wait()  # Sequential downloads would fail this test.
         return tmp_path / source
 
-    def fake_compare(directories, override) -> None:
+    def fake_compare(directories, override, *args, **kwargs) -> None:
         completed.extend(directories)
 
     monkeypatch.setattr(cli, "_resolve_analysis_directory", fake_resolve)

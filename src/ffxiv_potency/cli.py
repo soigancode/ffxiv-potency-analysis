@@ -115,12 +115,17 @@ class _Progress(AbstractContextManager["_Progress"]):
     def __init__(self) -> None:
         self.width = 0
         self.enabled = sys.stderr.isatty()
+        self.last_status: tuple[str, int, int] | None = None
 
     def __enter__(self) -> Self:
         return self
 
     def update(self, label: str, done: int, total: int, *, detail: str = "") -> None:
         if not self.enabled:
+            status = (label, done, total)
+            if done in {0, total} and status != self.last_status:
+                print(f"{label}: {done}/{total}", file=sys.stderr)
+                self.last_status = status
             return
         filled = round(20 * done / total)
         line = f"{label}: [{'#' * filled}{'-' * (20 - filled)}] {done}/{total}"
@@ -132,6 +137,7 @@ class _Progress(AbstractContextManager["_Progress"]):
 
     def message(self, label: str) -> None:
         if not self.enabled:
+            print(label, file=sys.stderr)
             return
         sys.stderr.write("\r" + label.ljust(self.width))
         sys.stderr.flush()
@@ -181,7 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fflogs.add_argument("--output", type=Path, default=Path("data/logs"), help="output root")
     fflogs.add_argument("--html", action="store_true",
-                        help="also save a ranked report or leaderboard with full analyses in reports/")
+                        help=argparse.SUPPRESS)
 
     compare = commands.add_parser("compare", help="download and compare FF Logs sources")
     compare.add_argument("urls", nargs="+", help="two to ten report URLs or IDs")
@@ -196,8 +202,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--actions", type=Path, help=f"override the job's default {LATEST_KNOWN_PATCH} actions.json"
     )
     analyse.add_argument("--output", type=Path, default=Path("data/logs"), help="download root")
-    analyse.add_argument("--html", type=Path,
-                         help="also write a standalone HTML report (bare filenames go in reports/)")
+    analyse.add_argument("--report", "--html", dest="report", type=Path,
+                         help="HTML report destination (bare filenames go in reports/)")
+    for command in (compare, fflogs):
+        command.add_argument("--report", type=Path,
+                             help="HTML report destination (bare filenames go in reports/)")
     for command in (analyse, compare, fflogs):
         command.add_argument("--gear", help="gear profile ID; default selects BiS by fight date")
     return parser
@@ -380,13 +389,14 @@ def _compare_directories(
         raise ValueError(f"comparison requires the same fight; received: {fights}")
     if progress is not None:
         progress.clear()
-    _print_comparison(results)
-    print(f"Fight: {_format_fight(results[0])}")
+    if html_output is None:
+        _print_comparison(results)
+        print(f"Fight: {_format_fight(results[0])}")
     provenance = [_fight_provenance(directory) for directory in compared_directories]
     shared_provenance = rank_positions is not None and len(set(provenance)) == 1
     show_partition = not (rank_positions is not None
                           and results[0].encounter_id in {4549, 4550, 4551})
-    if shared_provenance:
+    if shared_provenance and html_output is None:
         partition, patch = provenance[0]
         if show_partition:
             print(f"Partition: {partition}")
@@ -432,25 +442,27 @@ def _compare_directories(
             *provenance_values,
             _fight_date(compared_directories[index]),
         ))
-    widths = tuple(max(len(label), *(len(row[column]) for row in rows))
-                   for column, label in enumerate(labels))
-    separator = "  "
-    rank_header = f"{'Rank':>4}{separator}" if rank_positions is not None else ""
-    print(f"{rank_header}{'Player':<24}{separator}" + separator.join(
-        label if label == "Date" else f"{label:>{width}}"
-        for label, width in zip(labels, widths)
-    ))
-    for index, (result, row) in enumerate(zip(results, rows)):
-        rank = f"{compared_ranks[index]:>4}{separator}" if rank_positions is not None else ""
-        player = _comparison_player_field(result.source_name, compared_directories[index])
-        print(f"{rank}{player}{separator}" + separator.join(
-            f"{value:>{width}}" for value, width in zip(row, widths)
+    if html_output is None:
+        widths = tuple(max(len(label), *(len(row[column]) for row in rows))
+                       for column, label in enumerate(labels))
+        separator = "  "
+        rank_header = f"{'Rank':>4}{separator}" if rank_positions is not None else ""
+        print(f"{rank_header}{'Player':<24}{separator}" + separator.join(
+            label if label == "Date" else f"{label:>{width}}"
+            for label, width in zip(labels, widths)
         ))
+        for index, (result, row) in enumerate(zip(results, rows)):
+            rank = f"{compared_ranks[index]:>4}{separator}" if rank_positions is not None else ""
+            player = _comparison_player_field(result.source_name, compared_directories[index])
+            print(f"{rank}{player}{separator}" + separator.join(
+                f"{value:>{width}}" for value, width in zip(row, widths)
+            ))
     comparison_notes = []
 
     def comparison_note(text: str) -> None:
         comparison_notes.append(text)
-        print(text)
+        if html_output is None:
+            print(text)
 
     if any(result.targetable_seconds is None for result in results):
         comparison_note("n/a Targetable time unavailable. PPS uses full duration for those logs.")
@@ -464,12 +476,16 @@ def _compare_directories(
     if any(deployment.mch_gauge_inferred for result in results
            for deployment in result.pet_deployments):
         comparison_note("~ Potency, PPS, hit bonus, and luck include Battery estimated from Queen damage.")
-    print()
+    if html_output is None:
+        print()
     if html_output is not None:
         from .html_report import write_leaderboard_report
 
-        write_leaderboard_report(results, compared_directories, compared_ranks, labels, rows,
+        write_leaderboard_report(results, compared_directories,
+                                 compared_ranks if rank_positions is not None else list(range(1, len(results) + 1)),
+                                 labels, rows,
                                  html_output, job=jobs[0], skipped=(*html_skipped, *skipped),
+                                 ranked=rank_positions is not None,
                                  notes=tuple(comparison_notes), metadata=(
                                      ((f'Partition: {provenance[0][0]}',) if show_partition else ())
                                      + (f'Patch: {provenance[0][1]}',) if shared_provenance else ()))
@@ -802,7 +818,7 @@ def _download_and_compare(
     gear_options: _ComparisonOptions = {"gear": gear} if gear is not None else {}
     if html_output is not None:
         gear_options.update(html_output=html_output, html_skipped=(*html_skipped, *skipped))
-    if progress.enabled:
+    if progress.enabled or html_output is not None:
         if compared_ranks is None:
             _compare_directories(directories, actions, progress, **gear_options)
         elif skip_analysis_errors:
@@ -851,6 +867,27 @@ def _compare_ranked_references(
             f"{rank} ({reason})" for rank, reason in skipped_ranks
         ))
         print()
+
+
+def _html_destination(path: Path) -> Path:
+    return Path("reports") / path if path.parent == Path(".") and not path.is_absolute() else path
+
+
+def _default_analysis_report(result: AnalysisResult, directory: Path, job: str) -> Path:
+    from .html_report import _saved_rank
+
+    fight = next((alias for alias, encounter in CURRENT_FIGHTS.items()
+                  if encounter == result.encounter_id), None)
+    if fight is None:
+        fight = re.sub(r"[^a-z0-9]+", "-", result.fight_name.casefold()).strip("-") or "fight"
+    rank = _saved_rank(directory, result, job)
+    if rank is not None:
+        suffix = rank.removeprefix("Saved rank ")
+    else:
+        reference = _reference_from_directory(directory)
+        suffix = (f"{reference.report_code.replace(':', '-')}_{reference.fight_id}_{reference.source_id}"
+                  if reference is not None else re.sub(r"[^a-zA-Z0-9_-]+", "-", directory.name))
+    return Path("reports") / f"{job_code(job)}_{fight}_{suffix}.html"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -964,7 +1001,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     f"?fight={reference.fight_id}&source={reference.source_id}"
                 )
             with _Progress() as progress:
-                _download_and_compare(urls, args.output, args.actions, progress, gear=args.gear)
+                _download_and_compare(urls, args.output, args.actions, progress, gear=args.gear,
+                                      html_output=_html_destination(args.report or Path("comparison.html")))
             return 0
 
         if args.command == "analyse":
@@ -991,25 +1029,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                           else analyze_saved_fight(directory, actions_path))
                 progress.update("Calculating potency", 1, 1)
             reference = _reference_from_directory(directory)
-            _print_analysis(
-                result, directory=directory,
+            from .html_report import write_html_report
+
+            destination = (_html_destination(args.report) if args.report is not None
+                           else _default_analysis_report(result, directory, job))
+            write_html_report(
+                result, destination, directory=directory,
                 anonymous=reference is not None and reference.report_code.startswith("a:"),
             )
-            if args.html is not None:
-                from .html_report import write_html_report
-
-                destination = (Path("reports") / args.html
-                               if args.html.parent == Path(".") and not args.html.is_absolute()
-                               else args.html)
-                write_html_report(
-                    result, destination, directory=directory,
-                    anonymous=reference is not None and reference.report_code.startswith("a:"),
-                )
-                print(f"Saved HTML report: {destination}")
+            print(f"Saved HTML report: {destination}")
             return 0
 
         if args.command == "fflogs":
-            if args.html and args.fight is None:
+            if (args.html or args.report is not None) and args.fight is None:
                 raise ValueError("fflogs --html requires a job and fight")
             if args.url.casefold() == "limit":
                 if args.fight is not None or args.rank is not None or args.partition is not None:
@@ -1033,14 +1065,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                         f"unknown fight {args.fight!r}; choose: {', '.join(CURRENT_FIGHTS)}"
                     )
                 current_partition(encounter_id, args.partition)
-                html_options: _LeaderboardOptions = {}
-                if args.html:
-                    fight = next(alias for alias, encounter in CURRENT_FIGHTS.items()
-                                 if encounter == encounter_id)
-                    selection = ('ranks-' + args.rank.replace(',', '-')
-                                 if args.rank is not None and ',' in args.rank else args.rank or 'top')
-                    html_options['html_output'] = (
-                        Path('reports') / f'{job_code(job)}_{fight}_{selection}.html')
+                fight = next(alias for alias, encounter in CURRENT_FIGHTS.items()
+                             if encounter == encounter_id)
+                selection = ('ranks-' + args.rank.replace(',', '-')
+                             if args.rank is not None and ',' in args.rank else args.rank or 'top')
+                destination = (_html_destination(args.report) if args.report is not None
+                               else Path('reports') / f'{job_code(job)}_{fight}_{selection}.html')
+                html_options: _LeaderboardOptions = {'html_output': destination}
                 rank_range = _RANK_RANGE.fullmatch(args.rank) if args.rank is not None else None
                 if rank_range is not None:
                     first, last = map(int, rank_range.groups())
@@ -1073,6 +1104,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     if not args.rank.isdecimal() or int(args.rank) < 1:
                         raise ValueError("rank must be a positive number")
                     rank = int(args.rank)
+                    if args.report is None:
+                        destination = Path("reports") / f"{job_code(job)}_{fight}_{rank}.html"
                     with _Progress() as progress:
                         progress.message("Connecting to FF Logs...")
                         reference = ranked_source(
@@ -1095,21 +1128,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                         result = (analyze_saved_fight(directory, actions_path, gear=args.gear) if args.gear is not None
                           else analyze_saved_fight(directory, actions_path))
                         progress.update("Calculating potency", 1, 1)
-                    _print_analysis(
-                        result, directory=directory, rank=rank,
+                    from .html_report import write_html_report
+
+                    write_html_report(
+                        result, destination, directory=directory, rank=rank,
                         anonymous=reference.report_code.startswith("a:"),
                     )
-                    if args.html:
-                        from .html_report import write_html_report
-
-                        fight = next(alias for alias, encounter in CURRENT_FIGHTS.items()
-                                     if encounter == encounter_id)
-                        destination = Path("reports") / f"{job_code(job)}_{fight}_{rank}.html"
-                        write_html_report(
-                            result, destination, directory=directory, rank=rank,
-                            anonymous=reference.report_code.startswith("a:"),
-                        )
-                        print(f"Saved HTML report: {destination}")
+                    print(f"Saved HTML report: {destination}")
                     return 0
                 with _Progress() as progress:
                     progress.message("Connecting to FF Logs...")
