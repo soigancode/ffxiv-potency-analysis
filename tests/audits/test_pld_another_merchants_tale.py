@@ -111,8 +111,9 @@ def test_recorded_amt_combat_time_corrects_all_report_timestamps(tmp_path, capsy
     assert analyze_saved_fight(tmp_path, actions) == after
     cli._print_analysis(after)
     output = capsys.readouterr().out
-    assert 'Duration: 14m30s' in output
-    assert '04m36s Sepulchre -> Riot Blade:' in output
-    assert ('04m07s: Blade of Truth cast, no hit - '
-            'target defeated before hit landed') in output
+    assert 'Duration: 14m 30s' in output
+    assert '04m 36s Sepulchre -> Riot Blade:' in output
+    context = output.split('  Follow-up context:\n', 1)[1].split('\n  Spell casts:', 1)[0]
+    assert ('04m 19s Blade of Truth on Darya the Sea-Maid '
+            '(target defeated before hit landed)') in context
     assert '22.357s pre-pull excluded' in output

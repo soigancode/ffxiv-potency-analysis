@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..datasets import load_manifest, resolve_datasets
-from ..fflogs.partitions import EXTREME_ENCOUNTERS
+from ..fflogs.partitions import DUNGEON_RELEASE_PATCHES, EXTREME_ENCOUNTERS
 from ..jobguide.schema import ACTION_SCHEMA_VERSION
 from ..patches import LATEST_KNOWN_PATCH
 from .auto_attacks import _is_auto_attack, _summarize_auto_attacks
@@ -70,6 +70,7 @@ from .models import (
 )
 from .party import party_bonus_percent
 from .penalties import (
+    life_with_revival_evidence,
     load_damage_penalties,
     penalty_multiplier,
     revival_multiplier,
@@ -162,7 +163,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
     life_path = directory / "life-events.json"
     life = _load_json(life_path, list) if life_path.is_file() else []
     revival_buffs_path = directory / "revival-buff-events.json"
-    revival_buffs = _load_json(revival_buffs_path, list) if revival_buffs_path.is_file() else []
+    revival_buffs = _load_json(revival_buffs_path, list) if revival_buffs_path.is_file() else None
     targetability_path = directory / "targetability-events.json"
     targetability_events = (
         _load_json(targetability_path, list) if targetability_path.is_file() else []
@@ -244,6 +245,12 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         if actors.get(event.get("sourceID"), {}).get("type") == "Player"
     )
     source_id = player_source_counts.most_common(1)[0][0] if player_source_counts else None
+    status_windows = summarize_status_windows(
+        debuffs, life, ability_names, source_id, float(start), float(end), sorted_casts,
+        revival_buffs, encounter_overkills=encounter_overkills, actors=actors,
+        dungeon=encounter_id in DUNGEON_RELEASE_PATCHES,
+    )
+    life = life_with_revival_evidence(life, status_windows, source_id, float(start))
     source_name = actors.get(source_id, {}).get("name", f"Source {source_id}")
     if selection and combatants:
         for combatant in combatants:
@@ -863,7 +870,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                 war_time -= .001
             war_factor = self_damage_multiplier(str(event.get("buffs", "")), war_time, self_buff_windows)
             war_hit_rows.append((war_time, name, sum(values) / 2, war_factor))
-        if job.casefold() in JOBS and source_actor is None:
+        if (job.casefold() in JOBS or job.casefold() == "paladin") and source_actor is None:
             resolved_time = (buff_time if job.casefold() == "bard" else
                              snapshot_times.get(key, float(event.get("timestamp", 0))))
             if job.casefold() == "dancer" and action.get("damage_buff"):
@@ -922,6 +929,12 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
 
     phase_lock_windows = find_phase_locks(
         encounter_overkills, casts, raw_damage, actors, targetability_events, end, encounter_id
+    )
+
+    from .targetability import package_targetable_time
+    package_targets = package_targetable_time(
+        targetable_time, actors, encounter_damage or raw_damage, targetability_events,
+        encounter_overkills, phase_lock_windows, start, end,
     )
 
     # FF Logs can record the death event about two seconds after the lethal
@@ -1302,10 +1315,7 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                 landed, ability_names, float(start), combat_profile, revival_losses, penalty_hit_losses,
             ),
         ),
-        status_windows=summarize_status_windows(
-            debuffs, life, ability_names, source_id, float(start), float(end), sorted_casts,
-            revival_buffs, encounter_overkills=encounter_overkills, actors=actors,
-        ),
+        status_windows=status_windows,
         food_missing_windows=tuple(
             ((begin - start) / 1000, (finish - start) / 1000)
             for begin, finish in missing_food
@@ -1339,12 +1349,15 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
         ),
         execution=summarize_execution(job.casefold(), sorted_casts, raw_damage, buffs, debuffs, life,
                                       combatants or [], ability_names, actions, actors, source_id,
-                                      start, end, targetable_time, self_buff_windows),
+                                      start, end,
+                                      package_targets if targetable_time.intervals else targetable_time,
+                                      self_buff_windows),
         random_hit_outcomes=HitOutcomeSummary(*random_outcomes),
         hit_bonus=hit_bonus_total / hit_bonus_weight if hit_bonus_weight else 0.0,
         adjusted_hit_bonus=max(0.0, (hit_bonus_total - hit_bonus_adjustment) / hit_bonus_weight) if hit_bonus_weight else 0.0,
         war=summarize_war(sorted_casts, buffs, combatants or [], ability_names, actions,
-                          source_id, start, end, war_hit_rows, targetable_time, self_buff_windows) if job.casefold() == "warrior" and source_id is not None else None,
+                          source_id, start, end, war_hit_rows, targetable_time, self_buff_windows,
+                          raw_damage) if job.casefold() == "warrior" and source_id is not None else None,
         pld=summarize_pld(sorted_casts, buffs, life, combatants or [], ability_names, actions,
                           source_id, start, end, pld_state, pld_hit_rows,
                           PldDotSummary(len(pld_circle_applications),
@@ -1357,7 +1370,8 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                               **{(name, seconds): f"target at {hp} HP"
                                  for name, losses in ghosted_target_low_hp.items()
                                  for seconds, hp in losses},
-                          })
+                          }, debuffs=debuffs,
+                          timing_targetable=package_targets if targetable_time.intervals else targetable_time)
         if pld_state is not None else None,
         luck_score=luck_weighted_bonus / luck_weighted_maximum if luck_weighted_maximum else 0.0,
         adjusted_luck_score=(
@@ -1397,6 +1411,23 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                     combat_profile.potion_buff_id, combat_profile.player_potion_multiplier,
                     buffs, end),
             ))
+            from .war.burst_opportunities import summarize_ir_opportunities, summarize_opportunities
+            war = result.war
+            assert war is not None
+            result = replace(result, war=replace(war,
+                ir_opportunities=summarize_ir_opportunities(
+                    sorted_casts, raw_damage, buffs, life, ability_names, actions,
+                    source_id, start, end, package_targets, war.bursts, combatants or (),
+                ),
+                potion_opportunities=summarize_opportunities(
+                    sorted_casts, raw_damage, buffs, life, ability_names, actions,
+                    source_id, start, end, potion_windows, package_targets,
+                    war.potion_bursts,
+                    potency_rows=alignment_rows,
+                    potion_multiplier=combat_profile.player_potion_multiplier,
+                    potion_id=combat_profile.potion_buff_id,
+                ),
+            ))
         hit_failures = {
             **{(name, seconds): reason for name, losses in ghosted_ending_times.items()
                for seconds, reason in losses},
@@ -1412,7 +1443,9 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
             context += sequence_context(result, life, source_id, start, end, targetable_time)
         result = replace(result,
             cooldown_timing=summarize_timing(job.casefold(), sorted_casts, raw_damage, actions,
-                ability_names, life, source_id, start, end, targetable_time),
+                ability_names, life, source_id, start, end,
+                package_targets if targetable_time.intervals else targetable_time,
+                debuffs, combatants or ()),
             burst_alignment=summarize_alignment(job.casefold(), alignment_rows, buffs,
                 ability_names, source_id, start, end, self_buff_windows, combat_profile,
                 guaranteed_packets),
@@ -1420,4 +1453,69 @@ def _analyze_saved_fight(directory: Path, actions_path: Path, *, gear: str | Non
                                  combo_inferences) if job.casefold() != "bard" else None,
             follow_up_context=tuple(sorted(context, key=lambda c: c.seconds)),
         )
+    if source_id is not None and job.casefold() in {"paladin", "bard", "machinist", "dancer"}:
+        from .all_packages import summarize_job_packages
+        periodic_targets = {}
+        if job.casefold() == 'paladin':
+            from .pld.package_rules import scorn_target_windows
+            periodic_targets = scorn_target_windows(raw_damage, encounter_damage or raw_damage,
+                ability_names, source_id, actors, targetability_events, encounter_overkills,
+                phase_lock_windows, targetable_time, start, end)
+        packages = summarize_job_packages(job.casefold(), result, sorted_casts, raw_damage,
+            buffs, life, ability_names, actions, source_id, start, end, package_targets,
+            self_buff_windows, brd_estimates, pld_spell_potencies, primary_hits,
+            combat_profile.potion_buff_id, combatants or (), periodic_targets,
+            alignment_rows, combat_profile.player_potion_multiplier)
+        if result.pld is not None:
+            from .pld.burst_opportunities import BURST_ACTIONS
+            windows = dict(packages).get("Fight or Flight", ())
+            original = result.pld.burst_opportunities
+            updated = []
+            for index, window in enumerate(windows):
+                previous = {a.name: a for a in original[index].actions} if index < len(original) else {}
+                current = {a.name: a for a in window.actions}
+                rows = tuple(replace(current[name], expected=None, notes=previous[name].notes)
+                    if name in previous and "outside multi-target use retained" in previous[name].notes
+                    else current[name] for name in BURST_ACTIONS)
+                updated.append(replace(window, actions=rows, landed_potency=(
+                    original[index].landed_potency if index < len(original) else window.landed_potency)))
+            from .pld.cleaves import compare_held_cleaves
+            updated = compare_held_cleaves(updated, sorted_casts, raw_damage, alignment_rows,
+                ability_names, actions, source_id, start, pld_spell_potencies, self_buff_windows,
+                buffs, debuffs, combatants or (), combat_profile, penalty_rules)
+            result = replace(result, pld=replace(result.pld, burst_opportunities=tuple(updated)))
+            packages = tuple((name, rows) for name, rows in packages if name != "Fight or Flight")
+        result = replace(result, burst_packages=packages)
+    from .package_analysis import annotate_package_orders, exclude_trailing_hp_lock_casts
+
+    def exclude_trailing(windows):
+        trimmed = exclude_trailing_hp_lock_casts(windows, sorted_casts, raw_damage, ability_names,
+                                                source_id, start, result.ghosted_ending_times)
+        return annotate_package_orders(trimmed, sorted_casts, ability_names, actions, actors,
+            source_id, start, targetability_events, encounter_overkills, phase_lock_windows, raw_damage)
+
+    if result.pld is not None:
+        from .pld.attribution import attribute_followups, rescore_receiving_windows
+        result = replace(result, pld=replace(result.pld,
+            burst_opportunities=attribute_followups(exclude_trailing(result.pld.burst_opportunities),
+                sorted_casts, buffs, raw_damage, ability_names, source_id, start)))
+        receiving = rescore_receiving_windows(result.pld.burst_opportunities,
+            sorted_casts, raw_damage, buffs, life, combatants or (), ability_names,
+            actions, source_id, start, end, package_targets, pld_spell_potencies,
+            primary_hits, periodic_targets)
+        result = replace(result, pld=replace(result.pld, burst_opportunities=tuple(
+            exclude_trailing((window,))[0] if window.carried_casts and not window.held_casts
+            else window for window in receiving)))
+        from .pld.holds import compare_holds
+        result = replace(result, pld=replace(result.pld,
+            burst_opportunities=compare_holds(result.pld.burst_opportunities,
+                sorted_casts, raw_damage, alignment_rows, ability_names, actions, source_id,
+                start, end, package_targets, life, buffs, debuffs, combatants or (),
+                self_buff_windows, combat_profile, penalty_rules, periodic_targets)))
+    if result.war is not None:
+        result = replace(result, war=replace(result.war,
+            ir_opportunities=exclude_trailing(result.war.ir_opportunities),
+            potion_opportunities=exclude_trailing(result.war.potion_opportunities)))
+    result = replace(result, burst_packages=tuple((name, exclude_trailing(windows))
+                                                for name, windows in result.burst_packages))
     return result

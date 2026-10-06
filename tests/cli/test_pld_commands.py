@@ -41,9 +41,16 @@ def test_melee_downtime_labels_holy_spirit_cast_evidence(capsys):
     )
     cli._print_analysis(result)
     output = capsys.readouterr().out
-    assert ("    00m10s: HS (instant) -> 2.50s -> HS (hard-cast) -> 2.50s -> SL"
+    assert "3 ranged GCDs in 1 chain." in output
+    assert "Time" in output and "GCD sequence" in output
+    assert ("HS (instant) -> 2.50s -> HS (hard-cast) -> 2.50s -> SL"
             " -> 2.50s -> HS (hard-cast) -> 2.50s -> HS (unconfirmed)") in output
-    assert "  HS = Holy Spirit; SL = Shield Lob." in output
+    assert "  HS = Holy Spirit; SL = Shield Lob." not in output
+    assert "Instant Holy Spirit and the opening Holy Spirit are excluded." in output
+    cli._print_analysis(replace(result, pld=replace(pld, ranged=())))
+    empty = capsys.readouterr().out
+    assert "No ranged GCD chains identified." in empty
+    assert "Instant Holy Spirit and the opening Holy Spirit are excluded." not in empty
 
 
 @pytest.mark.parametrize("alias", ["pld", "PLD", "paladin", "PALADIN"])
@@ -72,9 +79,7 @@ def test_cli_analyse_compare_and_gear_override(tmp_path, monkeypatch, capsys):
     assert "rDPS/nDPS:" in output
     assert "fight-13" not in output and "Fight ID" not in output
     assert "\n  Spell casts:\n  Spell" in output
-    spell_table = output.split("\n  Spell casts:\n", 1)[1].split(
-        "  Unconfirmed cast time", 1,
-    )[0]
+    spell_table = output.split("\n  Spell casts:\n", 1)[1].split("\n\n", 1)[0]
     effect_order = {"Divine Might": 0, "Requiescat": 1, "None": 2}
     spell_rows = [re.split(r"\s{2,}", row.strip()) for row in spell_table.splitlines()[1:]]
     assert {row[1] for row in spell_rows} == set(effect_order)
@@ -83,7 +88,7 @@ def test_cli_analyse_compare_and_gear_override(tmp_path, monkeypatch, capsys):
     assert "\n  DoTs:\n  DoT" in output
     assert output.index("Action totals and auto-attacks:") < output.index("\n  DoTs:") < output.index("\n  Auto-attacks:")
     assert "\nDoTs:" not in output
-    assert "\n    07m31s:" in output and " -> 2.50s -> HS (hard-cast) -> 2.50s -> " in output
+    assert "07m 31s" in output and " -> 2.50s -> HS (hard-cast) -> 2.50s -> " in output
     assert output.isascii()
     assert output.index("Direct Hit") < output.index("Critical Hit")
     assert cli.main(["analyse", str(first), "--gear", "relic_7_55"]) == 0
@@ -158,17 +163,17 @@ def test_burst_section_removes_outside_gain_table_and_retains_cooldown_timing(ca
     assert 'Burst completion: unavailable' not in output
     completion = output.split('  Burst completion:\n', 1)[1].split('  Cells show', 1)[0]
     assert '1/?' in completion
-    hits = output.split('  Landed hits and potency:\n', 1)[1].split('  Goring =', 1)[0]
+    hits = output.split('  Landed hits and potency:\n', 1)[1].split('  Hits include', 1)[0]
     assert '12,345.6' in hits
     assert re.split(r'\s{2,}', hits.splitlines()[1].strip())[7] == '0'
     assert 'Imperator/Requiescat follow-ups:' not in output
     assert '\n  Intervene: 0 uses\n\n  Cooldown timing:' in output
     assert output.index('Cooldown timing:') < output.index('Burst completion:')
     timing = output.split('  Cooldown timing:\n', 1)[1].split(
-        '  Timing starts after', 1,
+        '  Timing starts at', 1,
     )[0]
     assert [re.split(r'\s{2,}', row.strip()) for row in timing.splitlines()] == [
-        ['Action', 'Ready while targetable', 'Longest delay'],
+        ['Action', 'Ready while usable', 'Longest delay'],
         ['Fight or Flight', '18.4s', '6.2s'],
         ['Imperator', 'n/a', 'n/a'],
         ['Intervene', '8.2s', '2.7s'],

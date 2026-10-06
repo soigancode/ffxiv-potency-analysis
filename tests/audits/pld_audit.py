@@ -84,6 +84,18 @@ def audit_pld(tmp_path, archive, prefix):
             died = None
     if died is not None:
         dead.append((died, end))
+    action_locks = []
+    locked_since = None
+    for event in sorted(read("debuff-events"), key=lambda e: e["timestamp"]):
+        if event.get("targetID") != source or event.get("abilityGameID") != 1000774:
+            continue
+        if event["type"] in {"applydebuff", "refreshdebuff"}:
+            locked_since = event["timestamp"] if locked_since is None else locked_since
+        elif event["type"] == "removedebuff":
+            action_locks.append((start if locked_since is None else locked_since, event["timestamp"]))
+            locked_since = None
+    if locked_since is not None:
+        action_locks.append((locked_since, end))
     for timing in result.pld.cooldown_timing:
         if timing.name == "Intervene":
             assert timing.minimum
@@ -98,12 +110,16 @@ def audit_pld(tmp_path, archive, prefix):
         waits = []
         for prior, following in zip(times_for_action, [*times_for_action[1:], end]):
             wait = 0.0
-            for a, b in windows:
+            eligible = ((start, end),) if timing.name == "Fight or Flight" else windows
+            pieces = list(eligible)
+            for low, high in (*dead, *action_locks):
+                pieces = [(x, y) for a, b in pieces
+                          for x, y in ((a, min(b, low)), (max(a, high), b)) if y > x]
+            for a, b in pieces:
                 a, b = max(a, start, prior + recast), min(b, end, following)
                 if b <= a:
                     continue
                 wait += b - a
-                wait -= sum(max(0, min(b, r) - max(a, d)) for d, r in dead)
             waits.append(wait / 1000)
         assert timing.ready_seconds == pytest.approx(sum(waits)), timing.name
         assert timing.longest_delay_seconds == pytest.approx(max(waits)), timing.name
@@ -144,6 +160,9 @@ def audit_pld(tmp_path, archive, prefix):
     main_factor = lambda stat: 100 + 190 * (stat - 440) // 440
     potion = main_factor(strength + 541) / main_factor(strength)
     totals = defaultdict(float)
+    package_packets = defaultdict(float)
+    personal_package_packets = defaultdict(float)
+    personal_hit_factors = {}
     auto = potted = gain = hb_total = hb_weight = luck = maximum = 0.0
     normalized = defaultdict(list)
     spell_evidence = {}
@@ -217,6 +236,8 @@ def audit_pld(tmp_path, archive, prefix):
                 base *= 0.4
             if not hit.get("tick") and not hit.get("overkill") and hit.get("hitType") != 10:
                 normalized[name].append(full_damage(hit) / base / (potion / 1.05 if 1000049 in statuses else 1))
+            if not hit.get("tick"):
+                package_packets[key] += base * hit["amount"] / (hit["amount"] + max(0, hit.get("overkill", 0)))
             value = base
             if 1000076 in statuses and status_active(1000076, time):
                 value *= 1.25
@@ -232,6 +253,10 @@ def audit_pld(tmp_path, archive, prefix):
                 potted += unpotted_value
                 gain += value * potion - unpotted_value
                 value *= potion
+            if not hit.get('tick'):
+                personal_package_packets[key] += value
+                fraction = hit['amount'] / (hit['amount'] + max(0, hit.get('overkill', 0)))
+                personal_hit_factors[id(hit)] = value / (base * fraction)
             if 1000076 in statuses and status_active(1000076, time):
                 for i, window in enumerate(result.pld.burst_opportunities):
                     a = round(timeline_start + window.start_seconds * 1000)
@@ -274,15 +299,49 @@ def audit_pld(tmp_path, archive, prefix):
         assert window.landed_potency == pytest.approx(burst_potency[i])
         a = round(timeline_start + window.start_seconds * 1000)
         b = round(timeline_start + window.end_seconds * 1000)
+        scoped_keys = set()
         for row in window.actions:
+            held_times = {round(timeline_start + c.cast_seconds * 1000) for c in window.held_casts
+                          if c.name == row.name}
+            other_held_times = {round(timeline_start + c.cast_seconds * 1000)
+                               for other in result.pld.burst_opportunities if other is not window
+                               for c in other.held_casts if c.name == row.name}
             cs = [c for c in casts if c.get("sourceID") == source
-                  and names[c["abilityGameID"]] == row.name and a <= c["timestamp"] < b]
+                  and names[c["abilityGameID"]] == row.name
+                  and (a <= c["timestamp"] < b or c['timestamp'] in held_times)
+                  and c['timestamp'] not in other_held_times]
             keys = {(c.get("packetID"), c["abilityGameID"]) for c in cs}
+            scoped_keys.update(keys)
             assert row.casts == len(keys)
             assert row.hits == sum((h.get("packetID"), h["abilityGameID"]) in keys
                                    for h in landed if not h.get("tick")
                                    and h.get("sourceID") == source)
-            assert row.expected is None or row.expected >= row.casts
+            # One higher-potency package can replace recorded casts.
+            assert row.expected is None or row.expected >= 0
+        if window.actual_package_potency is not None:
+            expected_ticks = 0.0
+            for hit in landed:
+                key = hit.get('packetID'), hit['abilityGameID']
+                if (key not in scoped_keys or hit.get('tick') or hit.get('sourceID') != source
+                        or names[hit['abilityGameID']] != 'Circle of Scorn'):
+                    continue
+                target, instance = hit['targetID'], hit.get('targetInstance', 1)
+                boundaries = [end]
+                boundaries.extend(e['timestamp'] for e in read('targetability-events')
+                    if e.get('sourceID') == target and e.get('sourceInstance', 1) == instance
+                    and e.get('targetable') == 0 and e['timestamp'] >= hit['timestamp'])
+                boundaries.extend(e['timestamp'] for e in read('encounter-overkill-events')
+                    if e.get('targetID') == target and e.get('targetInstance', 1) == instance
+                    and e.get('overkill', 0) > 0 and e['timestamp'] >= hit['timestamp'])
+                duration = min(15000, min(boundaries) - hit['timestamp'])
+                fraction = hit['amount'] / (hit['amount'] + max(0, hit.get('overkill', 0)))
+                factor = personal_hit_factors[id(hit)] if window.hold_comparison is not None else 1
+                expected_ticks += 30 * duration / 3000 * fraction * factor
+            packets = personal_package_packets if window.hold_comparison is not None else package_packets
+            assert window.actual_package_potency == pytest.approx(
+                sum(packets[key] for key in scoped_keys) + expected_ticks)
+            assert window.best_package_potency is not None
+            assert window.best_package_potency >= window.actual_package_potency
     assert result.auto_attacks[0].total_potency == pytest.approx(auto)
     assert result.potency_min == pytest.approx(sum(totals.values()) + auto)
     assert result.targetable_seconds is not None

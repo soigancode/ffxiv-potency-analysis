@@ -242,3 +242,87 @@ def test_bard_dot_coverage_follows_confirmed_delayed_refresh_chain():
     # The other target has no DoTs to refresh.
     unrelated = [hit(30000, 3, 5, target=20)]
     assert run(damage + ticks + unrelated).coverage == result.coverage
+
+
+@pytest.mark.parametrize('recorded_pre_pull', [False, True])
+def test_war_pre_pull_ir_is_counted_once(recorded_pre_pull):
+    names = {1: 'Inner Release'}
+    casts = [{'timestamp': 60000, 'type': 'cast', 'sourceID': 1, 'abilityGameID': 1}]
+    if recorded_pre_pull:
+        casts.insert(0, {'timestamp': -1000, 'type': 'cast', 'sourceID': 1, 'abilityGameID': 1})
+    result = summarize_execution('warrior', casts, [], [], [], [],
+        [{'sourceID': 1, 'auras': [{'ability': 1001177}]}], names,
+        {'Inner Release': {'recast_seconds': 60}}, {}, 1, 0, 120000,
+        TargetableTime(120, 'test', ((0, 120000),)), {})
+    ir = next(row for row in result.cooldowns if row.name == 'Inner Release')
+    assert (ir.uses, ir.possible, ir.pre_pull_uses) == (2, 2, 1)
+
+
+@pytest.mark.parametrize("job,action,status,duration", [
+    ("paladin", "Fight or Flight", 1000076, 20000),
+    ("warrior", "Inner Release", 1001177, 15000),
+    ("bard", "Raging Strikes", 1000125, 20000),
+])
+@pytest.mark.parametrize("evidence,opening_cast,expected", [
+    ("aura", None, (2, 1)),
+    ("damage", None, (2, 1)),
+    ("damage", -500, (2, 1)),
+    ("aura", 0, (2, 0)),
+    ("damage", 0, (2, 0)),
+    ("foreign", None, (1, 0)),
+    ("tick", None, (1, 0)),
+    ("later", None, (1, 0)),
+    ("apply", None, (1, 0)),
+])
+def test_missing_opening_personal_cooldown(job, action, status, duration,
+                                          evidence, opening_cast, expected):
+    casts = [{"timestamp": 60000, "sourceID": 1, "abilityGameID": 1}]
+    if opening_cast is not None:
+        casts.append({"timestamp": opening_cast, "sourceID": 1, "abilityGameID": 1})
+    damage = [{"timestamp": 1000 if evidence != "later" else duration + 1000,
+               "sourceID": 2 if evidence == "foreign" else 1, "amount": 100,
+               "abilityGameID": 2, "buffs": f"{status}.", "tick": evidence == "tick"}]
+    buffs = ([{"timestamp": 500, "type": "applybuff", "sourceID": 1,
+               "targetID": 1, "abilityGameID": status}] if evidence == "apply" else [])
+    combatants = ([{"sourceID": 1, "auras": [{"ability": status}]}]
+                  if evidence == "aura" else [])
+    result = summarize_execution(job, casts, damage, buffs, [], [], combatants,
+        {1: action, 2: "Attack", status: action}, {action: {"recast_seconds": 60}}, {},
+        1, 0, 120000, TargetableTime(120, "test", ((0, 120000),)), {})
+    cooldown = next(row for row in result.cooldowns if row.name == action)
+    assert (cooldown.uses, cooldown.pre_pull_uses) == expected
+
+
+@pytest.mark.parametrize("snapshot", [-500, 1000])
+def test_opening_damage_uses_snapshot_before_delayed_hit_and_status_removal(snapshot):
+    casts = [{"timestamp": snapshot, "type": "cast", "sourceID": 1,
+              "abilityGameID": 2, "packetID": 5}]
+    damage = [{"timestamp": 21000, "sourceID": 1, "abilityGameID": 2, "packetID": 5,
+               "amount": 100, "buffs": "1000076."}]
+    buffs = [{"timestamp": 20000, "type": "removebuff", "sourceID": 1,
+              "targetID": 1, "abilityGameID": 1000076}]
+    result = summarize_execution("paladin", casts, damage, buffs, [], [], [],
+        {2: "Attack"}, {"Fight or Flight": {"recast_seconds": 60}}, {}, 1, 0, 60000,
+        TargetableTime(60, "test", ((0, 60000),)), {})
+    cooldown = next(row for row in result.cooldowns if row.name == "Fight or Flight")
+    assert (cooldown.uses, cooldown.pre_pull_uses) == (1, 1)
+
+
+@pytest.mark.parametrize("status_buffs,expected", [("1001177.", 1), ("", 0)])
+def test_war_opening_summary_and_burst_require_ir_evidence(status_buffs, expected):
+    from ffxiv_potency.analysis.war.bursts import summarize_bursts
+    from ffxiv_potency.analysis.war.summary import summarize_war
+
+    casts = [{"timestamp": 1000, "type": "cast", "sourceID": 1,
+              "abilityGameID": 3549, "packetID": 1}]
+    damage = [{**casts[0], "type": "damage", "timestamp": 1500, "amount": 1000,
+               "buffs": status_buffs, "hitType": 2, "directHit": True}]
+    names = {3549: "Fell Cleave"}
+    summary = summarize_war(casts, [], [], names, {}, 1, 0, 60000, [],
+                            TargetableTime(60, "test", ((0, 60000),)), {}, damage)
+    bursts = summarize_bursts(casts, damage, [], [], names, 1, 0, 60000)
+    assert summary.inner_release_uses == len(bursts) == expected
+    assert summary.guaranteed_spenders == expected
+    if bursts:
+        assert bursts[0].seconds is None
+        assert bursts[0].spenders == 1

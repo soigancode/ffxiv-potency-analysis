@@ -3,12 +3,15 @@
 import re
 from collections import Counter
 from dataclasses import dataclass
-from math import ceil
 
-from .brd.buffs import opening_raging_strikes
+from .availability import action_lock_windows, cooldown_availability
+from .brd.buffs import OPENING_COOLDOWNS as BRD_OPENING_COOLDOWNS
 from .brd.dots import DOT_DURATION_MS, reconstruct_brd_dots
 from .events import _event_name
+from .opening import opening_personal_buff
+from .pld.buffs import OPENING_COOLDOWNS as PLD_OPENING_COOLDOWNS
 from .targetability import TargetableTime
+from .war.buffs import OPENING_COOLDOWNS as WAR_OPENING_COOLDOWNS
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,7 +19,7 @@ class CooldownUse:
     name: str
     uses: int
     possible: int | None
-    basis: str = "full duration"
+    basis: str = "action availability"
     pre_pull_uses: int = 0
 
 
@@ -81,7 +84,7 @@ def charge_maximum(
     reductions: list[tuple[float, float]],
     windows: tuple[tuple[float, float], ...],
 ) -> int:
-    """Greedily spend while damageable, replaying recorded recast reductions.
+    """Greedily spend while available, replaying recorded recast reductions.
 
     All times are milliseconds. Each returned charge restores one charge's
     recharge period. Reduction progress is clamped at the charge cap.
@@ -289,7 +292,8 @@ def summarize_execution(
     buff_windows,
 ):
     own = sorted(
-        (e for e in casts if e.get("sourceID") == source and not e.get("fake")),
+        (e for e in casts if e.get("sourceID") == source and not e.get("fake")
+         and e.get("type", "cast") == "cast"),
         key=lambda e: e["timestamp"],
     )
     counts = Counter(_event_name(e, names) for e in own)
@@ -309,51 +313,44 @@ def summarize_execution(
         "dancer": ("Devilment", "Flourish", "Technical Step"),
     }.get(job, ())
     cooldowns = []
+    opening_rules = {"paladin": PLD_OPENING_COOLDOWNS, "warrior": WAR_OPENING_COOLDOWNS,
+                     "bard": BRD_OPENING_COOLDOWNS}.get(job, {})
+    locks = action_lock_windows(debuffs, combatants, names, source, start, end)
     for name in selected:
         action = actions.get(name, {})
         recast = 120 if name == "Radiant Finale" else action.get("recast_seconds")
         text = " ".join(action.get("description", ()))
         match = re.search(r"Maximum Charges: (\d+)", text)
         charges = int(match[1]) if match else 1
-        maximum = (
-            charges + max(0, ceil((end - start) / 1000 / recast) - 1)
-            if isinstance(recast, (int, float)) and recast > 0
-            else None
-        )
-        basis = "full duration"
-        if name == "Infuriate":
-            maximum = None  # Enhanced Infuriate reduces its cooldown on recorded spenders.
+        # Selected non-damaging actions are self/party buffs or dance setup.
+        # Wildfire has triggered potency and therefore still requires a target.
+        windows = cooldown_availability(action, targetable, locks, start, end)
+        basis = "action availability"
+        reductions = []
         if name in {"Double Check", "Checkmate"}:
-            basis = "recorded Blazing Shots"
+            basis = "action availability and recorded Blazing Shots"
             reductions = [
                 (float(e["timestamp"]), 15000.0)
                 for e in own
                 if _event_name(e, names) == "Blazing Shot"
             ]
-            maximum = (
-                charge_maximum(
-                    start,
-                    end,
-                    recast * 1000,
-                    charges,
-                    reductions,
-                    targetable.intervals or ((start, end),),
-                )
-                if recast
-                else None
-            )
+        maximum = (charge_maximum(start, end, recast * 1000, charges, reductions, windows)
+                   if isinstance(recast, (int, float)) and recast > 0 and windows is not None
+                   else None)
+        if name == "Infuriate":
+            maximum = None  # Enhanced Infuriate requires a separate resource replay.
         if job == "warrior":
             from .war.diagnostics import COOLDOWN_GROUPS
             consumers = COOLDOWN_GROUPS.get(name, (name,))
         else:
             consumers = (name,)
         used = sum(counts[n] for n in consumers)
-        pre_pull_uses = 0
-        if job == "bard" and name == "Raging Strikes":
-            pre_pull_uses = sum(
-                e["timestamp"] < start and _event_name(e, names) == name for e in own
-            )
-            if not pre_pull_uses and opening_raging_strikes(buff_windows, names, start):
+        pre_pull_uses = sum(e["timestamp"] < start and _event_name(e, names) in consumers
+                            for e in own)
+        if name in opening_rules:
+            status, duration = opening_rules[name]
+            if opening_personal_buff(status, name, duration, own, damage, buffs, combatants,
+                                     names, source, start, end, buff_windows.get(status, ())):
                 used += 1
                 pre_pull_uses = 1
         cooldowns.append(CooldownUse("/".join(consumers), used,

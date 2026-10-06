@@ -83,4 +83,4 @@ def test_dancing_mad_potion_windows_and_phase_regression(
     assert "average interval" not in output
     assert "longest interval" not in output
     assert output.count("Detonator") == 3
-    assert "18m23s Queen Overdrive" in output
+    assert "18m 23s Queen Overdrive" in output

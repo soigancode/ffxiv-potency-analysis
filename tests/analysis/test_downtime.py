@@ -57,7 +57,7 @@ def test_all_jobs_label_recorded_downtime_without_confirming_a_ghost(
     assert "G" not in issue_notes(result)
     cli._print_analysis(result)
     output = capsys.readouterr().out
-    assert f"00m03s {action} on {'Environment' if target == -1 else 'Boss'} (downtime)" in output
+    assert f"00m 03s {action} on {'Environment' if target == -1 else 'Boss'} (downtime)" in output
     assert "Confirmed ghosted hits: 0" in output
 
 

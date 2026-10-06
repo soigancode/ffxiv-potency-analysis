@@ -23,7 +23,7 @@ def test_fflogs_limit_displays_hourly_usage(monkeypatch, capsys) -> None:
     assert capsys.readouterr().out == (
         "FF Logs API usage:\n"
         "  Spent this hour: 125.25 / 3,600 points\n"
-        "  Resets in: 01m23s\n"
+        "  Resets in: 01m 23s\n"
     )
 
 

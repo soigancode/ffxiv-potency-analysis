@@ -45,3 +45,30 @@ def test_all_jobs_keep_unknown_opening_wait_and_death_exclusion(job, action):
                            life, 1, 0, 100000,
                            TargetableTime(100, 'events', ((0, 100000),)))[0]
     assert row.ready_seconds == row.longest_delay_seconds == 10
+
+
+@pytest.mark.parametrize('job,buff,attack', [
+    ('warrior', 'Inner Release', 'Upheaval'),
+    ('bard', 'Raging Strikes', 'Sidewinder'),
+    ('machinist', 'Reassemble', 'Drill'),
+    ('dancer', 'Devilment', None),
+])
+def test_shared_timing_uses_action_availability_and_still_excludes_deaths(job, buff, attack):
+    actions = {buff: {'recast_seconds': 60, 'potency': None}}
+    names = {1: buff}
+    casts = [{'timestamp': 0, 'sourceID': 1, 'abilityGameID': 1}]
+    if attack:
+        names[2] = attack
+        actions[attack] = {'recast_seconds': 60, 'potency': {'base': 100}}
+        casts.append({'timestamp': 0, 'sourceID': 1, 'abilityGameID': 2})
+    life = [{'type': 'death', 'targetID': 1, 'timestamp': 85000},
+            {'type': 'resurrect', 'targetID': 1, 'timestamp': 95000}]
+    debuffs = [{'timestamp': time, 'type': kind, 'targetID': 1, 'abilityGameID': 1000774}
+               for time, kind in [(30000, 'applydebuff'), (80000, 'removedebuff')]]
+    rows = summarize_timing(job, casts, [], actions, names, life, 1, 0, 120000,
+        TargetableTime(60, 'events', ((0, 30000), (90000, 120000))), debuffs)
+    rows = {row.name: row for row in rows}
+    assert rows[buff].ready_seconds == rows[buff].longest_delay_seconds == 30
+    if attack:
+        label = 'Upheaval/Orogeny' if attack == 'Upheaval' else attack
+        assert rows[label].ready_seconds == rows[label].longest_delay_seconds == 25

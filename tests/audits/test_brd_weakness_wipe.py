@@ -52,13 +52,13 @@ def test_dancing_mad_wipe_shots_and_weakness_snapshots(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "Fight: Dancing Mad (dmu) | Duration: 11m18s (wipe)" in output
-    assert "08m55s: died -> 09m04s: revived | Time dead: 9.0s | Weakness applied" in output
-    assert "Weakness 09m04s 10m44s" in " ".join(output.split())
+    assert "Fight: Dancing Mad (dmu) | Duration: 11m 18s (wipe)" in output
+    assert "1 08m 55s 09m 04s 9.0s Weakness applied" in " ".join(output.split())
+    assert "Weakness 09m 04s 10m 44s" in " ".join(output.split())
     assert "Potency lost" in output
     assert "Deaths: 2\n" in output
     assert "death(s)" not in output
-    assert "10m54s: died -> 11m18s: fight ended" in output
+    assert "2 10m 54s - 24.2s Dead at fight end" in " ".join(output.split())
 
 
 def test_dancing_mad_wipe_all_ghosted_casts_and_reasons(
@@ -70,16 +70,16 @@ def test_dancing_mad_wipe_all_ghosted_casts_and_reasons(
     result = analyze_saved_fight(tmp_path, Path("data/jobs/brd/7.4/actions.json"))
     _print_analysis(result)
     output = capsys.readouterr().out
-    ghosted = output.split("Ghosted attacks and reduced hits:\n", 1)[1].split("\n\n", 1)[0]
-    observed_lines = ["  " + line.strip() for line in ghosted.splitlines() if line.strip()[:2].isdigit()]
+    ghosted = output.split("Ghosted attacks and reduced hits:\n", 1)[1].split("\nHit Bonus and Luck:", 1)[0]
+    observed_lines = [" ".join(line.split()) for line in ghosted.splitlines() if line.strip()[:2].isdigit()]
     expected_lines = [
-        "  03m18s Burst Shot on Kefka (target became untargetable before hit landed)",
-        "  06m19s Burst Shot on Kefka (phase HP lock)",
-        "  06m20s Heartbreak Shot on Kefka (phase HP lock)",
-        "  06m22s Refulgent Arrow on Kefka (phase HP lock)",
-        "  06m22s Empyreal Arrow on Kefka (phase HP lock)",
-        "  08m52s Burst Shot on Chaos (player defeated before hit landed)",
-        "  09m06s Caustic Bite on Chaos (target stopped taking damage before hit landed)",
-        "  10m52s Burst Shot on Exdeath (player defeated before hit landed)",
+        "  03m 18s Burst Shot on Kefka (target became untargetable before hit landed)",
+        "  06m 19s Burst Shot on Kefka (phase HP lock)",
+        "  06m 20s Heartbreak Shot on Kefka (phase HP lock)",
+        "  06m 22s Refulgent Arrow on Kefka (phase HP lock)",
+        "  06m 22s Empyreal Arrow on Kefka (phase HP lock)",
+        "  08m 52s Burst Shot on Chaos (player defeated before hit landed)",
+        "  09m 06s Caustic Bite on Chaos (target stopped taking damage before hit landed)",
+        "  10m 52s Burst Shot on Exdeath (player defeated before hit landed)",
     ]
-    assert sorted(observed_lines) == sorted(expected_lines)
+    assert sorted(observed_lines) == sorted(line.strip().replace(" on ", " ").replace(" (", " ").removesuffix(")") for line in expected_lines)

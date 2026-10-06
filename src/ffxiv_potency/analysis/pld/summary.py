@@ -69,7 +69,8 @@ READY = (
 def summarize_pld(casts, buffs, life, combatants, names, actions, source, start, end,
                   state: PldSpellState, landed, circle: PldDotSummary,
                   alignment_rows=(), buff_windows=None, targetable=None, damage=None,
-                  combo_inferences=None, hit_failures=None) -> PldSummary:
+                  combo_inferences=None, hit_failures=None, debuffs=(),
+                  timing_targetable=None) -> PldSummary:
     own = sorted((e for e in casts if e.get("sourceID") == source
                   and e.get("type") == "cast" and not e.get("fake")),
                  key=lambda e: e["timestamp"])
@@ -80,7 +81,6 @@ def summarize_pld(casts, buffs, life, combatants, names, actions, source, start,
     ready = state.ready + tuple(ready_summary(
         (name, names), status, consumers, own, own_buffs, initial, life, source, start, end, 30000,
     ) for status, name, consumers in READY)
-    counts = Counter((s.name, s.enhancement, s.cast_kind) for s in state.spells)
     triggers = [e for e in own if _event_name(e, names) in {"Imperator", "Requiescat"}]
     # Carry-over sequences can begin before the downloaded phase.
     if state.spells and state.spells[0].enhancement == "Requiescat" and (
@@ -131,6 +131,15 @@ def summarize_pld(casts, buffs, life, combatants, names, actions, source, start,
               if _event_name(e, names) == "Shield Lob"}
     first_damage = next((e for e in own if actions.get(_event_name(e, names), {}).get("potency")), None)
     opener_packet = (first_damage.get("packetID"), first_damage.get("abilityGameID")) if first_damage else None
+    first_hit = min((e for e in damage or () if e.get('sourceID') == source
+                     and e.get('type') == 'damage' and not e.get('tick')
+                     and e.get('amount', 0) > 0), key=lambda e: e['timestamp'], default=None)
+    landed_opener = ((first_hit.get('packetID'), first_hit.get('abilityGameID'))
+                     if first_hit is not None else None)
+    counts = Counter((s.name, s.enhancement,
+        'opener' if s.name == 'Holy Spirit' and s.cast_kind == 'unconfirmed'
+        and s.packet is not None and (s.packet, s.ability_id) == opener_packet == landed_opener
+        else s.cast_kind) for s in state.spells)
     ranged.update((s.packet, s.ability_id) for s in state.spells
                   if s.name == "Holy Spirit" and s.cast_kind == "hard cast"
                   and (s.packet, s.ability_id) != opener_packet)
@@ -146,7 +155,8 @@ def summarize_pld(casts, buffs, life, combatants, names, actions, source, start,
                       summarize_alignment(alignment_rows, buff_windows or {}, start, end,
                                           fight_or_flight_strength(actions))
                       if buff_windows is not None else None,
-                      summarize_cooldowns(own, actions, names, life, source, start, end, targetable)
+                      summarize_cooldowns(own, actions, names, life, source, start, end,
+                                          timing_targetable or targetable, debuffs, combatants)
                       if targetable is not None else (),
                       summarize_combos(damage, actions, names, source, combo_inferences)
                       if damage is not None else None,

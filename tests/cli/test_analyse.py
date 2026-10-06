@@ -25,7 +25,7 @@ def test_cli_analyses_historical_warrior_log(war_saved_sources, capsys):
     assert "Melee downtime:" in output
     assert "  Surging Tempest: 0 uses" not in output
     assert "Tomahawk:" in output
-    assert output.index("Hit Bonus:") < output.index("Luck baseline:")
+    assert "Metric Baseline Recorded Adjusted" in " ".join(output.split())
 
 
 def test_cli_analyses_saved_brd_fight(

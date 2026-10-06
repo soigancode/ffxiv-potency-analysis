@@ -30,8 +30,8 @@ def test_unselected_report_prompts_for_multiple_fights(monkeypatch, capsys) -> N
         "https://www.fflogs.com/reports/XhcqCfrJzNgZdQxP"
     ) == ReportReference("XhcqCfrJzNgZdQxP", 10, 20)
     output = capsys.readouterr().out
-    assert "1. Vamp Fatale (fight 9, 02m00s) (wipe)" in output
-    assert "2. Vamp Fatale (fight 10, 01m30s)" in output
+    assert "1. Vamp Fatale (fight 9, 02m 00s) (wipe)" in output
+    assert "2. Vamp Fatale (fight 10, 01m 30s)" in output
     assert "Unsupported" not in output
     assert "Enter a number from 1 to 2." in output
     assert "Player: Bob (Machinist, source 20)" in output
@@ -50,7 +50,7 @@ def test_single_fight_and_player_are_selected_without_input(monkeypatch, capsys)
         "https://www.fflogs.com/reports/abc123"
     ) == ReportReference("abc123", 10, 20)
     output = capsys.readouterr().out
-    assert "Fight: Vamp Fatale (fight 10, 01m30s)" in output
+    assert "Fight: Vamp Fatale (fight 10, 01m 30s)" in output
     assert "Player: Bob (Machinist, source 20)" in output
     assert "Choose" not in output
 

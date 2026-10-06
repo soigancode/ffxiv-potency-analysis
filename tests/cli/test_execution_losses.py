@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ffxiv_potency import cli
+from ffxiv_potency.analysis.diagnostic_types import FollowUpContext
 from ffxiv_potency.analysis.execution import CooldownUse, ExecutionSummary, ReadyUse
 from ffxiv_potency.analysis.models import (
     AnalysisResult,
@@ -16,6 +17,7 @@ from ffxiv_potency.analysis.models import (
 from ffxiv_potency.analysis.pld.combos import PldComboInference, PldComboLoss, PldComboSummary
 from ffxiv_potency.analysis.pld.summary import PldDotSummary, PldSummary
 from ffxiv_potency.analysis.war.summary import WarReadySummary, WarSummary
+from ffxiv_potency.html_report import render_html_report
 
 
 def result_with_losses(job, expired=0, overwritten=0, death_lost=0, remaining=0):
@@ -94,12 +96,18 @@ def test_inner_release_uses_shared_expiry_wording_and_preserves_charge_detail(ch
     result = result_with_losses("war")
     assert result.war is not None
     result = replace(result, war=replace(result.war, unused_expired_charges=charges,
-                                        expired_charges=((10, charges),)))
+                                        expired_charges=((10, charges),)),
+                     follow_up_context=(FollowUpContext(
+                         5, (f'Inner Release spenders: {3 - charges}/3 casts',),
+                         'incomplete', 'Inner Release expired'),))
     cli._print_analysis(result)
     output = capsys.readouterr().out
     assert execution_summary(output) == f"  Inner Release: {charges} expired"
     noun = "charge" if charges == 1 else "charges"
-    assert f"    00m10s: {charges} unused {noun} expired" in output
+    assert f"    00m 10s: {charges} unused {noun} expired" not in output
+    detail = f'00m 05s Inner Release spenders: {3 - charges}/3 casts - Inner Release expired'
+    assert output.count(detail) == 1
+    assert output.index('Follow-up context:') < output.index(detail)
 
 
 def test_bard_repertoire_findings_keep_recorded_uncertainty(capsys):
@@ -107,7 +115,7 @@ def test_bard_repertoire_findings_keep_recorded_uncertainty(capsys):
     result = replace(result, execution=ExecutionSummary("bard", (), (), (), (), (10,)))
     cli._print_analysis(result)
     assert execution_summary(capsys.readouterr().out) == (
-        "  Repertoire: at least 1 unused stack at 00m10s (Empyreal Arrow confirmed)"
+        "  Repertoire: at least 1 unused stack at 00m 10s (Empyreal Arrow confirmed)"
     )
 
 
@@ -125,7 +133,7 @@ def test_cooldown_opportunities_are_separate_from_confirmed_issues(job, capsys):
     summary = execution_summary(capsys.readouterr().out)
     assert summary.splitlines() == [
         '  No confirmed issues in this log.',
-        '  Cooldown opportunities (full-duration upper bound):',
+        '  Cooldown opportunities:',
         '    Intervene: 21/22 uses',
         '    Unused action: 0/3 uses',
     ]
@@ -140,8 +148,8 @@ def test_cooldown_opportunities_preserve_confirmed_findings_and_charge_basis(cap
     cli._print_analysis(result)
     assert execution_summary(capsys.readouterr().out).splitlines() == [
         '  Test effect: 1 expired',
-        '  Cooldown opportunities (upper bound from recorded Blazing Shots):',
-        '    Double Check: 10/12 uses',
+        '  Cooldown opportunities:',
+        '    Double Check: 10/12 uses (recorded Blazing Shots)',
     ]
 
 
@@ -174,9 +182,36 @@ def test_combo_losses_and_atonement_group_preserve_ready_outcomes(capsys, hits, 
     )[0]
     assert section.index('Combo losses:') < section.index('Atonement sequences:')
     assert section.index('Sepulchre:') < section.index('Other ready effects and spell charges:')
-    assert 'Sepulchre: 26/27 grants used | Remaining: 1' in section
+    assert 'Sepulchre: 26/27 grants used | 1 remaining' in section
     assert 'Unconfirmed combo evidence: 1 landed hit' in section
     assert 'Sepulchre' not in execution_summary(output)
+
+
+@pytest.mark.parametrize('times', [(880,), (820, 880)])
+def test_pld_expiries_inline_or_in_tooltip(times, capsys):
+    result = result_with_losses('pld')
+    assert result.pld is not None
+    effect = ReadyUse('Requiescat charges', 76, 76 - len(times), len(times), 0, 0, 0,
+                      tuple((time, '1 expired') for time in times))
+    result = replace(result, pld=replace(result.pld, ready=(effect,)))
+    cli._print_analysis(result)
+    console = capsys.readouterr().out
+    assert f'{len(times)} expired (' in console
+    assert '14m 40s' in console
+    assert '14m 40s: 1 expired' not in console
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(render_html_report(result), 'html.parser')
+    line = next(p for p in soup.select('p.report-line')
+                if 'Requiescat charges:' in p.get_text() and 'grants used' in p.get_text())
+    if len(times) == 1:
+        assert '1 expired (14m 40s)' in line.get_text()
+        assert line.find('abbr') is None
+    else:
+        note = line.find('abbr')
+        assert note is not None
+        assert note.get_text() == '2 expired'
+        assert note.get('title') == 'Expired at:\n13m 40s\n14m 40s'
+        assert '14m 40s' not in line.get_text()
 
 
 def test_missing_combo_evidence_does_not_become_a_confirmed_issue(capsys):
@@ -202,9 +237,9 @@ def test_inferred_combo_losses_are_labelled_separately(capsys):
         '  No confirmed issues in this log.',
         '  Inferred combo losses: 1 uncomboed hit',
     ]
-    assert ('  00m10s Royal Authority -> Riot Blade: 160.0 estimated base potency lost '
+    assert ('  00m 10s Royal Authority -> Riot Blade: 160.0 estimated base potency lost '
             '(uncomboed inferred from normalized damage; combo field unavailable)') in output
-    assert ('  00m12s previous GCD unavailable -> Royal Authority: 0.0 estimated base potency lost '
+    assert ('  00m 12s previous GCD unavailable -> Royal Authority: 0.0 estimated base potency lost '
             '(comboed inferred from normalized damage; combo field unavailable)') in output
     assert 'Estimated base loss' not in output
     assert 'Unconfirmed combo evidence:' not in output

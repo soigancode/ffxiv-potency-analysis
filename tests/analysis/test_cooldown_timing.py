@@ -61,12 +61,12 @@ def test_deaths_are_removed_without_pausing_recharge():
 
 
 @pytest.mark.parametrize('targetable,expected', [
-    (TargetableTime(None, 'unavailable'), None),
-    (TargetableTime(100, 'FF Logs DPS duration'), None),
-    (TargetableTime(0, 'events', ()), 0),
+    (TargetableTime(None, 'unavailable'), 40),
+    (TargetableTime(100, 'FF Logs DPS duration'), 40),
+    (TargetableTime(0, 'events', ()), 40),
     (TargetableTime(100, 'events', ((0, 100000),)), 40),
 ])
-def test_pld_uses_reference_recast_and_does_not_invent_targetability(targetable, expected):
+def test_pld_self_buff_timing_does_not_require_targetability(targetable, expected):
     rows = summarize_cooldowns(
         [{'timestamp': 0, 'abilityGameID': 1}],
         {'Fight or Flight': {'recast_seconds': 60}}, {1: 'Fight or Flight'},
@@ -74,3 +74,18 @@ def test_pld_uses_reference_recast_and_does_not_invent_targetability(targetable,
     )
     assert rows[0].ready_seconds == expected
     assert rows[1].ready_seconds is None
+
+
+def test_pld_timing_counts_unlocked_pre_targetable_time_and_excludes_deaths():
+    casts = [{'timestamp': 0, 'abilityGameID': ability} for ability in (1, 2)]
+    actions = {'Fight or Flight': {'recast_seconds': 60, 'potency': None},
+               'Imperator': {'recast_seconds': 60, 'potency': {'base': 580}}}
+    life = [{'type': 'death', 'targetID': 1, 'timestamp': 85000},
+            {'type': 'resurrect', 'targetID': 1, 'timestamp': 95000}]
+    debuffs = [{'timestamp': time, 'type': kind, 'targetID': 1, 'abilityGameID': 1000774}
+               for time, kind in [(30000, 'applydebuff'), (80000, 'removedebuff')]]
+    rows = summarize_cooldowns(casts, actions, {1: 'Fight or Flight', 2: 'Imperator'},
+        life, 1, 0, 120000, TargetableTime(60, 'events', ((0, 30000), (90000, 120000))),
+        debuffs)
+    assert rows[0].ready_seconds == rows[0].longest_delay_seconds == 30
+    assert rows[1].ready_seconds == rows[1].longest_delay_seconds == 25

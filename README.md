@@ -99,6 +99,17 @@ Ranges and comma-separated selections contain 2–25 distinct leaderboard positi
 
 Use `pld`, `war`, `brd`, `mch`, or `dnc` for the job. The full job names also work.
 
+Add `--html` to save a browser report in `reports/`:
+
+```bash
+ffxiv-potency fflogs pld m12sp1 7 --html
+ffxiv-potency fflogs war dmu --html
+ffxiv-potency fflogs pld dmu 1-5 --html
+ffxiv-potency fflogs pld dmu 1,3,7 --html
+```
+
+One rank saves `job_fight_rank.html`. Leaderboards save `job_fight_top.html`, ranges save `job_fight_first-last.html`, and selected ranks save `job_fight_ranks-1-3-7.html`. A leaderboard file includes the comparison table and every successfully analysed player's full report. Click a player to open their analysis. The sidebar highlights the section being viewed and lets you switch between reports. Click a leaderboard column header to sort, then click again to reverse the order. Hover over Notes for the comparison explanations. Skipped ranks retain their reasons. The files work offline. The `umad` alias uses `dmu` in filenames.
+
 The `--partition` option is optional. Savage defaults to the global 7.5 standard-composition leaderboard. To select another global leaderboard:
 
 ```bash
@@ -139,7 +150,7 @@ ffxiv-potency analyse "https://www.fflogs.com/reports/REPORT1?fight=9&source=18"
 
 The report shows the player, fight, duration, date, patch, assumed gear, potency, PPS, and FF Logs damage metrics. It marks wipes and lists deaths and damage penalties. All jobs use the same section order where applicable: execution summary, deaths and damage penalties, cooldowns and burst windows, combos and ready effects, melee downtime, potions, missing-hit diagnostics, Hit Bonus and Luck, action totals and auto-attacks, and data assumptions. DoT potency tables appear between the main action table and auto-attacks.
 
-Add `--html report.html` to `analyse` to also save a HTML report with the same results and section order as the terminal report, and shows the saved individual FF Logs rank when available. Open the file in a browser. Styles are included, so it works offline.
+Add `--html report.html` to `analyse` to also save an HTML report in `reports/` with the same results and section order as the terminal report. It shows the saved individual FF Logs rank when available. An explicit directory path overrides the default location. Open the file in a browser. Styles are included, so it works offline.
 
 To save a fight without analysing it, run `ffxiv-potency fflogs "<report URL>"`.
 
@@ -173,7 +184,9 @@ PLD, WAR and MCH combine equal rDPS and nDPS values in one **rDPS/nDPS** column.
 
 ## Understanding the results
 
-The execution summary lists **Cooldown opportunities** when recorded uses fall below an estimated maximum. These appear separately from confirmed issues, with the estimate's basis shown. A shortfall alone does not establish an avoidable missed use or potency loss.
+The execution summary lists **Cooldown opportunities** when recorded uses fall below an estimated maximum. Damaging actions require a damageable target. Self buffs can be used before bosses become targetable, except during recorded Down for the Count periods. Cooldowns recover during downtime and cutscenes, respecting charge caps. Deaths do not reduce possible uses. A shortfall alone does not establish an avoidable missed use or potency loss.
+
+Fight or Flight, Inner Release and Raging Strikes include pre-pull uses confirmed by opening buffs or damage snapshots, even when the activation cast is missing. Recorded casts are counted once.
 
 **Potency** adds the potency of hits that landed, including configured personal buffs and potion gains. It also accounts for pet actions and estimates auto-attack potency. Multi-target hits use their action's falloff rules. Recorded overkill reduces the credited potency in proportion to damage dealt. Other players' damage buffs do **not** increase personal potency. **PPS** divides total potency by targetable time in seconds.
 
@@ -212,9 +225,17 @@ Party bonuses come from the fight roster. At level 100, the main-stat coefficien
 
 All supported jobs show each potion window's start, end, landed base potency and potion gain, followed by overall totals. Window potency includes snapshotted damage and auto-attacks. Unknown boundaries remain marked as unavailable, and uncertain potency retains its range.
 
+PLD and WAR potion-alignment markers follow recorded damage snapshots. Buffs extending beyond a potion do not warn by themselves. Potted hits remain covered when they land after expiry, and DoT ticks retain the application's snapshot. Unpotted landed hits are flagged, with estimated missed potion gain on direct hits when potency is known. Logs without damage evidence retain cast-timing checks.
+
 #### Execution diagnostics
 
-Cooldown timing measures ready time while alive and targetable after the first recorded use. Charged actions show a conservative minimum at full charges. Recharge continues through downtime. Recorded Infuriate and Double Check/Checkmate reductions are included. Delays can reflect intentional buff alignment.
+Shared burst tables compare recorded casts with one highest-potency feasible package and show base potency completion. PLD comparisons include Circle of Scorn's application and expected ticks until each target's HP lock, untargetability or effect expiry. Both orders average one tick per three seconds because server-tick timing is unknown. Ticks can continue after the buff window ends. Hit columns count application hits. Other packages compare direct potency. Comparisons preserve ordinary landed GCD opportunities up to each damageable boundary, using the observed regular GCD pace and opening weave timing. Extra weaves are allowed when they do not cost a landed GCD. Ordinary filler slots do not generate hypothetical resources. Equal-potency packages favour earlier landed damage. Packages use patch references, recorded grants, cooldown recovery and hit delays. Damageable windows exclude downtime and evidenced HP locks while retaining other available targets. Gauge spends prove availability at their recorded timestamps. Unrecorded resource generation remains unconfirmed.
+
+Cooldown timing starts at the first recorded use and counts time the action can be used while the player is alive. It uses the same availability rules as cooldown opportunities, but excludes deaths. Charged actions show a conservative minimum at full charges because opening charges are unknown. Recharge continues throughout. Recorded Infuriate and Double Check/Checkmate reductions are included. Delays can reflect intentional buff alignment.
+
+In HTML burst tables, hover over Completion to compare recorded and proposed action orders with cast timestamps and any estimated gain. Both orders show other ability weaves. In the proposed package they move with the surrounding GCD, keeping roughly the same weave slots. Resource activations retain recorded timing when their grants cannot be replayed. Damaging actions show cast and hit times. Proposed hit times use observed delays from the log. Both orders show recorded HP-lock and untargetable timestamps where available. Uncertain comparisons are marked for review.
+
+PLD burst cast and hit counts attribute held follow-ups to the burst that granted them, including uses in the next window. Landed potency retains the actual buff snapshots. Hold comparisons check early uses against witnessed cleave timings, including the next Fight or Flight opening before a new Valor overwrites Honor's grant. They respect combo expiry, Requiescat charges, GCD spacing and recorded future actions. Tooltips compare combined potency with personal buffs and potions, excluding DH/Crit and other players' buffs. Unprofitable candidates are discarded early. Completion remains unconfirmed when the available evidence cannot support the comparison. This is a local package comparison, not a full-fight rotation solver.
 
 Burst alignment groups landed potency by personal buff windows and summarizes actions outside them, ordered by potential gain. DoTs use their application snapshot. Damage-buff tables exclude the selected buff from potency. Reassemble and Devilment instead estimate hit-bonus gains using assumed gear and baseline DH/Crit rates, separately from potency and PPS. Regular uses between windows, finite charges and overlapping buffs mean these gains are not confirmed losses or additive totals.
 
@@ -301,15 +322,15 @@ PLD uses Strength for both weaponskills and damaging spells. Listed guide potenc
 
 Fight or Flight adds 25% personal damage. Analyse shows offensive cooldown use counts, timing and burst opportunities. Expiacion, Imperator, Confiteor, Blade of Faith, Blade of Truth, Blade of Valor and Blade of Honor deal 40% potency to additional targets.
 
-Cooldown timing measures ready time and the longest wait after the first recorded use, excluding forced downtime and recorded death periods. Recharge continues through downtime. Intervene reports a conservative minimum of time at full charges because opening charges are unknown. Delays can reflect intentional buff alignment. Timing does not change the full-duration possible-use counts.
+Burst completion compares landed direct base potency with the highest-potency feasible package in each recorded Fight or Flight window. Expected casts belong to one jointly scheduled package, including earned follow-ups. Hit delays must fit the damageable windows before downtime and evidenced phase HP locks. Incomplete expectations show `n/a`. Missing landed hits are highlighted separately in HTML. Recorded grants establish Goring Blade and the Confiteor sequence. Combo dependencies, GCD recasts and potency priorities come from the selected action snapshot. Opportunities exclude downtime and recorded deaths. Cooldown additions must preserve all recorded outside-window and later uses. Unknown opening charges or missing availability evidence show `?`. Outside multi-target follow-ups are retained without asserting that moving them would improve damage. Resource evidence limits the comparison to a local package. Unknown gauge availability and opening charges remain unscored.
 
-Burst completion shows completed casts against conservative opportunities in each recorded Fight or Flight window. The final completion percentage caps each action at its expected count. Incomplete expectations show `n/a`. Missing landed hits are highlighted separately in HTML. Recorded grants establish Goring Blade and the Confiteor sequence. Combo dependencies, GCD recasts and potency priorities come from the selected action snapshot. Opportunities exclude downtime and recorded deaths. Cooldown additions must preserve all recorded outside-window and later uses. Unknown opening charges or missing availability evidence show `?`. Outside multi-target follow-ups are retained without asserting that moving them would improve damage. These are local opportunity bounds, not an optimal rotation or confirmed potency losses.
+Potion tables flag unpotted landed hits from the associated Fight or Flight sequence. Start and End tooltips group alignment evidence. Completion scores actions inside the window, while alignment markers review potion placement.
 
 Landed-hit counts are separate from completed casts and exclude periodic ticks. Window potency includes all landed damage and auto-attacks with a Fight or Flight snapshot, including periodic damage attributed to its application.
 
 ##### Follow-up context
 
-Confiteor, Blade of Faith, Blade of Truth and Blade of Valor have 500, 260, 380 and 500 base potency respectively, increasing to 1,000, 760, 880 and 1,000 with Requiescat. Follow-ups remain grouped under the preceding burst. Casts without an active Requiescat charge use unenhanced potency. Analyse retains follow-up context under cooldowns and burst windows. Missing follow-ups list recorded death, sustained boss downtime, fight ending or ready-effect expiry context. Absent hits reuse the shared ghost and HP-lock evidence. Actions sharing a context are grouped, and unexplained omissions remain unconfirmed. Context alone does not establish an avoidable loss.
+Confiteor, Blade of Faith, Blade of Truth and Blade of Valor have 500, 260, 380 and 500 base potency respectively, increasing to 1,000, 760, 880 and 1,000 with Requiescat. Follow-ups remain grouped under the preceding burst. Casts without an active Requiescat charge use unenhanced potency. Proposed packages replay the four charges for 30 seconds from the selected Imperator cast, accounting for other spell uses and deaths. Analyse retains follow-up context under cooldowns and burst windows. Missing follow-ups list recorded death, sustained boss downtime, fight ending or ready-effect expiry context. Absent hits reuse the shared ghost and HP-lock evidence. Actions sharing a context are grouped, and unexplained omissions remain unconfirmed. Context alone does not establish an avoidable loss.
 
 ##### Spell casts
 
@@ -349,7 +370,7 @@ Inner Chaos, Chaotic Cyclone, Primal Rend, and Primal Ruination guarantee critic
 
 #### Cooldowns and burst windows
 
-Cooldown timing covers Inner Release, Infuriate, Upheaval/Orogeny and Onslaught. Upheaval and Orogeny share one cooldown. Cooldowns and burst windows shows the three Inner Release spenders and Primal follow-ups, followed by potion-window casts of these actions, Infuriate, Nascent Chaos consumers, Upheaval/Orogeny and Onslaught. Counts are descriptive, not fixed requirements. Follow-up context explains recorded omissions and missing hits. The shared Potions section shows landed potion-snapshot potency and gain, including auto-attacks.
+Cooldown timing covers Inner Release, Infuriate, Upheaval/Orogeny and Onslaught. Upheaval and Orogeny share one cooldown. Cooldowns and burst windows shows Inner Release sequence completion, followed by potion-window casts and landed hits for IR spenders, Infuriate, Nascent Chaos consumers, Primal follow-ups, Upheaval/Orogeny and Onslaught. Inner Release sequences compare landed direct base potency with the highest-potency feasible package from recorded resources. The calculation considers reordered spenders, earned Primal follow-ups, patch-specific potency and recasts, targetable time and observed hit delays. Expected casts describe one complete package. Potion windows also compare jointly scheduled resources and cooldowns. Alignment markers identify actions from the associated IR sequence used before or after the potion, early Nascent Chaos spending and late IR starts. These checks apply to every WAR report. Completion scores the package available within the window and does not optimize potion placement. Opening buffs, linked IR snapshots and charge consumption can confirm pre-pull completion without an activation timestamp. Unsupported expectations and outside cleaves remain unscored. Infuriate counts resource uses and is excluded from completion. Its potion-table tooltip replays charge recovery and recorded spender reductions when timing is established. A missing carried Nascent Chaos grant is marked for preparation review when a pre-potion charge is established. Moving Infuriate earlier still requires gauge and GCD planning, so this replay does not add hypothetical Nascent Chaos uses. Follow-up context explains recorded omissions and missing hits. The shared Potions section shows landed potion-snapshot potency and gain, including auto-attacks.
 
 #### Combos, ready effects and charges
 
@@ -423,7 +444,7 @@ Standard Finish grants 2% or 5% damage for one or two steps, lasting 60 seconds.
 
 The Dancer's own finish bonuses multiply together. Another Dancer's bonuses do not add personal potency. Finish damage uses the buff state before its own grant or refresh. Pre-pull strength must have a unique fit from recorded damage multipliers.
 
-Major damaging AoEs deal 40% potency to additional targets. Starfall Dance deals 25% and guarantees a critical direct hit. Devilment adds 20 percentage points to Crit and DH chances for the Dancer and Dance Partner.
+Major damaging AoEs deal 40% potency to additional targets. Starfall Dance deals 25% and guarantees a critical direct hit. Devilment adds 20 percentage points to DH and Crit chances for the Dancer and Dance Partner.
 
 #### Feathers and Threefold
 

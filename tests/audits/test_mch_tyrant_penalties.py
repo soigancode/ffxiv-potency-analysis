@@ -117,8 +117,8 @@ def test_tyrant_damage_down_refresh_and_transcendent_revival(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert "Damage Down 09m09s 09m47s" in " ".join(output.split())
-    assert "    Refreshed: 09m17s" in output
+    assert "Damage Down 09m 09s 09m 47s" in " ".join(output.split())
+    assert "    Refreshed: 09m 17s" in output
     assert "Potency lost" in output
     assert result.damage_penalties[0].affected_hits == 38
 
@@ -135,8 +135,8 @@ def test_tyrant_wildfire_snapshot_does_not_create_second_potion(
     assert len(result.potion.windows) == 1
     assert result.potion.windows[0].start_seconds == pytest.approx(599.633)
     assert result.potion.windows[0].end_seconds == pytest.approx(630.235)
-    # Wildfire retains Medicated from its 10m28s application when it detonates
-    # at 10m38s, even though the buff expired at 10m30s.
+    # Wildfire retains Medicated from its 10m 28s application when it detonates
+    # at 10m 38s, even though the buff expired at 10m 30s.
     assert result.mch_wildfires[-1].applied_seconds == pytest.approx(628.408)
     assert result.mch_wildfires[-1].detonated_seconds == pytest.approx(638.385)
     damage_down = next(p for p in result.damage_penalties if p.name == "Damage Down")
@@ -146,18 +146,18 @@ def test_tyrant_wildfire_snapshot_does_not_create_second_potion(
 
     _print_analysis(result)
     output = capsys.readouterr().out
-    assert 'Uses: 1 | Item: Grade 4 Gemdraught of Dexterity [HQ]' in output
+    assert 'Item: Grade 4 Gemdraught of Dexterity [HQ]' in output
     assert '  Potion: Grade 4 Gemdraught of Dexterity [HQ]' not in output
     potion_view = output.split("Potions:\n")[1].split("\nHit Bonus and Luck:")[0]
-    assert "1 10m00s 10m30s" in " ".join(potion_view.split())
-    assert "Landed base potency" in potion_view
+    assert "1 10m 00s 10m 30s" in " ".join(potion_view.split())
+    assert "Base potency" in potion_view
     assert "Window 1:" not in potion_view
     assert len(result.potion.window_totals) == 1
     assert result.potion.window_totals[0].base_potency_min == pytest.approx(
         result.potion.potted_potency_min)
     compact = " ".join(output.split())
-    assert "Damage Down 01m52s 02m22s" in compact
-    assert "Damage Down 03m26s 03m56s" in compact
+    assert "Damage Down 01m 52s 02m 22s" in compact
+    assert "Damage Down 03m 26s 03m 56s" in compact
     assert "Hits: 68 | Potency lost: 6,794" in compact
     assert output.index("Deaths and damage penalties:") < output.index("Ghosted attacks and reduced hits:")
 

@@ -37,7 +37,7 @@ def test_brd_adds_and_clipped_hit(
     output = capsys.readouterr().out
     assert "Burst Shot on Charnel Cell: 19,726/36,521 damage" in output
     assert "Burst Shot on Coffinmaker" in output
-    assert "01m03s 80/85 80 1 566" in " ".join(output.split())
+    assert "01m 03s 80/85 80 1 566" in " ".join(output.split())
     assert "Army's Paeon 4 147.9s" in " ".join(output.split())
     assert "Heartbreak Shot on Charnel Cell (target defeated before hit landed)" in output
     assert "Burst Shot on Coffinmaker (reason unconfirmed)" in output
@@ -185,5 +185,5 @@ def test_rank_two_cell_dies_from_own_sidewinder_before_burst_shot_lands(
 
     cli._print_analysis(result)
     output = capsys.readouterr().out
-    assert "07m15s Burst Shot on Charnel Cell (target defeated before hit landed)" in output
+    assert "07m 15s Burst Shot on Charnel Cell (target defeated before hit landed)" in output
     assert "Burst Shot on Charnel Cell (phase HP lock" not in output

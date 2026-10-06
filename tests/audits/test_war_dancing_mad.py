@@ -35,6 +35,10 @@ def test_warrior_log(tmp_path, audit_war, prefix, expected, monkeypatch):
         assert confirmed_ghosts(result) == []
         assert all(reason == "phase HP lock" for _, entries in result.ghosted_ending_times for _, reason in entries)
     if expected[0] == "Injective Function":
+        opening = result.war.ir_opportunities[0]
+        assert [action.casts for action in opening.actions] == [3, 1, 1, 1]
+        assert [action.expected for action in opening.actions] == [3, 1, 1, 1]
+        assert [action.hits for action in opening.actions] == [3, 1, 1, 1]
         assert result.ghosted == (("Storm's Eye", 1),)
         assert result.ghosted_times == (("Storm's Eye", (382.362,)),)
         assert next(action for action in result.actions if action.name == "Damnation").hits == 15

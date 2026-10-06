@@ -9,6 +9,7 @@ from ..errors import AnalysisError
 from ..events import _has_buff
 
 FIGHT_OR_FLIGHT = 1000076
+OPENING_COOLDOWNS = {"Fight or Flight": (FIGHT_OR_FLIGHT, 20000)}
 
 
 def fight_or_flight_strength(actions) -> float:

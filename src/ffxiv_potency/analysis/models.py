@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .brd.dots import BrdDotActionSummary
 from .brd.songs import BrdFinaleSummary
+from .burst_opportunities import BurstWindow
 from .combos import ComboSummary
 from .cooldown_timing import CooldownTiming
 from .diagnostic_types import BurstAlignment, FollowUpContext
@@ -284,6 +285,7 @@ class AnalysisResult:
     burst_alignment: tuple[BurstAlignment, ...] = ()
     combos: ComboSummary | None = None
     follow_up_context: tuple[FollowUpContext, ...] = ()
+    burst_packages: tuple[tuple[str, tuple[BurstWindow, ...]], ...] = ()
 
     @property
     def pps_duration_seconds(self) -> float:

@@ -74,6 +74,27 @@ def _audit_war(tmp_path, archive, prefix, expected):
     assert result.auto_attacks[0].potency_per_hit == pytest.approx(90 * 228 / 204)
     assert result.potion.item is not None
     assert result.potion.item.name == "Grade 4 Gemdraught of Strength [HQ]"
+    assert result.war is not None
+    from ffxiv_potency.analysis.cache import _decode, _encode
+    from ffxiv_potency.analysis.war.summary import WarSummary
+    assert _decode(_encode(result.war), WarSummary) == result.war
+    known_potions = [burst for burst in result.war.potion_bursts
+                     if burst.start_seconds is not None and burst.end_seconds is not None]
+    assert len(result.war.potion_opportunities) == len(known_potions)
+    for window, burst in zip(result.war.potion_opportunities, known_potions):
+        assert window.landed_potency == pytest.approx(burst.base_potency + burst.gained_potency)
+        for action in window.actions:
+            keys = set(dict(burst.cast_packets)[action.name])
+            assert action.casts == len(keys)
+            landed = sum(event.get("type") == "damage" and event.get("sourceID") == source
+                         and event.get("amount", 0) > 0 and not event.get("tick")
+                         and (event.get("packetID"), event.get("abilityGameID")) in keys
+                         for event in damage)
+            assert action.hits == landed
+            assert action.expected is None or action.expected >= 0
+        if window.actual_package_potency is not None:
+            assert window.best_package_potency is not None
+            assert window.best_package_potency >= window.actual_package_potency >= 0
 
     base = dict(BASE)
     if since == "7.4":

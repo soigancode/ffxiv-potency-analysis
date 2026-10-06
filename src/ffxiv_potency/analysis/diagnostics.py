@@ -6,6 +6,7 @@ from importlib import import_module
 from math import floor
 from typing import Any
 
+from .availability import action_lock_windows, cooldown_availability
 from .buffs import self_damage_multiplier
 from .combos import infer_combos, summarize_combos
 from .cooldown_timing import cooldown_timing, living_windows
@@ -79,11 +80,12 @@ def proc_damage(damage, inferences):
             for e in damage]
 
 
-def summarize_timing(job, casts, damage, actions, names, life, source, start, end, targetable):
+def summarize_timing(job, casts, damage, actions, names, life, source, start, end, targetable,
+                     debuffs=(), combatants=()):
     rules = rules_for(job)
     own = [e for e in casts if e.get("sourceID") == source and not e.get("fake")
            and e.get("type", "cast") == "cast"]
-    living = living_windows(targetable.intervals, life, source, start, end)
+    locks = action_lock_windows(debuffs, combatants, names, source, start, end)
     rows = []
     for name in rules.COOLDOWNS:
         action = actions.get(name, {})
@@ -112,10 +114,12 @@ def summarize_timing(job, casts, damage, actions, names, life, source, start, en
                     seen.add(key)
                     time = landed_packets[key] if name == "Infuriate" else float(e["timestamp"])
                     reductions.append((time, float(amount)))
-        if targetable.seconds is None or targetable.seconds > 0 and not targetable.intervals:
+        windows = cooldown_availability(action, targetable, locks, start, end)
+        if windows is None:
             from .cooldown_timing import CooldownTiming
             rows.append(CooldownTiming(label, None, None, charges > 1))
         else:
+            living = living_windows(windows, life, source, start, end)
             rows.append(cooldown_timing(label, times, recast * 1000, charges, start, end,
                                         living, tuple(reductions)))
     return tuple(rows)

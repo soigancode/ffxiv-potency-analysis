@@ -4,8 +4,14 @@ import pytest
 
 from ffxiv_potency.analysis.auto_attacks import _summarize_auto_attacks
 from ffxiv_potency.analysis.brd.dots import brd_dot_potency
+from ffxiv_potency.analysis.cooldown_timing import living_windows
 from ffxiv_potency.analysis.dots import DotTick
-from ffxiv_potency.analysis.penalties import revival_multiplier, summarize_status_windows
+from ffxiv_potency.analysis.penalties import (
+    StatusWindow,
+    life_with_revival_evidence,
+    revival_multiplier,
+    summarize_status_windows,
+)
 from ffxiv_potency.analysis.profiles import _load_combat_profile
 
 
@@ -107,6 +113,85 @@ def test_player_cast_bounds_revival_when_no_revival_status_is_recorded() -> None
     assert [(w.name, w.start_seconds, w.end_seconds, w.end_reason) for w in windows] == [
         ("Dead", 5, 9, "revived by next cast; exact time unknown"),
     ]
+
+
+@pytest.mark.parametrize('dungeon, buffs, expected', [
+    (True, [], 'revived by next cast: dungeon wipe reset; exact time unknown'),
+    (True, None, 'revived by next cast; exact time unknown'),
+    (False, [], 'revived by next cast; exact time unknown'),
+])
+def test_wipe_reset_requires_dungeon_and_recorded_revival_buff_archive(dungeon, buffs, expected):
+    windows = summarize_status_windows(
+        [], [{'type': 'death', 'targetID': 2, 'timestamp': 5000}], {}, 2, 0, 30000,
+        [{'type': 'cast', 'sourceID': 2, 'timestamp': 9000}],
+        buffs, dungeon=dungeon,
+    )
+    assert len(windows) == 1
+    assert windows[0].end_seconds == 9
+    assert windows[0].end_reason == expected
+
+
+@pytest.mark.parametrize('status, kind, expected', [
+    (1000043, 'applydebuff', 'revived: Weakness applied'),
+    (1000418, 'applybuff', 'revived: Healer LB3'),
+])
+def test_recorded_revival_effects_prevent_dungeon_wipe_classification(status, kind, expected):
+    event = {'type': kind, 'targetID': 2, 'timestamp': 8000, 'abilityGameID': status}
+    windows = summarize_status_windows(
+        [event] if kind == 'applydebuff' else [],
+        [{'type': 'death', 'targetID': 2, 'timestamp': 5000}],
+        {1000043: 'Weakness'}, 2, 0, 30000,
+        [{'type': 'cast', 'sourceID': 2, 'timestamp': 9000}],
+        [event] if kind == 'applybuff' else [], dungeon=True,
+    )
+    assert next(w for w in windows if w.name == 'Dead').end_reason == expected
+
+
+@pytest.mark.parametrize('debuffs, expected', [
+    ([], 'revived: dungeon wipe reset (inferred)'),
+    ([{'type': 'applydebuff', 'targetID': 2, 'timestamp': 8050,
+       'abilityGameID': 1000043}], 'resurrected'),
+])
+def test_dungeon_resurrect_checks_for_penalties_just_after_revival(debuffs, expected):
+    windows = summarize_status_windows(
+        debuffs, [{'type': 'death', 'targetID': 2, 'timestamp': 5000},
+                  {'type': 'resurrect', 'targetID': 2, 'timestamp': 8000}],
+        {1000043: 'Weakness'}, 2, 0, 30000, revival_buffs=[], dungeon=True,
+    )
+    assert next(w for w in windows if w.name == 'Dead').end_reason == expected
+
+
+def test_revival_bounds_restore_living_windows_without_changing_downloaded_events():
+    life = [{'type': 'death', 'targetID': 2, 'timestamp': 6000},
+            {'type': 'death', 'targetID': 2, 'timestamp': 21000}]
+    windows = (StatusWindow('Dead', 5, 9, 'revived by next cast; exact time unknown'),
+               StatusWindow('Dead', 20, 30, 'fight ended'))
+    effective = life_with_revival_evidence(life, windows, 2, 1000)
+    assert len(life) == 2 and all(event['type'] == 'death' for event in life)
+    assert living_windows(((1000, 31000),), effective, 2, 1000, 31000) == (
+        (1000, 6000), (10000, 21000))
+    assert windows[0].end_reason == 'revived by next cast; exact time unknown'
+    assert life_with_revival_evidence(effective, windows, 2, 1000) == effective
+
+
+@pytest.mark.parametrize('cast_time, duration, expected', [
+    (None, 30000, 'death (inferred)'),
+    (11000, 30000, 'removed'),
+    (None, 9000, 'expired'),
+])
+def test_damage_down_removal_before_delayed_death_preserves_expiry_and_cast_evidence(
+    cast_time, duration, expected,
+):
+    windows = summarize_status_windows(
+        [{'type': 'applydebuff', 'targetID': 2, 'timestamp': 1000,
+          'abilityGameID': 1002911, 'duration': duration},
+         {'type': 'removedebuff', 'targetID': 2, 'timestamp': 10000,
+          'abilityGameID': 1002911}],
+        [{'type': 'death', 'targetID': 2, 'timestamp': 12012}],
+        {1002911: 'Damage Down'}, 2, 0, 30000,
+        [] if cast_time is None else [{'type': 'cast', 'sourceID': 2, 'timestamp': cast_time}],
+    )
+    assert next(w for w in windows if w.name == 'Damage Down').end_reason == expected
 
 
 def test_transcendent_marks_penalty_free_revival_before_next_cast() -> None:

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from math import isfinite
-from typing import Any
+from typing import Any, overload
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,3 +119,62 @@ def resolve_targetable_time(
     if events and intervals:
         return TargetableTime(observed, "targetability timeline (estimated spawn times)", intervals)
     return TargetableTime(None, "unavailable (PPS uses full fight duration)")
+
+
+@overload
+def package_targetable_time(
+    targetable: TargetableTime, actors, damage, events, overkills, locks, start, end,
+) -> TargetableTime: ...
+
+
+@overload
+def package_targetable_time(
+    targetable: None, actors, damage, events, overkills, locks, start, end,
+) -> None: ...
+
+
+def package_targetable_time(
+    targetable: TargetableTime | None, actors, damage, events, overkills, locks, start, end,
+) -> TargetableTime | None:
+    """Damageable package windows exclude evidenced HP locks, retaining other enemies.
+
+    Ghost classification includes an allowance before the threshold. Scheduling
+    instead closes at the observed lethal hit, so preceding landed hits remain
+    eligible. The report's original duration denominator is unchanged.
+    """
+    if not locks or targetable is None or not targetable.intervals:
+        return targetable
+    first = min((e['timestamp'] for e in damage if e.get('amount', 0) > 0
+                 and actors.get(e.get('targetID'), {}).get('type') == 'NPC'
+                 and actors.get(e.get('targetID'), {}).get('petOwner') is None), default=start)
+    eligible = []
+    for actor_id, actor in actors.items():
+        if actor.get('type') != 'NPC' or actor.get('petOwner') is not None:
+            continue
+        actor_damage = [e for e in damage if e.get('targetID') == actor_id]
+        windows = targetable_intervals(events, actor_damage, overkills, {actor_id: actor}, start, end)
+        appearance = min((e['timestamp'] for e in actor_damage if e.get('amount', 0) > 0), default=end)
+        for a, b in windows:
+            if appearance > first and not any(e.get('sourceID') == actor_id
+                    and e.get('targetable') == 1 and e['timestamp'] <= appearance for e in events):
+                a = max(a, appearance)
+            pieces = [(a, b)]
+            for low, high in locks.get(actor_id, ()):
+                threshold = min((e['timestamp'] for e in overkills if e.get('targetID') == actor_id
+                    and e.get('overkill', 0) > 0 and low <= e['timestamp'] <= high), default=low + 2500)
+                # Paired-boss closures share the earliest threshold even when
+                # the second boss records its lethal hit later.
+                threshold = min(threshold, low + 2500)
+                pieces = [(x, y) for p, q in pieces
+                          for x, y in ((p, min(q, threshold)), (max(p, high), q)) if y > x]
+            eligible.extend(pieces)
+    merged = []
+    for a, b in sorted(eligible):
+        if merged and a <= merged[-1][1]:
+            merged[-1] = merged[-1][0], max(b, merged[-1][1])
+        else:
+            merged.append((a, b))
+    clipped = tuple((max(a, p), min(b, q)) for a, b in merged for p, q in targetable.intervals
+                    if min(b, q) > max(a, p))
+    return TargetableTime(sum(b - a for a, b in clipped) / 1000,
+                          'recorded damageable windows including phase HP locks', clipped)

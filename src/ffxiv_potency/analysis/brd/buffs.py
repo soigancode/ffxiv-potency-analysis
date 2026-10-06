@@ -10,6 +10,7 @@ from .songs import SONGS
 __all__ = ["_brd_self_multiplier", "brd_self_buff_windows"]
 
 SELF_DAMAGE_BUFFS = {"Raging Strikes": 1.15, "Mage's Ballad": 1.01}
+OPENING_COOLDOWNS = {"Raging Strikes": (1000125, 20000)}
 
 
 def opening_raging_strikes(buff_windows, ability_names, start) -> bool:

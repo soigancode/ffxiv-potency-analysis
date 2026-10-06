@@ -9,6 +9,7 @@ from ..events import _has_buff
 
 SURGING_TEMPEST = 1002677
 INNER_RELEASE = 1001177
+OPENING_COOLDOWNS = {"Inner Release": (INNER_RELEASE, 15000)}
 
 
 def war_self_buff_windows(

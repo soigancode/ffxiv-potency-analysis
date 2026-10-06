@@ -18,10 +18,10 @@ def cast(time, ability, **fields):
             "abilityGameID": ability, "packetID": time, **fields}
 
 
-def summary(casts, buffs=(), end=60000, landed=()):
+def summary(casts, buffs=(), end=60000, landed=(), damage=None):
     state = replay_spells(casts, list(buffs), [], [], NAMES, 1, 0, end)
     return summarize_pld(casts, buffs, [], [], NAMES, ACTIONS, 1, 0, end, state,
-                         landed, PldDotSummary(0, 0, 0, 0))
+                         landed, PldDotSummary(0, 0, 0, 0), damage=damage)
 
 
 def test_chain_begins_at_first_ranged_gcd_and_shows_every_gap():
@@ -55,6 +55,25 @@ def test_opening_holy_spirit_and_instant_and_unconfirmed_uses_are_excluded():
              cast(5000, 1), cast(7500, 1), cast(10000, 1)]
     result = summary(casts, [buff(4000, 1002673)])
     assert result.ranged == ()
+
+
+def test_opening_landed_holy_spirit_without_start_is_labelled_opener_once():
+    casts = [cast(0, 1), cast(2500, 2), cast(5000, 1)]
+    damage = [{**e, 'type': 'damage', 'timestamp': e['timestamp'] + 750, 'amount': 100}
+              for e in casts]
+    result = summary(casts, damage=damage)
+    assert ('Holy Spirit', 'None', 'opener', 1) in result.spell_counts
+    assert ('Holy Spirit', 'None', 'unconfirmed', 1) in result.spell_counts
+    assert result.holy_spirit_casts == ((0, 'unconfirmed'), (5, 'unconfirmed'))
+
+
+def test_ghosted_or_later_holy_spirit_is_not_labelled_opener():
+    casts = [cast(0, 1), cast(2500, 2), cast(5000, 1)]
+    damage = [{**e, 'type': 'damage', 'amount': 100} for e in casts[1:]]
+    assert all(kind != 'opener' for _, _, kind, _ in summary(casts, damage=damage).spell_counts)
+    with_start = [cast(-1500, 1, type='begincast'), *casts]
+    damage = [{**e, 'type': 'damage', 'amount': 100} for e in casts]
+    assert ('Holy Spirit', 'None', 'hard cast', 1) in summary(with_start, damage=damage).spell_counts
 
 
 def test_delayed_unenhanced_valor_keeps_burst_attribution_and_landed_potency():

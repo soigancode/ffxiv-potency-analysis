@@ -29,7 +29,12 @@ def test_damage_down_scales_only_affected_hits(
     assert window.start_seconds == pytest.approx(39.016)
     assert window.refresh_seconds == (pytest.approx(89.012),)
     assert window.end_seconds == pytest.approx(89.147)
-    assert window.end_reason == "removed"
+    assert window.end_reason == "death (inferred)"
+    fight_start = json.loads((tmp_path / "fight.json").read_text())["startTime"]
+    life = json.loads((tmp_path / "life-events.json").read_text())
+    assert any(event.get('type') == 'death' and event.get('targetID') == 2
+               and 0 <= event['timestamp'] - (fight_start + window.end_seconds * 1000) <= 2500
+               for event in life)
     assert result.auto_attacks[0].weapon_delay_seconds == 3.04
     assert result.potency_min == pytest.approx(10923.91886653846)
     for dot in result.brd_dots:
@@ -59,8 +64,8 @@ def test_damage_down_scales_only_affected_hits(
     _print_analysis(result)
     output = capsys.readouterr().out
     assert output.index("Deaths and damage penalties:") < output.index("Apex Arrow and Pitch Perfect:")
-    assert "Damage Down 00m39s 01m29s" in " ".join(output.split())
-    assert "    Refreshed: 01m29s" in output
+    assert "Damage Down 00m 39s 01m 29s" in " ".join(output.split())
+    assert "    Refreshed: 01m 29s" in output
     assert result.damage_penalties[0].affected_hits == 80
     assert "Potency lost" in output
 

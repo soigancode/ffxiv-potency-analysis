@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from ..events import _event_name, _has_buff
+from ..opening import opening_personal_buff
 from .buffs import INNER_RELEASE, SURGING_TEMPEST
 
 
@@ -23,6 +24,7 @@ class WarPotionBurst:
     base_potency: float
     gained_potency: float
     unbuffed_hits: int
+    cast_packets: tuple[tuple[str, tuple[tuple[int, int], ...]], ...] = ()
 
 
 POTION_ACTIONS = (
@@ -76,8 +78,8 @@ def _spender_casts(sequence, buffs, source, begin, finish, prepull=False):
 def summarize_bursts(casts, damage, buffs, combatants, names, source, start, end):
     own = _own_casts(casts, source)
     triggers = [e for e in own if _event_name(e, names) == "Inner Release"]
-    initial = any(a.get("ability") == INNER_RELEASE for c in combatants or ()
-                  if c.get("sourceID") == source for a in c.get("auras", ()))
+    initial = opening_personal_buff(INNER_RELEASE, "Inner Release", 15000, own, damage,
+                                   buffs, combatants, names, source, start, end)
     if initial and (not triggers or triggers[0]["timestamp"] > start):
         observed_start = min((e["timestamp"] for e in own), default=start)
         triggers.insert(0, {"timestamp": min(start, observed_start), "_prepull": True})
@@ -133,6 +135,7 @@ def summarize_potion_bursts(casts, rows, windows, names, source, start, potion_i
         packets = {(e.get("packetID"), e.get("abilityGameID")) for e, _, _, _ in hits
                    if e.get("packetID") is not None and not e.get("tick")}
         counts = []
+        cast_packets = []
         for label, consumers in POTION_ACTIONS:
             seen = set()
             for e in own:
@@ -146,11 +149,14 @@ def summarize_potion_bursts(casts, rows, windows, names, source, start, potion_i
                     continue
                 seen.add(key if e.get("packetID") is not None else ("event", id(e)))
             counts.append((label, len(seen)))
+            cast_packets.append((label, tuple(sorted(
+                key for key in seen if isinstance(key[0], int) and isinstance(key[1], int)
+            ))))
         potency = sum(p for _, _, _, p in hits)
         base = sum(e.get("_unpotted_potency", p / multiplier) for e, _, _, p in hits)
         unbuffed = sum((e.get("_tempest_factor") == 1 if "_tempest_factor" in e
                        else not _has_buff(e, SURGING_TEMPEST)) and name != "Damnation"
                        for e, _, name, _ in hits)
         result.append(WarPotionBurst(window.start_seconds, window.end_seconds, tuple(counts),
-                                     base, potency - base, unbuffed))
+                                     base, potency - base, unbuffed, tuple(cast_packets)))
     return tuple(result)

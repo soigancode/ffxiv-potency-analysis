@@ -1,9 +1,13 @@
 """Per-window potion attribution preserves snapshots, ranges and cache types."""
 
-from dataclasses import replace
-
 from ffxiv_potency.analysis.cache import _decode, _encode
-from ffxiv_potency.analysis.models import PotionSummary, PotionWindow, PotionWindowTotal
+from ffxiv_potency.analysis.models import (
+    AnalysisResult,
+    HitOutcomeSummary,
+    PotionSummary,
+    PotionWindow,
+    PotionWindowTotal,
+)
 from ffxiv_potency.analysis.potion import summarize_potion_windows
 
 
@@ -34,16 +38,23 @@ def test_empty_contributions_keep_zero_use_windows():
 
 def test_rendering_has_table_totals_and_explanation_together_with_ranges(capsys):
     from ffxiv_potency.cli import _print_analysis
-    from tests.cli.test_execution_losses import result_with_losses
 
     potion = PotionSummary(1, 100, 160, 8, 12.8, (PotionWindow(-2, 28),),
                            window_totals=(PotionWindowTotal(100, 160, 8, 12.8),))
-    _print_analysis(replace(result_with_losses('pld'), potion=potion))
+    result = AnalysisResult(
+        fight_name='Test', encounter_id=1, source_name='Player', ndps=None,
+        duration_seconds=60, raw_damage_events=0, landed_damage_events=0,
+        matched_damage_events=0, potency_min=0, potency_max=0, actions=(),
+        auto_attacks=(), pet_deployments=(), hit_outcomes=HitOutcomeSummary(0, 0, 0, 0),
+        potion=potion, unmatched=(), ghosted=(),
+    )
+    _print_analysis(result)
     output = capsys.readouterr().out.split('Potions:\n')[1].split('\nHit Bonus and Luck:')[0]
-    assert 'Start' in output and 'End' in output and 'Landed base potency' in output
-    assert '-00m02s' in output and '00m28s' in output
+    assert 'Start' in output and 'End' in output and 'Base potency' in output
+    assert '-00m 02s' in output and '00m 28s' in output
     assert '100.0-160.0' in output
+    assert 'Gain %' not in output
     assert 'Window 1:' not in output
-    assert '\n  Potted base potency: 100.0-160.0 | Potency gained: 8.0-12.8' in output
-    assert '\n  Potency includes all landed damage and auto-attacks with a potion snapshot.' in output
-    assert '\n\n  Potted base potency:' not in output
+    assert '\n  Total base potency: 100.0-160.0 | Potion gain: 8.0-12.8' in output
+    assert '\n  Landed damage with a potion snapshot, including DoT ticks and auto-attacks. Base potency excludes the potion bonus.' in output
+    assert '\n\n  Total base potency:' not in output

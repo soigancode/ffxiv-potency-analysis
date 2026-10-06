@@ -165,7 +165,7 @@ def test_cli_downloads_and_compares_sources(monkeypatch, tmp_path: Path, capsys)
     assert output.startswith("\nFight:") and output.endswith("\n\n")
     assert "Saved fight data:" not in output
     assert "Fight: Boss" in output
-    assert "01m40s" in output
+    assert "01m 40s" in output
     assert "nDPS" in output and "15,000.0" in output
     assert "rDPS" in output and "15,100.0" in output
     assert "Player" in output and "aLuck" in output and "45.12%" in output

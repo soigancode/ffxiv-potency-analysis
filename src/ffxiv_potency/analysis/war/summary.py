@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from itertools import pairwise
 from typing import Any
 
+from ..burst_opportunities import BurstWindow
 from ..events import _event_name
+from ..opening import opening_personal_buff
 from ..ranged import ranged_chains
 from ..targetability import TargetableTime
 from .bursts import WarBurst, WarPotionBurst
@@ -49,6 +51,8 @@ class WarSummary:
     expired_charges: tuple[tuple[float, int], ...] = ()
     bursts: tuple[WarBurst, ...] = ()
     potion_bursts: tuple[WarPotionBurst, ...] = ()
+    potion_opportunities: tuple[BurstWindow, ...] = ()
+    ir_opportunities: tuple[BurstWindow, ...] = ()
 
 
 READY = (
@@ -174,6 +178,7 @@ def summarize_war(
     hit_rows: list[tuple[float, str, float, float]],
     targetable_time: TargetableTime,
     windows: dict[int, tuple[tuple[int, int, float], ...]],
+    damage: list[dict[str, Any]] | tuple[dict[str, Any], ...] = (),
 ) -> WarSummary:
     own_casts = sorted(
         (e for e in casts if e.get("sourceID") == source), key=lambda e: e["timestamp"]
@@ -185,6 +190,9 @@ def summarize_war(
         if c.get("sourceID") == source
         for a in c.get("auras", [])
     }
+    if opening_personal_buff(1001177, "Inner Release", 15000, own_casts, damage,
+                             buffs, combatants, names, source, start, end):
+        initial.add(1001177)
     ready = tuple(
         _ready_summary(
             status, name, consumers, own_casts, own_buffs, status in initial, names, start, end
@@ -270,7 +278,10 @@ def summarize_war(
         len(hit_rows),
         missing,
         sum(value * 0.1 for _, _, value in avoidable),
-        sum(_event_name(e, names) == "Inner Release" for e in own_casts) + int(1001177 in initial),
+        sum(_event_name(e, names) == "Inner Release" for e in own_casts)
+        + int(1001177 in initial and not any(
+            e["timestamp"] <= start and _event_name(e, names) == "Inner Release" for e in own_casts
+        )),
         guaranteed,
         unused,
         ready,

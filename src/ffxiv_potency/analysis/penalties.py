@@ -40,6 +40,29 @@ class StatusWindow:
 _TRACKED_STATUSES = {"Weakness", "Brink of Death", "Damage Down"}
 
 
+def life_with_revival_evidence(
+    life: list[dict[str, Any]], windows: tuple[StatusWindow, ...],
+    source_id: int | None, start: float,
+) -> list[dict[str, Any]]:
+    """Close eligibility gaps at confirmed or conservatively bounded revivals.
+
+    These derived events are for calculations only. The status windows retain
+    the original evidence and uncertainty; downloaded events stay untouched.
+    """
+    result = list(life)
+    if source_id is None:
+        return result
+    for window in windows:
+        if window.name != "Dead" or not window.end_reason.startswith("revived"):
+            continue
+        timestamp = start + window.end_seconds * 1000
+        if not any(event.get("type") == "resurrect" and event.get("targetID") == source_id
+                   and event.get("timestamp") == timestamp for event in life):
+            result.append({"type": "resurrect", "targetID": source_id, "timestamp": timestamp,
+                           "revival_evidence": window.end_reason})
+    return sorted(result, key=lambda event: event.get("timestamp", 0))
+
+
 def summarize_status_windows(
     debuffs: list[dict[str, Any]], life: list[dict[str, Any]],
     ability_names: dict[int, str], source_id: int | None,
@@ -47,6 +70,7 @@ def summarize_status_windows(
     revival_buffs: list[dict[str, Any]] | None = None,
     *, encounter_overkills: list[dict[str, Any]] | None = None,
     actors: dict[int, dict[str, Any]] | None = None,
+    dungeon: bool = False,
 ) -> tuple[StatusWindow, ...]:
     """Use revival statuses; bound missing events by the next player cast."""
     if source_id is None:
@@ -55,6 +79,19 @@ def summarize_status_windows(
     expires_at: dict[int, float] = {}
     refreshes: dict[int, list[float]] = defaultdict(list)
     windows: list[StatusWindow] = []
+
+    def wipe_revival(begun: float, timestamp: float) -> bool:
+        # Absence is usable only when the revival-buff archive exists. An old
+        # download without that archive must retain an unknown revival cause.
+        return dungeon and revival_buffs is not None and not any(
+            status.get("targetID") == source_id
+            and status.get("type") in {"applybuff", "refreshbuff", "applydebuff",
+                                       "refreshdebuff", "applydebuffstack"}
+            and status.get("abilityGameID") in {*_REVIVAL_EFFECTS, _TRANSCENDENT_BUFF_ID}
+            and isinstance(status.get("timestamp"), (int, float))
+            and begun <= status["timestamp"] <= timestamp + _REVIVAL_STATUS_DELAY_MS
+            for status in (*debuffs, *(revival_buffs or ()))
+        )
     # FF Logs can represent a renewed debuff as a removal immediately followed
     # by another application at the same timestamp.
     replacements = {
@@ -99,13 +136,17 @@ def summarize_status_windows(
                 windows.append(StatusWindow(
                     "Dead", (begun - start) / 1000,
                     (timestamp - start) / 1000,
+                    "revived by next cast: dungeon wipe reset; exact time unknown"
+                    if wipe_revival(begun, timestamp) else
                     "revived by next cast; exact time unknown",
                 ))
         elif kind == "resurrect":
             begun = active.pop("dead", None)
             if begun is not None:
                 windows.append(StatusWindow("Dead", (begun - start) / 1000,
-                                            (timestamp - start) / 1000, "resurrected"))
+                                            (timestamp - start) / 1000,
+                                            "revived: dungeon wipe reset (inferred)"
+                                            if wipe_revival(begun, timestamp) else "resurrected"))
         elif kind in {"applybuff", "refreshbuff"} and ability_id == _TRANSCENDENT_BUFF_ID:
             begun = active.get("dead")
             # A normal revival may also apply Transcendent. Allow a nearby
@@ -165,11 +206,24 @@ def summarize_status_windows(
                         and 0 <= timestamp - hit["timestamp"] <= 250
                         for hit in encounter_overkills or ()
                     )
+                    near_death = name == "Damage Down" and any(
+                        death.get("type") == "death" and death.get("targetID") == source_id
+                        and isinstance(death.get("timestamp"), (int, float))
+                        and 0 <= death["timestamp"] - timestamp <= 2500
+                        and not any(
+                            cast.get("type") == "cast" and cast.get("sourceID") == source_id
+                            and isinstance(cast.get("timestamp"), (int, float))
+                            and timestamp < cast["timestamp"] < death["timestamp"]
+                            for cast in casts or ()
+                        )
+                        for death in life
+                    )
                     expires_at.pop(ability_id, None)
                     windows.append(StatusWindow(name, (begun - start) / 1000,
                                                 (timestamp - start) / 1000,
                                                 "expired" if expired else
                                                 "boss defeated" if boss_defeated else
+                                                "death (inferred)" if near_death else
                                                 "fight ended" if end - timestamp < 1000
                                                 else "removed",
                                                 tuple(refreshes.pop(ability_id, ()))))

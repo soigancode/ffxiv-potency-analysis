@@ -80,12 +80,12 @@ def test_potion_window_totals_reconcile_for_every_job(tmp_path, job, archive, pr
             else:
                 assert '  Total potency:' not in dots
     output = report.split('Potions:\n')[1].split('\n\n', 1)[0]
-    assert output.startswith(f'  Uses: {result.potion.uses} | Item: ')
+    assert output.startswith('  Item: ')
     assert output.splitlines()[1].startswith('    Potion ')
     assert all(line.startswith('    ') for line in output.splitlines()[2:2 + potion.uses])
-    assert 'Landed base potency' in output and 'Potion gain' in output
+    assert 'Base potency' in output and 'Potion gain' in output
     assert 'Window 1:' not in output
-    assert output.count('Potency includes all landed damage and auto-attacks') == 1
+    assert output.count('Landed damage with a potion snapshot') == 1
     with collect_report() as blocks:
         _print_analysis(result)
     html = BeautifulSoup(render_html_report(result), 'html.parser')
@@ -100,8 +100,14 @@ def test_potion_window_totals_reconcile_for_every_job(tmp_path, job, archive, pr
     assert len(html.select('table')) == len(tables)
     for rendered, block in zip(html.select('table'), tables):
         assert [cell.get_text() for cell in rendered.select('thead th')] == list(block.labels)
-        rows = [[cell.get_text() for cell in row.select('td')]
-                for row in rendered.select('tbody tr') if not row.select('.row-note')]
+        rendered_rows = [row for row in rendered.select('tbody tr') if not row.select('.row-note')]
+        if rendered.has_attr('data-sortable'):
+            # HTML cooldown timing is pre-sorted. Compare each row with its
+            # original presentation event rather than requiring console order.
+            rendered_rows.sort(key=lambda row: int(str(row['data-original-order'])))
+        rows = [[cell.get_text() for cell in row.select('td')] for row in rendered_rows]
+        if block.labels == ('Time', 'GCD sequence'):
+            rows = [[time, sequence.replace('→', '->')] for time, sequence in rows]
         assert rows == [list(row) for row in block.rows]
     assert _encode(result) == encoded
 
@@ -111,6 +117,43 @@ def extract(directory, archive, prefix):
         for member in logs.namelist():
             if member.startswith(prefix + '/') and member.endswith('.json'):
                 (directory / Path(member).name).write_bytes(logs.read(member))
+
+
+def test_dancer_cooldown_availability_matches_saved_cutscene(tmp_path):
+    from ffxiv_potency.analysis.availability import action_lock_windows, available_windows
+    from ffxiv_potency.analysis.execution import summarize_execution
+    from ffxiv_potency.analysis.targetability import TargetableTime
+
+    extract(tmp_path, 'dnc_dancing_mad.zip', 'VWJv7x9DbRa4ktH6/fight-7/source-4')
+
+    def load(name):
+        return json.loads((tmp_path / name).read_text())
+
+    fight = load('fight.json')
+    start, end = fight['startTime'], fight['endTime']
+    names = {a['gameID']: a['name'] for a in load('master-data.json')['abilities']}
+    actions = {a['name']: a for a in json.loads(Path('data/jobs/dnc/7.4/actions.json').read_text())['actions']}
+    debuffs = load('debuff-events.json')
+    combatants = load('combatant-info-events.json')
+    locks = action_lock_windows(debuffs, combatants, names, 4, start, end)
+    assert locks
+    windows = available_windows(((start, end),), locks, start, end)
+    result = summarize_execution('dancer', load('cast-events.json'), load('damage-events.json'),
+        load('buff-events.json'), debuffs, load('life-events.json'), combatants, names, actions,
+        {}, 4, start, end, TargetableTime(0, 'unused for self buffs'), {})
+    # Independent single-charge replay: advance by the recast after each use,
+    # jumping to the end of a lock when the next use cannot occur yet.
+    for cooldown in result.cooldowns:
+        ready = start
+        expected = 0
+        for begin, finish in windows:
+            ready = max(ready, begin)
+            while ready < finish:
+                expected += 1
+                ready += actions[cooldown.name]['recast_seconds'] * 1000
+        assert cooldown.possible == expected
+        assert cooldown.basis == 'action availability'
+    assert _decode(json.loads(json.dumps(_encode(result))), type(result)) == result
 
 
 @pytest.mark.parametrize('job,archive,prefix,combo', CASES)
@@ -149,10 +192,10 @@ def test_missing_combo_field_restores_recorded_real_log_potency_and_resources(
     output = capsys.readouterr().out
     assert '  Cooldown timing:' in output
     if job == 'war':
-        assert 'IR spenders = Fell Cleave/Decimate using Inner Release charges.' in output
+        assert 'IR spenders = Fell Cleave/Decimate using Inner Release charges.' not in output
         assert result.burst_alignment == ()
     else:
-        assert 'Potential gains are not confirmed losses.' in output
+        assert 'Completion compares recorded potency with the best feasible action order.' in output
     assert 'Combos, ready effects and charges:' in output
 
 

@@ -180,6 +180,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="global leaderboard partition (Savage: 1, 2, 7, 8, 13, 14; Extremes: 1, 2, 7, 8 or 7, 8; Dancing Mad: 1, 2)",
     )
     fflogs.add_argument("--output", type=Path, default=Path("data/logs"), help="output root")
+    fflogs.add_argument("--html", action="store_true",
+                        help="also save a ranked report or leaderboard with full analyses in reports/")
 
     compare = commands.add_parser("compare", help="download and compare FF Logs sources")
     compare.add_argument("urls", nargs="+", help="two to ten report URLs or IDs")
@@ -194,7 +196,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--actions", type=Path, help=f"override the job's default {LATEST_KNOWN_PATCH} actions.json"
     )
     analyse.add_argument("--output", type=Path, default=Path("data/logs"), help="download root")
-    analyse.add_argument("--html", type=Path, help="also write a standalone HTML report")
+    analyse.add_argument("--html", type=Path,
+                         help="also write a standalone HTML report (bare filenames go in reports/)")
     for command in (analyse, compare, fflogs):
         command.add_argument("--gear", help="gear profile ID; default selects BiS by fight date")
     return parser
@@ -209,7 +212,7 @@ def _format_potency(minimum: float, maximum: float) -> str:
 def _format_duration(seconds: float) -> str:
     total_seconds = round(seconds)
     minutes, remaining = divmod(total_seconds, 60)
-    return f"{minutes:02d}m{remaining:02d}s"
+    return f"{minutes:02d}m {remaining:02d}s"
 
 
 def _format_timestamp(seconds: float) -> str:
@@ -333,7 +336,8 @@ def _fight_provenance(directory: Path) -> tuple[str, str]:
 def _compare_directories(
     directories: Sequence[Path], override: Path | None, progress: _Progress | None = None,
     *, rank_positions: Sequence[int] | None = None, skip_analysis_errors: bool = False,
-    gear: str | None = None,
+    gear: str | None = None, html_output: Path | None = None,
+    html_skipped: tuple[tuple[int, str], ...] = (),
 ) -> tuple[tuple[int, str], ...]:
     if rank_positions is not None and len(rank_positions) != len(directories):
         raise ValueError("ranking positions must match the compared fights")
@@ -442,19 +446,34 @@ def _compare_directories(
         print(f"{rank}{player}{separator}" + separator.join(
             f"{value:>{width}}" for value, width in zip(row, widths)
         ))
+    comparison_notes = []
+
+    def comparison_note(text: str) -> None:
+        comparison_notes.append(text)
+        print(text)
+
     if any(result.targetable_seconds is None for result in results):
-        print("n/a Targetable time unavailable. PPS uses full duration for those logs.")
+        comparison_note("n/a Targetable time unavailable. PPS uses full duration for those logs.")
     if any("estimated" in result.targetable_time_source for result in results):
-        print("~ Targetable time estimated from recorded enemy windows.")
+        comparison_note("~ Targetable time estimated from recorded enemy windows.")
     if any(issue_notes(result) != "-" for result in results):
-        print("Notes: KO deaths | DD Damage Down | G confirmed target death/untargetability ghosts")
+        comparison_note("Notes: KO deaths | DD Damage Downs | G ghosted hits (HP locks excluded)")
     if any(deployment.gauge_assumed for result in results
            for deployment in result.pet_deployments):
-        print("~ Potency, PPS, hit bonus, and luck include an unconfirmed 100 Battery Gauge carry-over.")
+        comparison_note("~ Potency, PPS, hit bonus, and luck include an unconfirmed 100 Battery Gauge carry-over.")
     if any(deployment.mch_gauge_inferred for result in results
            for deployment in result.pet_deployments):
-        print("~ Potency, PPS, hit bonus, and luck include Battery estimated from Queen damage.")
+        comparison_note("~ Potency, PPS, hit bonus, and luck include Battery estimated from Queen damage.")
     print()
+    if html_output is not None:
+        from .html_report import write_leaderboard_report
+
+        write_leaderboard_report(results, compared_directories, compared_ranks, labels, rows,
+                                 html_output, job=jobs[0], skipped=(*html_skipped, *skipped),
+                                 notes=tuple(comparison_notes), metadata=(
+                                     ((f'Partition: {provenance[0][0]}',) if show_partition else ())
+                                     + (f'Patch: {provenance[0][1]}',) if shared_provenance else ()))
+        print(f"Saved HTML report: {html_output}")
     return tuple(skipped)
 
 
@@ -732,14 +751,21 @@ def _resolve_analysis_directory(
     return download.directory
 
 
-class _GearOptions(TypedDict, total=False):
+class _ComparisonOptions(TypedDict, total=False):
     gear: str
+    html_output: Path
+    html_skipped: tuple[tuple[int, str], ...]
+
+
+class _LeaderboardOptions(TypedDict, total=False):
+    html_output: Path
 
 
 def _download_and_compare(
     urls: Sequence[str], output: Path, actions: Path | None, progress: _Progress,
     *, rank_positions: Sequence[int] | None = None, skip_analysis_errors: bool = False,
-    gear: str | None = None,
+    gear: str | None = None, html_output: Path | None = None,
+    html_skipped: tuple[tuple[int, str], ...] = (),
 ) -> tuple[tuple[int, str], ...]:
     # A source may appear more than once in a comparison; only one worker may
     # write its files, while the result still appears in each requested position.
@@ -749,7 +775,8 @@ def _download_and_compare(
     progress.update("Loading fight data", 0, len(urls))
     with ThreadPoolExecutor(max_workers=min(3, len(unique_urls))) as executor:
         pending = {
-            executor.submit(_resolve_analysis_directory, url, output, announce=False): url
+            executor.submit(_resolve_analysis_directory, url, output, announce=False,
+                            **({'include_targetability': True} if html_output is not None else {})): url
             for url in unique_urls
         }
         for finished in as_completed(pending):
@@ -772,7 +799,9 @@ def _download_and_compare(
     ) if rank_positions is not None else None
     if not directories:
         raise FFLogsError("none of the selected ranked fights could be downloaded")
-    gear_options: _GearOptions = {"gear": gear} if gear is not None else {}
+    gear_options: _ComparisonOptions = {"gear": gear} if gear is not None else {}
+    if html_output is not None:
+        gear_options.update(html_output=html_output, html_skipped=(*html_skipped, *skipped))
     if progress.enabled:
         if compared_ranks is None:
             _compare_directories(directories, actions, progress, **gear_options)
@@ -800,6 +829,7 @@ def _compare_ranked_references(
     ranked: tuple[tuple[int, ReportReference], ...],
     skipped: tuple[tuple[int, str], ...],
     output: Path, progress: _Progress, *, gear: str | None = None,
+    html_output: Path | None = None,
 ) -> None:
     """Compare selected leaderboard entries and show skipped ranks."""
     urls = [
@@ -807,10 +837,13 @@ def _compare_ranked_references(
         f"?fight={reference.fight_id}&source={reference.source_id}"
         for _, reference in ranked
     ]
+    options: _ComparisonOptions = {"gear": gear} if gear is not None else {}
+    if html_output is not None:
+        options.update(html_output=html_output, html_skipped=skipped)
     analysis_skipped = _download_and_compare(
         urls, output, None, progress,
         rank_positions=tuple(rank for rank, _ in ranked),
-        skip_analysis_errors=True, **({"gear": gear} if gear is not None else {}),
+        skip_analysis_errors=True, **options,
     )
     skipped_ranks = (*skipped, *analysis_skipped)
     if skipped_ranks:
@@ -965,14 +998,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.html is not None:
                 from .html_report import write_html_report
 
+                destination = (Path("reports") / args.html
+                               if args.html.parent == Path(".") and not args.html.is_absolute()
+                               else args.html)
                 write_html_report(
-                    result, args.html, directory=directory,
+                    result, destination, directory=directory,
                     anonymous=reference is not None and reference.report_code.startswith("a:"),
                 )
-                print(f"Saved HTML report: {args.html}")
+                print(f"Saved HTML report: {destination}")
             return 0
 
         if args.command == "fflogs":
+            if args.html and args.fight is None:
+                raise ValueError("fflogs --html requires a job and fight")
             if args.url.casefold() == "limit":
                 if args.fight is not None or args.rank is not None or args.partition is not None:
                     raise ValueError("fflogs limit takes no fight or rank")
@@ -995,6 +1033,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                         f"unknown fight {args.fight!r}; choose: {', '.join(CURRENT_FIGHTS)}"
                     )
                 current_partition(encounter_id, args.partition)
+                html_options: _LeaderboardOptions = {}
+                if args.html:
+                    fight = next(alias for alias, encounter in CURRENT_FIGHTS.items()
+                                 if encounter == encounter_id)
+                    selection = ('ranks-' + args.rank.replace(',', '-')
+                                 if args.rank is not None and ',' in args.rank else args.rank or 'top')
+                    html_options['html_output'] = (
+                        Path('reports') / f'{job_code(job)}_{fight}_{selection}.html')
                 rank_range = _RANK_RANGE.fullmatch(args.rank) if args.rank is not None else None
                 if rank_range is not None:
                     first, last = map(int, rank_range.groups())
@@ -1005,7 +1051,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                             encounter_id, job, first, last, partition=args.partition,
                             **_ranking_status_options(progress),
                         )
-                        _compare_ranked_references(ranked, skipped, args.output, progress, gear=args.gear)
+                        _compare_ranked_references(ranked, skipped, args.output, progress,
+                                                   gear=args.gear, **html_options)
                     return 0
                 if args.rank is not None and "," in args.rank:
                     pieces = args.rank.split(",")
@@ -1019,7 +1066,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                             encounter_id, job, positions, partition=args.partition,
                             **_ranking_status_options(progress),
                         )
-                        _compare_ranked_references(ranked, skipped, args.output, progress, gear=args.gear)
+                        _compare_ranked_references(ranked, skipped, args.output, progress,
+                                                   gear=args.gear, **html_options)
                     return 0
                 if args.rank is not None:
                     if not args.rank.isdecimal() or int(args.rank) < 1:
@@ -1051,6 +1099,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                         result, directory=directory, rank=rank,
                         anonymous=reference.report_code.startswith("a:"),
                     )
+                    if args.html:
+                        from .html_report import write_html_report
+
+                        fight = next(alias for alias, encounter in CURRENT_FIGHTS.items()
+                                     if encounter == encounter_id)
+                        destination = Path("reports") / f"{job_code(job)}_{fight}_{rank}.html"
+                        write_html_report(
+                            result, destination, directory=directory, rank=rank,
+                            anonymous=reference.report_code.startswith("a:"),
+                        )
+                        print(f"Saved HTML report: {destination}")
                     return 0
                 with _Progress() as progress:
                     progress.message("Connecting to FF Logs...")
@@ -1058,7 +1117,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         encounter_id, job, partition=args.partition,
                         **_ranking_status_options(progress),
                     )
-                    _compare_ranked_references(ranked, skipped, args.output, progress, gear=args.gear)
+                    _compare_ranked_references(ranked, skipped, args.output, progress,
+                                               gear=args.gear, **html_options)
                 return 0
             if args.rank is not None:
                 raise ValueError("a rank requires a job and fight abbreviation")
